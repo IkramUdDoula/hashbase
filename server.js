@@ -74,96 +74,13 @@ app.get('/oauth2callback', async (req, res) => {
     oauth2Client.setCredentials(tokens);
     saveCredentials(oauth2Client);
     
-    // Redirect back to the frontend app
+    // Redirect back to the frontend app with success parameter
     const frontendUrl = process.env.VITE_FRONTEND_URL || 'http://localhost:5173';
-    res.send(`
-      <html>
-        <head>
-          <title>Authentication Successful</title>
-          <style>
-            body {
-              font-family: system-ui, -apple-system, sans-serif;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              height: 100vh;
-              margin: 0;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-            }
-            .container {
-              text-align: center;
-              padding: 2rem;
-              background: rgba(255, 255, 255, 0.1);
-              border-radius: 1rem;
-              backdrop-filter: blur(10px);
-            }
-            h1 { margin: 0 0 1rem 0; }
-            p { margin: 0 0 1.5rem 0; opacity: 0.9; }
-            .spinner {
-              border: 3px solid rgba(255, 255, 255, 0.3);
-              border-top: 3px solid white;
-              border-radius: 50%;
-              width: 40px;
-              height: 40px;
-              animation: spin 1s linear infinite;
-              margin: 0 auto;
-            }
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          </style>
-          <script>
-            setTimeout(() => {
-              window.location.href = '${frontendUrl}';
-            }, 2000);
-          </script>
-        </head>
-        <body>
-          <div class="container">
-            <h1>✅ Authentication Successful!</h1>
-            <p>Redirecting you back to the app...</p>
-            <div class="spinner"></div>
-          </div>
-        </body>
-      </html>
-    `);
+    res.redirect(`${frontendUrl}?auth=success`);
   } catch (error) {
     console.error('Error getting tokens:', error);
-    res.status(500).send(`
-      <html>
-        <head>
-          <title>Authentication Failed</title>
-          <style>
-            body {
-              font-family: system-ui, -apple-system, sans-serif;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              height: 100vh;
-              margin: 0;
-              background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-              color: white;
-            }
-            .container {
-              text-align: center;
-              padding: 2rem;
-              background: rgba(255, 255, 255, 0.1);
-              border-radius: 1rem;
-              backdrop-filter: blur(10px);
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1>❌ Authentication Failed</h1>
-            <p>Error: ${error.message}</p>
-            <p><a href="${process.env.VITE_FRONTEND_URL || 'http://localhost:5173'}" style="color: white;">Return to app</a></p>
-          </div>
-        </body>
-      </html>
-    `);
+    const frontendUrl = process.env.VITE_FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}?auth=error&message=${encodeURIComponent(error.message)}`);
   }
 });
 

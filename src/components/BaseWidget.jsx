@@ -62,9 +62,9 @@ export function BaseWidget({
           <Logo className="h-4 w-4 text-gray-700 dark:text-gray-300" />
         </div>
       )}
-      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{appName}</span>
-      <p>-</p>
-      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{widgetName}</span>
+      <span className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden md:inline">{appName}</span>
+      <p className="hidden lg:inline">-</p>
+      <span className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden lg:inline">{widgetName}</span>
     </div>
   );
   
@@ -88,7 +88,6 @@ export function BaseWidget({
             headerContent
           )}
           <div className="flex items-center gap-2">
-            {badge}
             {headerActions}
           </div>
         </div>

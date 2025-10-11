@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { SiGmail, SiNetlify } from 'react-icons/si';
 import { TestTube } from 'lucide-react';
 import { UnreadEmailWidget } from './components/widgets/Gmail/UnreadEmailWidget';
@@ -6,9 +6,30 @@ import { DeploymentWidget } from './components/widgets/Netlify/DeploymentWidget'
 import { TestSizingWidget } from './components/widgets/RnD/TestSizingWidget';
 import { SettingsButton } from './components/SettingsButton';
 import { Canvas } from './components/Canvas';
+import { ScreenSizeGuard } from './components/ScreenSizeGuard';
+import { ToastProvider, useToast } from './components/ui/toast';
 import { isWidgetEnabled } from './services/widgetRegistry';
 
-function App() {
+function AppContent() {
+  const { addToast } = useToast();
+
+  // Check for auth callback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const authStatus = params.get('auth');
+    
+    if (authStatus === 'success') {
+      addToast('Gmail authentication successful!', 'success');
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (authStatus === 'error') {
+      const message = params.get('message') || 'Authentication failed';
+      addToast(`Gmail authentication failed: ${message}`, 'error');
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [addToast]);
+
   // Define all available widgets with metadata
   // rowSpan: 1-4 (number of rows the widget occupies in a column)
   // The widget size determines how many cards are shown (without scrolling):
@@ -55,13 +76,23 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:bg-[#000000] dark:from-black dark:via-black dark:to-black p-8 transition-colors duration-200">
-      {/* Canvas with drag-and-drop widget rearrangement */}
-      <Canvas widgets={enabledWidgets} />
+    <ScreenSizeGuard>
+      <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:bg-[#000000] dark:from-black dark:via-black dark:to-black p-8 transition-colors duration-200">
+        {/* Canvas with drag-and-drop widget rearrangement */}
+        <Canvas widgets={enabledWidgets} />
 
-      {/* Floating Settings Button */}
-      <SettingsButton availableWidgets={allWidgets} />
-    </div>
+        {/* Floating Settings Button */}
+        <SettingsButton availableWidgets={allWidgets} />
+      </div>
+    </ScreenSizeGuard>
+  );
+}
+
+function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 }
 

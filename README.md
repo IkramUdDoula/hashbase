@@ -32,21 +32,17 @@ npm install
 
 ### 2. Run the Application
 
-You need to run both the backend server and the frontend development server:
+Simply run the development server:
 
-**Terminal 1 - Backend Server:**
-```bash
-npm run server
-```
-
-**Terminal 2 - Frontend Development Server:**
 ```bash
 npm run dev
 ```
 
+This will start both the frontend and backend API server together.
+
 ### 3. Access the Application
 
-Open your browser and navigate to the URL shown by Vite (typically `http://localhost:5173`)
+Open your browser and navigate to `http://localhost:5000`
 
 ### 4. Configure Your Widgets
 
@@ -61,15 +57,15 @@ Open your browser and navigate to the URL shown by Vite (typically `http://local
    - Go to "APIs & Services" > "Credentials"
    - Click "Create Credentials" > "OAuth client ID"
    - Choose "Web application"
-   - Add authorized redirect URI: `http://localhost:3001/oauth2callback`
+   - Add authorized redirect URI: `http://localhost:5000/oauth2callback`
    - Copy the **Client ID** and **Client Secret**
 5. Copy `.env.example` to `.env` and add your credentials:
    ```env
    GMAIL_CLIENT_ID=your_client_id_here
    GMAIL_CLIENT_SECRET=your_client_secret_here
-   GMAIL_REDIRECT_URI=http://localhost:3001/oauth2callback
+   GMAIL_REDIRECT_URI=http://localhost:5000/oauth2callback
    ```
-6. Restart the backend server
+6. Restart the dev server (`npm run dev`)
 7. Click the login button in the Gmail widget to authenticate
 
 #### **Netlify Widget** - Configure via Settings
@@ -87,6 +83,16 @@ Open your browser and navigate to the URL shown by Vite (typically `http://local
 #### **Apps Tab** - Enable/Disable Widgets
 
 Click the **Settings** button (⚙️) > **Configuration** > **Apps** tab to toggle widgets on or off. Changes take effect after refreshing the page.
+
+#### **Clear All Data**
+
+In Settings > Secrets tab, there's a "Clear All Data" button in the Danger Zone that will:
+- Remove all API tokens (Gmail, Netlify)
+- Clear all widget preferences
+- Reset widget layouts
+- Clear all localStorage data
+
+Use this if you want to start fresh or are experiencing authentication issues.
 
 ## Usage
 
@@ -128,12 +134,12 @@ hashbase/
 │   ├── App.jsx                    # Main app component
 │   ├── main.jsx                   # Entry point
 │   └── index.css                  # Global styles with Tailwind
-├── server.js                      # Express backend for APIs
+├── vite.config.js                 # Vite configuration with integrated API server
 ├── .env                           # Environment variables (not in git)
 ├── .env.example                   # Example environment variables
 ├── package.json                   # Dependencies and scripts
-├── vite.config.js                 # Vite configuration
 ├── tailwind.config.js             # Tailwind CSS configuration
+├── server.js                      # Legacy standalone server (deprecated)
 └── README.md                      # This file
 ```
 
@@ -150,11 +156,12 @@ hashbase/
 
 ## Security Notes
 
-- **Gmail credentials** are stored in `.env` file on the server (never committed to git)
-- **Netlify credentials** are stored in your browser's localStorage and never leave your device
-- Gmail OAuth tokens are stored locally in `token.json` on the server
+- **Gmail API credentials** (Client ID/Secret) are stored in `.env` file on the server (never committed to git)
+- **Gmail OAuth tokens** are stored in your browser's localStorage and sent via secure headers
+- **Netlify credentials** are stored in your browser's localStorage
+- All credentials stored in localStorage never leave your device
 - OAuth tokens are refreshed automatically by the Google API client
-- All API calls are proxied through the backend server to keep credentials secure
+- All API calls are proxied through the backend server to keep API credentials secure
 - The `.env` file should never be committed to version control
 
 ## Troubleshooting
@@ -163,11 +170,12 @@ hashbase/
 
 **"Not authenticated" error**
 - Ensure you've added Gmail credentials to your `.env` file
-- Restart the backend server after adding credentials
+- Restart the dev server after adding credentials (`npm run dev`)
 - Make sure you've completed the Gmail authentication process by clicking the login button
-- Check that `token.json` exists in the project root
-- Try re-authenticating by deleting `token.json` and clicking the login button
+- Check your browser's localStorage for `gmail_tokens` key
+- Try re-authenticating by clearing localStorage (Settings > Secrets > Clear All Data) and clicking the login button
 - Ensure the Gmail API is enabled in Google Cloud Console
+- Verify the redirect URI in Google Cloud Console matches `http://localhost:5000/oauth2callback`
 
 **No emails showing**
 - Check the browser console for errors
@@ -188,14 +196,14 @@ hashbase/
 
 ### General Issues
 
-**Backend server not connecting**
-- Ensure the backend server is running on port 3001
-- Check that `VITE_API_URL` in `.env` matches your backend URL
-- Verify no other application is using port 3001
+**API server not connecting**
+- Ensure the dev server is running (`npm run dev`)
+- Verify no other application is using port 5000
+- Check the terminal for any startup errors
 
 **Widgets not updating**
 - Check your internet connection
-- Verify the backend server is running
+- Verify the dev server is running
 - Check browser console for network errors
 
 ## License

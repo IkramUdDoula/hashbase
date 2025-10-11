@@ -1,7 +1,31 @@
 // Gmail API service for fetching unread emails
-// This will run in the browser, so we'll use a backend proxy approach
+// Tokens are stored in localStorage and sent via headers
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const GMAIL_TOKEN_KEY = 'gmail_tokens';
+
+// Get Gmail token from localStorage
+function getGmailToken() {
+  try {
+    const token = localStorage.getItem(GMAIL_TOKEN_KEY);
+    return token;
+  } catch (error) {
+    console.error('Error getting Gmail token:', error);
+    return null;
+  }
+}
+
+// Create headers with Gmail token
+function getHeaders() {
+  const token = getGmailToken();
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['x-gmail-token'] = token;
+  }
+  return headers;
+}
 
 export async function getAuthUrl() {
   try {
@@ -21,7 +45,14 @@ export async function getAuthUrl() {
 
 export async function checkAuthStatus() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/status`);
+    const token = getGmailToken();
+    if (!token) {
+      return false;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/api/auth/status`, {
+      headers: getHeaders()
+    });
     
     if (!response.ok) {
       throw new Error(`Failed to check auth status: ${response.statusText}`);
@@ -37,7 +68,9 @@ export async function checkAuthStatus() {
 
 export async function fetchUnreadEmails() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/gmail/unread`);
+    const response = await fetch(`${API_BASE_URL}/api/gmail/unread`, {
+      headers: getHeaders()
+    });
     
     if (!response.ok) {
       throw new Error(`Failed to fetch emails: ${response.statusText}`);
@@ -55,9 +88,7 @@ export async function markAsRead(messageId) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/gmail/mark-read`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
       body: JSON.stringify({ messageId }),
     });
     
