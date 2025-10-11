@@ -166,6 +166,80 @@ export function getAvailableDropzonesBelow(startDropzone, occupiedDropzones) {
 }
 
 /**
+ * Calculate the maximum available space below a widget for expansion
+ * @param {number} startDropzone - Starting dropzone of the widget
+ * @param {number} currentRowSpan - Current row span of the widget
+ * @param {Set<number>} occupiedDropzones - Set of occupied dropzones (excluding current widget)
+ * @returns {number} Number of consecutive free rows below (0 if none)
+ */
+export function getAvailableSpaceBelow(startDropzone, currentRowSpan, occupiedDropzones) {
+  const { colIndex, rowIndex } = getDropzonePosition(startDropzone);
+  const currentEndRow = rowIndex + currentRowSpan;
+  let availableRows = 0;
+  
+  // Count consecutive free rows below the widget
+  for (let row = currentEndRow; row < MAX_ROWS_PER_COLUMN; row++) {
+    const dzNum = getDropzoneNumber(colIndex, row);
+    if (occupiedDropzones.has(dzNum)) {
+      break; // Hit an occupied dropzone, stop counting
+    }
+    availableRows++;
+  }
+  
+  return availableRows;
+}
+
+/**
+ * Determine the next row span based on available space and last direction
+ * 
+ * Strategy:
+ * - Track whether user is expanding or reducing
+ * - If expanding and hit a wall (no space), switch to reducing
+ * - If reducing and hit minimum, switch to expanding
+ * - This creates a natural cycle: 1→2→3→4→3→2→1→2→...
+ * 
+ * @param {number} currentRowSpan - Current row span
+ * @param {number} availableSpaceBelow - Number of free rows below
+ * @param {string} lastDirection - Last resize direction ('expand' or 'reduce')
+ * @param {number} maxRowSpan - Maximum allowed row span (default 4)
+ * @returns {{nextRowSpan: number, nextDirection: string}} Next size and direction
+ */
+export function getSmartNextRowSpan(currentRowSpan, availableSpaceBelow, lastDirection = 'expand', maxRowSpan = 4) {
+  let nextRowSpan = currentRowSpan;
+  let nextDirection = lastDirection;
+  
+  if (lastDirection === 'expand') {
+    // User is expanding
+    if (currentRowSpan >= maxRowSpan) {
+      // Hit max, switch to reducing
+      nextRowSpan = currentRowSpan - 1;
+      nextDirection = 'reduce';
+    } else if (availableSpaceBelow > 0) {
+      // Can expand
+      nextRowSpan = currentRowSpan + 1;
+      nextDirection = 'expand';
+    } else {
+      // No space to expand, switch to reducing
+      nextRowSpan = currentRowSpan - 1;
+      nextDirection = 'reduce';
+    }
+  } else {
+    // User is reducing
+    if (currentRowSpan <= 1) {
+      // Hit min, switch to expanding
+      nextRowSpan = availableSpaceBelow > 0 ? 2 : 1;
+      nextDirection = 'expand';
+    } else {
+      // Continue reducing
+      nextRowSpan = currentRowSpan - 1;
+      nextDirection = 'reduce';
+    }
+  }
+  
+  return { nextRowSpan, nextDirection };
+}
+
+/**
  * Save layout configuration to localStorage
  * @param {Object} config - Layout configuration
  */

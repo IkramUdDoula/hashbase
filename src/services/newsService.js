@@ -48,9 +48,8 @@ export async function checkNewsApiStatus() {
 
 // Available countries for news
 export const NEWS_COUNTRIES = [
-  { code: 'bd', name: 'Bangladesh' },
-  { code: 'us', name: 'United States' },
-  { code: 'gb', name: 'United Kingdom' },
+  { code: 'us', name: 'USAs' },
+  { code: 'gb', name: 'UK' },
   { code: 'ca', name: 'Canada' },
   { code: 'au', name: 'Australia' },
   { code: 'in', name: 'India' },
@@ -63,7 +62,7 @@ export const NEWS_COUNTRIES = [
   { code: 'it', name: 'Italy' },
   { code: 'es', name: 'Spain' },
   { code: 'ru', name: 'Russia' },
-  { code: 'kr', name: 'South Korea' },
+  { code: 'kr', name: 'S. Korea' },
   { code: 'nl', name: 'Netherlands' },
   { code: 'se', name: 'Sweden' },
   { code: 'no', name: 'Norway' },
@@ -75,6 +74,7 @@ export const NEWS_COUNTRIES = [
 export const NEWS_CATEGORIES = [
   { value: 'general', label: 'General' },
   { value: 'business', label: 'Business' },
+  { value: 'finance', label: 'Finance' },
   { value: 'technology', label: 'Technology' },
   { value: 'entertainment', label: 'Entertainment' },
   { value: 'sports', label: 'Sports' },

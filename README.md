@@ -1,27 +1,31 @@
-# Hashbase - Dashboard Widget Platform
+# Hashbase - Customizable Dashboard Widget Platform
 
-A beautiful React single-page application that displays widgets for various services including Gmail and Netlify. Built with React, Vite, Tailwind CSS, and shadcn/ui.
+A modern, highly customizable React dashboard application featuring drag-and-drop widgets for Gmail, Netlify, GitHub, AI Chat, News, and more. Built with React 18, Vite, Tailwind CSS, shadcn/ui, and react-dnd for a beautiful and interactive user experience.
 
 ## Features
 
-- 📧 **Gmail Widget** - Display unread emails from Gmail
-- 🚀 **Netlify Widget** - Monitor latest deploys from all your projects
-- 🤖 **AI Chat Widget** - Chat with OpenAI (GPT-4) or Claude AI assistants with web search
-- 💻 **GitHub Widget** - View recent commits from your GitHub repositories
-- 📰 **News Widget** - Latest news headlines with country and topic filtering
-- 🔍 **Web Search Integration** - Enable real-time web search for AI responses using Tavily AI
-- ⚙️ **In-App Configuration** - Configure API secrets directly in the app (no .env file needed!)
-- 🎛️ **Widget Management** - Enable/disable widgets from the settings panel with search
-- 🔑 **Advanced Secrets Management** - Add custom secrets, search, and alphabetically sorted display
-- 🎯 **Drag & Drop Layout** - Customize widget positions with intelligent validation and persistence
-- 📐 **Dynamic Widget Sizing** - Resize widgets from 1-4 rows with automatic fit validation
-- 💾 **Layout Persistence** - Your custom layout survives page refreshes and server restarts
-- 🎨 Beautiful, modern UI with Tailwind CSS and shadcn/ui
-- 🔄 Auto-refresh every 60 seconds
-- 📱 Responsive design
-- 🌓 Dark mode support
-- ⚡ Fast development with Vite
-- 🔐 Secure local storage for API credentials
+### Widget Features
+- 📧 **Gmail Widget** - Display unread emails from Gmail with OAuth2 authentication
+- 🚀 **Netlify Widget** - Monitor latest deploys from all your Netlify projects
+- 🤖 **AI Chat Widget** - Chat with OpenAI (GPT-4, GPT-3.5) or Claude AI (Sonnet, Opus, Haiku) with streaming responses
+- 💻 **GitHub Widget** - View recent commits from any GitHub repository
+- 📰 **News Widget** - Latest news headlines with country (20+ countries) and topic filtering
+- 🌐 **BD24 Live Widget** - Bangladesh news from BD24 Live via RSS feed with 30-minute caching
+
+### Core Features
+- 🎯 **Advanced Drag & Drop Layout** - Powered by react-dnd with intelligent position validation
+- 📐 **Smart Widget Resizing** - Resize widgets from 1-4 rows with automatic space detection and fit validation
+- 💾 **Persistent Layout System** - Custom layouts saved to localStorage and survive page refreshes
+- 🎛️ **Widget Management** - Enable/disable widgets from settings panel with search functionality
+- ⚙️ **In-App Configuration** - Configure API secrets directly in the app (stored in localStorage)
+- 🔑 **Advanced Secrets Management** - Add custom secrets, search, alphabetically sorted display
+- 🔍 **Web Search Integration** - Real-time web search for AI responses using Tavily AI API
+- 🎨 **Beautiful Modern UI** - Built with Tailwind CSS and shadcn/ui components
+- 🌓 **Dark Mode Support** - Full dark mode with smooth transitions
+- 🔄 **Auto-Refresh** - Widgets auto-refresh at configurable intervals (30s - 5min)
+- 📱 **Responsive Design** - Optimized for desktop with screen size guard
+- ⚡ **Fast Development** - Vite dev server with integrated API backend
+- 🔐 **Secure Credentials** - API credentials stored in browser localStorage, never sent externally
 
 ## Prerequisites
 
@@ -35,29 +39,48 @@ A beautiful React single-page application that displays widgets for various serv
 - GitHub Personal Access Token (for GitHub widget - optional)
 - NewsAPI Key (for News widget - optional, free tier available)
 
-## Setup Instructions
+## Quick Start
 
-### 1. Install Dependencies
+### 1. Clone and Install
 
 ```bash
+git clone <repository-url>
+cd hashbase
 npm install
 ```
 
-### 2. Run the Application
+### 2. Configure Environment Variables
 
-Simply run the development server:
+Copy the example environment file and add your Gmail API credentials:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your Gmail API credentials (see Gmail Widget configuration below for details).
+
+### 3. Run the Application
+
+Start the integrated Vite dev server (includes both frontend and backend):
 
 ```bash
 npm run dev
 ```
 
-This will start both the frontend and backend API server together.
+This will start:
+- Frontend at `http://localhost:5000`
+- Backend API server integrated into Vite
+- Hot module replacement (HMR) for instant updates
 
-### 3. Access the Application
+### 4. Access the Dashboard
 
 Open your browser and navigate to `http://localhost:5000`
 
-### 4. Configure Your Widgets
+### 5. Configure Widgets
+
+Most widgets can be configured directly in the app via **Settings (⚙️) > Configuration > Secrets**. Only Gmail requires `.env` file configuration.
+
+## Widget Configuration
 
 #### **Gmail Widget** - Configure via .env file
 
@@ -257,51 +280,111 @@ For detailed technical documentation, see [LAYOUT_SYSTEM.md](./LAYOUT_SYSTEM.md)
 hashbase/
 ├── src/
 │   ├── components/
-│   │   ├── ui/                    # shadcn/ui components
+│   │   ├── ui/                         # shadcn/ui components (button, dialog, tooltip, etc.)
 │   │   ├── widgets/
-│   │   │   ├── GmailWidget.jsx   # Gmail widget component
-│   │   │   └── NetlifyWidget.jsx # Netlify widget component
-│   │   ├── Widget.jsx             # Base widget component
-│   │   └── SettingsButton.jsx     # Settings/theme toggle
+│   │   │   ├── AI/                     # AI Chat widget (AIChatWidget.jsx + components)
+│   │   │   ├── BD24Live/               # BD24 Live news widget
+│   │   │   ├── GitHub/                 # GitHub commits widget
+│   │   │   ├── Gmail/                  # Gmail unread emails widget
+│   │   │   ├── Netlify/                # Netlify deploys widget
+│   │   │   ├── News/                   # News headlines widget
+│   │   │   └── README.md               # Widget development guide
+│   │   ├── BaseWidget.jsx              # Base widget container with dynamic sizing
+│   │   ├── Canvas.jsx                  # Drag-and-drop canvas with layout management
+│   │   ├── DraggableWidget.jsx         # Draggable widget wrapper with resize
+│   │   ├── DropZone.jsx                # Drop zone component for drag-and-drop
+│   │   ├── ScreenSizeGuard.jsx         # Minimum screen size enforcement
+│   │   └── SettingsButton.jsx          # Settings panel (Apps, Secrets, Theme)
 │   ├── services/
-│   │   ├── gmailService.js        # Gmail API service
-│   │   └── netlifyService.js      # Netlify API service
+│   │   ├── aiService.js                # OpenAI & Claude API integration
+│   │   ├── bd24LiveService.js          # BD24 Live RSS feed service
+│   │   ├── githubService.js            # GitHub API service
+│   │   ├── gmailService.js             # Gmail API service
+│   │   ├── layoutService.js            # Layout management & validation logic
+│   │   ├── netlifyService.js           # Netlify API service
+│   │   ├── newsService.js              # NewsAPI service
+│   │   ├── secretsService.js           # Secrets management (localStorage)
+│   │   └── widgetRegistry.js           # Widget enable/disable preferences
 │   ├── contexts/
-│   │   └── ThemeContext.jsx       # Dark mode context
+│   │   └── ThemeContext.jsx            # Dark mode context provider
 │   ├── lib/
-│   │   └── utils.js               # Utility functions
-│   ├── App.jsx                    # Main app component
-│   ├── main.jsx                   # Entry point
-│   └── index.css                  # Global styles with Tailwind
-├── vite.config.js                 # Vite configuration with integrated API server
-├── .env                           # Environment variables (not in git)
-├── .env.example                   # Example environment variables
-├── package.json                   # Dependencies and scripts
-├── tailwind.config.js             # Tailwind CSS configuration
-├── server.js                      # Legacy standalone server (deprecated)
-└── README.md                      # This file
+│   │   ├── dateUtils.js                # Date formatting utilities
+│   │   └── utils.js                    # General utility functions
+│   ├── App.jsx                         # Main app component with widget registry
+│   ├── main.jsx                        # React entry point
+│   └── index.css                       # Global styles with Tailwind directives
+├── vite.config.js                      # Vite config with integrated Express API server
+├── server.js                           # Standalone Express server (deprecated, use Vite)
+├── .env                                # Environment variables (not in git)
+├── .env.example                        # Example environment variables template
+├── package.json                        # Dependencies and npm scripts
+├── tailwind.config.js                  # Tailwind CSS configuration
+├── postcss.config.js                   # PostCSS configuration
+├── jsconfig.json                       # JavaScript path aliases (@/ → src/)
+└── README.md                           # This file
 ```
 
 ## Technologies Used
 
-- **React** - UI library
-- **Vite** - Build tool and dev server
-- **Tailwind CSS** - Utility-first CSS framework
-- **shadcn/ui** - Beautiful UI components
-- **Express** - Backend server
-- **Google APIs** - Gmail integration
-- **Netlify API** - Deploy monitoring
-- **Lucide React** - Icon library
+### Frontend
+- **React 18.3** - Modern UI library with hooks
+- **Vite 5.2** - Lightning-fast build tool and dev server
+- **Tailwind CSS 3.4** - Utility-first CSS framework
+- **shadcn/ui** - High-quality accessible UI components built on Radix UI
+- **react-dnd 16.0** - Drag and drop for React with HTML5 backend
+- **Lucide React** - Beautiful icon library
+- **React Icons** - Additional icon sets (SiGmail, SiNetlify, SiGithub)
+
+### Backend & APIs
+- **Express 4.18** - Node.js web framework for API routes
+- **Google APIs (googleapis)** - Gmail API integration with OAuth2
+- **Netlify API** - Deploy monitoring and site management
+- **OpenAI API** - GPT-4 and GPT-3.5 integration
+- **Anthropic API** - Claude AI integration
+- **Tavily AI** - Web search API for AI responses
+- **NewsAPI** - News headlines from 20+ countries
+- **RSS Parser** - BD24 Live RSS feed parsing
+- **Axios** - HTTP client for API requests
+- **Cheerio** - HTML parsing for web scraping (legacy Daily Star scraper)
+
+### Development Tools
+- **dotenv** - Environment variable management
+- **cors** - Cross-origin resource sharing
+- **PostCSS** - CSS processing with Autoprefixer
+
+## Architecture & Design
+
+### Layout System
+- **5-Column Grid** - Dashboard uses a 5-column layout with up to 4 rows per column (20 total positions)
+- **Dynamic Widget Sizing** - Each widget can occupy 1-4 rows (heights: 12rem, 25rem, 38rem, 51rem)
+- **Smart Resize Algorithm** - Automatically detects available space and cycles through valid sizes
+- **Collision Detection** - Prevents widgets from overlapping using dropzone validation
+- **Persistent State** - Layout configuration saved to localStorage with automatic validation
+
+### Component Architecture
+- **BaseWidget** - Reusable container with dynamic height, drag handle, and header actions
+- **Canvas** - Main layout manager with drag-and-drop logic and state management
+- **DraggableWidget** - Wrapper that adds drag functionality and resize controls
+- **DropZone** - Drop target with visual feedback (blue ring for valid, red for invalid)
+- **Widget Registry** - Centralized widget management with enable/disable preferences
+
+### API Integration
+- **Vite Plugin Architecture** - Express API server integrated directly into Vite dev server
+- **Proxy Pattern** - All external API calls proxied through backend to protect API keys
+- **Header-based Auth** - Credentials passed via custom headers (x-gmail-token, x-netlify-access-token, etc.)
+- **localStorage Strategy** - User credentials stored client-side, never sent to external servers
+- **Caching Layer** - RSS feeds cached for 30 minutes to reduce external requests
 
 ## Security Notes
 
-- **Gmail API credentials** (Client ID/Secret) are stored in `.env` file on the server (never committed to git)
-- **Gmail OAuth tokens** are stored in your browser's localStorage and sent via secure headers
-- **Netlify credentials** are stored in your browser's localStorage
-- All credentials stored in localStorage never leave your device
-- OAuth tokens are refreshed automatically by the Google API client
-- All API calls are proxied through the backend server to keep API credentials secure
-- The `.env` file should never be committed to version control
+- **Gmail API credentials** (Client ID/Secret) stored in `.env` file on server (gitignored)
+- **Gmail OAuth tokens** stored in browser localStorage and sent via `x-gmail-token` header
+- **All other API keys** (Netlify, OpenAI, Claude, Tavily, GitHub) stored in browser localStorage
+- **No external transmission** - Credentials in localStorage never leave your device
+- **OAuth auto-refresh** - Gmail tokens refreshed automatically by Google API client
+- **Proxy protection** - All API calls proxied through backend to keep server-side keys secure
+- **Environment variables** - `.env` file excluded from version control via `.gitignore`
+- **Clear data option** - Settings panel includes "Clear All Data" to remove all stored credentials
 
 ## Troubleshooting
 
@@ -409,6 +492,74 @@ hashbase/
 - Check your internet connection
 - Verify the dev server is running
 - Check browser console for network errors
+
+## Development
+
+### Available Scripts
+
+```bash
+npm run dev      # Start Vite dev server with integrated API (port 5000)
+npm run build    # Build for production
+npm run preview  # Preview production build
+npm run server   # [DEPRECATED] Run standalone Express server
+```
+
+### Adding a New Widget
+
+1. **Create widget component** in `src/components/widgets/YourWidget/`
+2. **Create service** (if needed) in `src/services/yourService.js`
+3. **Register widget** in `src/App.jsx`:
+   ```javascript
+   const allWidgets = [
+     // ... existing widgets
+     { 
+       id: 'your-widget-id', 
+       component: YourWidget, 
+       rowSpan: 2,  // Default size (1-4)
+       name: 'Your Widget Name',
+       description: 'Widget description',
+       icon: YourIcon
+     },
+   ];
+   ```
+4. **Add API endpoints** (if needed) in `vite.config.js` API server section
+5. **Test drag-and-drop** and resize functionality
+
+See `src/components/widgets/README.md` for detailed widget development guide.
+
+### Project Architecture Highlights
+
+- **Integrated Dev Server** - Vite plugin architecture combines frontend and backend in one process
+- **Path Aliases** - Use `@/` to import from `src/` directory (configured in `jsconfig.json`)
+- **Component Composition** - BaseWidget provides consistent UI, individual widgets focus on data
+- **Service Layer** - All API calls abstracted into service modules for reusability
+- **State Management** - React hooks + localStorage for persistence (no Redux needed)
+- **Styling** - Tailwind utility classes + shadcn/ui components for consistency
+
+### Building for Production
+
+```bash
+npm run build
+```
+
+This creates an optimized production build in the `dist/` folder. Note that the current setup is optimized for development. For production deployment, you'll need to:
+
+1. Set up a proper backend server (Express) separately
+2. Configure environment variables for production
+3. Set up HTTPS for OAuth callbacks
+4. Configure CORS for your production domain
+
+### Code Style
+
+- **Components** - PascalCase (e.g., `BaseWidget.jsx`)
+- **Services** - camelCase (e.g., `gmailService.js`)
+- **Utilities** - camelCase (e.g., `dateUtils.js`)
+- **Constants** - UPPER_SNAKE_CASE (e.g., `MAX_ROWS_PER_COLUMN`)
+- **React Hooks** - Follow React naming conventions (e.g., `useState`, `useEffect`)
+
+## Contributing
+
+This is a personal project, but suggestions and feedback are welcome. Please open an issue to discuss potential changes.
 
 ## License
 

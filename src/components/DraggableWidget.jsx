@@ -23,10 +23,9 @@ export function DraggableWidget({ widgetId, widget, rowSpan = 1, onResize }) {
 
   const WidgetComponent = widget.component;
   
-  // Cycle through sizes: 1 -> 2 -> 3 -> 4 -> 1 -> ...
+  // Smart resize: analyzes available space and expands/reduces accordingly
   const handleResizeClick = () => {
-    const nextSize = rowSpan >= 4 ? 1 : rowSpan + 1;
-    onResize(widgetId, nextSize);
+    onResize(widgetId);
   };
 
   return (
@@ -36,20 +35,21 @@ export function DraggableWidget({ widgetId, widget, rowSpan = 1, onResize }) {
         isDragging ? 'opacity-50' : 'opacity-100'
       }`}
     >
-      {/* Dynamic Resize Icon in Bottom Right Corner */}
+      {/* Smart Resize Icon in Bottom Right Corner */}
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               onClick={handleResizeClick}
               className="absolute bottom-2 right-2 z-10 p-1.5 rounded-lg bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 shadow-md transition-all hover:scale-110 border border-gray-200 dark:border-gray-700"
-              title="Click to cycle widget height"
+              title="Smart resize: expands if space available, reduces if not"
             >
               <RiExpandUpDownFill className="w-4 h-4 text-gray-600 dark:text-gray-400" />
             </button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Click to cycle height (current: {rowSpan} row{rowSpan > 1 ? 's' : ''})</p>
+            <p>Smart resize (current: {rowSpan} row{rowSpan > 1 ? 's' : ''})</p>
+            <p className="text-xs text-gray-500">Cycles intelligently based on available space</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

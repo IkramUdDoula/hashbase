@@ -11,6 +11,8 @@ import {
   getDropzoneNumber,
   getDropzonePosition,
   getLayoutDebugInfo,
+  getAvailableSpaceBelow,
+  getSmartNextRowSpan,
   COLUMNS,
   MAX_ROWS_PER_COLUMN
 } from '@/services/layoutService';
@@ -150,6 +152,15 @@ export function Canvas({ widgets }) {
   };
   
   const [rowSpans, setRowSpans] = useState(getInitialRowSpans);
+  
+  // Track resize direction for each widget (expand or reduce)
+  const [resizeDirections, setResizeDirections] = useState(() => {
+    const directions = {};
+    widgets.forEach(widget => {
+      directions[widget.id] = 'expand'; // Default to expanding
+    });
+    return directions;
+  });
 
   // Save layout and rowSpans to localStorage whenever they change
   useEffect(() => {
@@ -241,62 +252,89 @@ export function Canvas({ widgets }) {
     });
   };
 
-  // Handle widget resize with enhanced validation
-  const handleResize = (widgetId, newRowSpan) => {
-    const clampedSpan = Math.max(1, Math.min(4, newRowSpan));
-    
-    // Check if resize is possible before updating
-    let canResize = false;
-    
-    // Find widget's current position
+  // Handle widget resize with smart space-aware logic and direction tracking
+  const handleResize = (widgetId) => {
+    // Find widget's current position and analyze available space
     for (let c = 0; c < COLUMNS; c++) {
       const widget = layout[c].find(w => w.id === widgetId);
       if (widget) {
+        const currentRowSpan = widget.rowSpan;
+        const currentDirection = resizeDirections[widgetId] || 'expand';
         const targetDropzone = getDropzoneNumber(c, widget.startRow);
         
-        // Create temporary config without this widget
+        // Create temporary config without this widget to check available space
         const tempLayout = layout.map(col => col.filter(w => w.id !== widgetId));
         const tempConfig = createLayoutConfig(tempLayout);
         const occupiedDropzones = new Set(tempConfig.occupiedDropzones);
         
-        // Check if resized widget fits
+        // Calculate available space below the widget
+        const availableSpace = getAvailableSpaceBelow(
+          targetDropzone,
+          currentRowSpan,
+          occupiedDropzones
+        );
+        
+        // Determine smart next size and direction based on available space and current direction
+        const { nextRowSpan, nextDirection } = getSmartNextRowSpan(
+          currentRowSpan, 
+          availableSpace, 
+          currentDirection,
+          4
+        );
+        
+        // If the size is the same as current, no change needed
+        if (nextRowSpan === currentRowSpan) {
+          console.log(`Widget ${widgetId} cannot change size (${currentRowSpan} rows)`);
+          return;
+        }
+        
+        // Validate that the new size fits
         const fitCheck = canWidgetFit(
           targetDropzone,
-          clampedSpan,
+          nextRowSpan,
           occupiedDropzones,
           widgetId,
           layoutConfig
         );
         
-        canResize = fitCheck.canFit;
+        if (!fitCheck.canFit) {
+          console.log(`Cannot resize ${widgetId}: ${fitCheck.reason}`);
+          return;
+        }
+        
+        console.log(`Smart resize ${widgetId}: ${currentRowSpan} → ${nextRowSpan} rows [${currentDirection}→${nextDirection}] (${availableSpace} available below)`);
+        
+        // Update resize direction
+        setResizeDirections(prev => ({
+          ...prev,
+          [widgetId]: nextDirection
+        }));
+        
+        // Update row spans
+        setRowSpans(prev => ({
+          ...prev,
+          [widgetId]: nextRowSpan
+        }));
+        
+        // Update layout to reflect new size
+        setLayout(prevLayout => {
+          const newLayout = prevLayout.map(col => col.map(w => ({...w})));
+          
+          // Find widget and update its rowSpan
+          for (let c = 0; c < COLUMNS; c++) {
+            const widget = newLayout[c].find(w => w.id === widgetId);
+            if (widget) {
+              widget.rowSpan = nextRowSpan;
+              break;
+            }
+          }
+          
+          return newLayout;
+        });
+        
         break;
       }
     }
-    
-    if (!canResize) {
-      return;
-    }
-    
-    setRowSpans(prev => ({
-      ...prev,
-      [widgetId]: clampedSpan
-    }));
-    
-    // Update layout to reflect new size
-    setLayout(prevLayout => {
-      const newLayout = prevLayout.map(col => col.map(w => ({...w})));
-      
-      // Find widget and update its rowSpan
-      for (let c = 0; c < COLUMNS; c++) {
-        const widget = newLayout[c].find(w => w.id === widgetId);
-        if (widget) {
-          widget.rowSpan = clampedSpan;
-          break;
-        }
-      }
-      
-      return newLayout;
-    });
   };
 
   // Get widget component by id
