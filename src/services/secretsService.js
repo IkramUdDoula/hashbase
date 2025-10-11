@@ -100,4 +100,6 @@ export function hasSecret(key) {
 // Secret key constants for easy reference
 export const SECRET_KEYS = {
   NETLIFY_ACCESS_TOKEN: 'NETLIFY_ACCESS_TOKEN',
+  OPENAI_API_KEY: 'OPENAI_API_KEY',
+  CLAUDE_API_KEY: 'CLAUDE_API_KEY',
 };

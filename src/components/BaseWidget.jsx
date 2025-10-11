@@ -1,4 +1,7 @@
 import React from 'react';
+import { Button } from '@/components/ui/button';
+import { RefreshCw } from 'lucide-react';
+import { ScrollbarStyles } from '@/components/ui/scrollbar-styles';
 import {
   Tooltip,
   TooltipContent,
@@ -9,7 +12,7 @@ import {
 /**
  * BaseWidget Component
  * A simple widget container with dynamic height based on rowSpan (1-4 rows)
- * Includes custom minimalistic scrollbar styling
+{{ ... }}
  * 
  * Height mapping (responsive):
  * - 1 row = h-[12rem] (192px base)
@@ -95,28 +98,7 @@ export function BaseWidget({
       
       {/* Content with custom scrollbar */}
       <div className="flex-1 overflow-hidden flex flex-col px-6 py-4">
-        <style>{`
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-            margin: 4px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 3px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
-          }
-          .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #4b5563;
-          }
-          .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #6b7280;
-          }
-        `}</style>
+        <ScrollbarStyles />
         {children}
       </div>
     </div>

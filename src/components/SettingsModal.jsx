@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { getSecrets, setSecrets, SECRET_KEYS } from '@/services/secretsService';
 import { getWidgetPreferences, setWidgetPreferences } from '@/services/widgetRegistry';
+import { ScrollbarStyles } from '@/components/ui/scrollbar-styles';
 
 export function SettingsModal({ isOpen, onClose, availableWidgets }) {
   const [activeTab, setActiveTab] = useState('apps');
@@ -13,7 +14,8 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
   const [widgetPrefs, setWidgetPrefsState] = useState({});
   const [showSecrets, setShowSecrets] = useState({});
   const [saveStatus, setSaveStatus] = useState('');
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearClickCount, setClearClickCount] = useState(0);
+  const clearTimeoutRef = useRef(null);
   const modalRef = useRef(null);
 
   // Load data on mount
@@ -89,18 +91,46 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
   };
 
   const handleClearAllData = () => {
-    try {
-      // Clear all localStorage
-      localStorage.clear();
-      setSaveStatus('All data cleared! Refreshing page...');
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-    } catch (error) {
-      setSaveStatus('Error clearing data');
-      setTimeout(() => setSaveStatus(''), 3000);
+    console.log('🗑️ handleClearAllData called, click count:', clearClickCount);
+    
+    if (clearClickCount === 0) {
+      console.log('⚠️ First click - asking for confirmation');
+      setClearClickCount(1);
+      setSaveStatus('Click again to confirm deletion');
+      
+      // Reset after 3 seconds
+      if (clearTimeoutRef.current) {
+        clearTimeout(clearTimeoutRef.current);
+      }
+      clearTimeoutRef.current = setTimeout(() => {
+        console.log('⏱️ Confirmation timeout - resetting');
+        setClearClickCount(0);
+        setSaveStatus('');
+      }, 3000);
+    } else {
+      console.log('✅ Second click - proceeding with deletion');
+      try {
+        console.log('📦 Clearing localStorage...');
+        // Clear all localStorage
+        localStorage.clear();
+        console.log('✅ localStorage cleared successfully');
+        setSaveStatus('All data cleared! Refreshing page...');
+        setClearClickCount(0);
+        if (clearTimeoutRef.current) {
+          clearTimeout(clearTimeoutRef.current);
+        }
+        console.log('⏳ Scheduling page reload in 1.5s...');
+        setTimeout(() => {
+          console.log('🔄 Reloading page now...');
+          window.location.reload();
+        }, 1500);
+      } catch (error) {
+        console.error('❌ Error clearing data:', error);
+        setSaveStatus('Error clearing data');
+        setTimeout(() => setSaveStatus(''), 3000);
+        setClearClickCount(0);
+      }
     }
-    setShowClearConfirm(false);
   };
 
   if (!isOpen) return null;
@@ -111,6 +141,18 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
       label: 'Netlify Access Token',
       description: 'Get from Netlify User Settings > Applications',
       placeholder: 'nfp_xxxxxxxxxxxxx'
+    },
+    {
+      key: SECRET_KEYS.OPENAI_API_KEY,
+      label: 'OpenAI API Key',
+      description: 'Get from platform.openai.com/api-keys',
+      placeholder: 'sk-proj-xxxxxxxxxxxxx'
+    },
+    {
+      key: SECRET_KEYS.CLAUDE_API_KEY,
+      label: 'Claude API Key (Anthropic)',
+      description: 'Get from console.anthropic.com/settings/keys',
+      placeholder: 'sk-ant-xxxxxxxxxxxxx'
     }
   ];
 
@@ -159,7 +201,8 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+          <ScrollbarStyles />
           {activeTab === 'apps' && (
             <div className="space-y-4">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
@@ -217,7 +260,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
           {activeTab === 'secrets' && (
             <div className="space-y-4">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Configure your Netlify API credentials. These are stored securely in your browser's local storage and never sent to any external server.
+                Configure your API credentials. These are stored securely in your browser's local storage and never sent to any external server.
               </p>
               {/* <div className="p-3 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 mb-4">
                 <p className="text-xs text-gray-900 dark:text-gray-100">
@@ -289,11 +332,16 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => setShowClearConfirm(true)}
-                    className="flex items-center gap-2 ml-4"
+                    onClick={(e) => {
+                      console.log('🖱️ Clear All Data button clicked', e);
+                      handleClearAllData();
+                    }}
+                    className={`flex items-center gap-2 ml-4 transition-all ${
+                      clearClickCount === 1 ? 'animate-pulse ring-2 ring-red-500' : ''
+                    }`}
                   >
                     <Trash2 className="h-4 w-4" />
-                    Clear All Data
+                    {clearClickCount === 1 ? 'Click Again to Confirm' : 'Clear All Data'}
                   </Button>
                 </div>
               </div>
@@ -302,95 +350,6 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
         </div>
       </div>
 
-      {/* Clear All Data Confirmation Modal */}
-      {showClearConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-200 dark:border-gray-800">
-            {/* Header with Icon */}
-            <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/30 dark:to-red-900/20 px-8 py-6 border-b border-red-200 dark:border-red-900/50">
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-red-500 dark:bg-red-600 flex items-center justify-center shadow-lg">
-                  <Trash2 className="h-7 w-7 text-white" strokeWidth={2.5} />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    Clear All Data?
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-                    This action is permanent and irreversible
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="px-8 py-6">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-                The following data will be permanently deleted:
-              </p>
-              
-              <div className="space-y-3 mb-6">
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                  <div className="w-2 h-2 rounded-full bg-red-500 mt-1.5 flex-shrink-0"></div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">API Tokens</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Gmail and Netlify authentication tokens</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                  <div className="w-2 h-2 rounded-full bg-red-500 mt-1.5 flex-shrink-0"></div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Widget Preferences</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Enabled/disabled widget settings</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                  <div className="w-2 h-2 rounded-full bg-red-500 mt-1.5 flex-shrink-0"></div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Widget Layouts</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Custom positioning and arrangements</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                  <div className="w-2 h-2 rounded-full bg-red-500 mt-1.5 flex-shrink-0"></div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">All localStorage Data</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Complete browser storage reset</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50">
-                <p className="text-sm font-semibold text-red-700 dark:text-red-400 text-center">
-                  ⚠️ This action cannot be undone
-                </p>
-              </div>
-            </div>
-
-            {/* Footer with Actions */}
-            <div className="px-8 py-5 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 flex gap-3 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setShowClearConfirm(false)}
-                className="px-6 h-11 font-medium hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleClearAllData}
-                className="px-6 h-11 font-medium bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 flex items-center gap-2 shadow-lg shadow-red-500/20"
-              >
-                <Trash2 className="h-4 w-4" />
-                Clear All Data
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

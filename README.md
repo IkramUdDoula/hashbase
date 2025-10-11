@@ -6,6 +6,7 @@ A beautiful React single-page application that displays widgets for various serv
 
 - 📧 **Gmail Widget** - Display unread emails from Gmail
 - 🚀 **Netlify Widget** - Monitor latest deploys from all your projects
+- 🤖 **AI Chat Widget** - Chat with OpenAI (GPT-4) or Claude AI assistants
 - ⚙️ **In-App Configuration** - Configure API secrets directly in the app (no .env file needed!)
 - 🎛️ **Widget Management** - Enable/disable widgets from the settings panel
 - 🎨 Beautiful, modern UI with Tailwind CSS and shadcn/ui
@@ -21,6 +22,8 @@ A beautiful React single-page application that displays widgets for various serv
 - npm or yarn
 - Gmail API credentials from Google Cloud Console (for Gmail widget)
 - Netlify Personal Access Token (for Netlify widget)
+- OpenAI API Key (for AI Chat widget with GPT models)
+- Claude API Key (for AI Chat widget with Claude models)
 
 ## Setup Instructions
 
@@ -80,6 +83,28 @@ Open your browser and navigate to `http://localhost:5000`
 
 **Note:** Netlify credentials are stored securely in your browser's local storage and never sent to any external server.
 
+#### **AI Chat Widget** - Configure via Settings
+
+1. **For OpenAI (GPT-4, GPT-3.5):**
+   - Go to [OpenAI API Keys](https://platform.openai.com/api-keys)
+   - Click "Create new secret key"
+   - Give it a name (e.g., "Hashbase Dashboard")
+   - Copy the generated key
+   - In the app, click **Settings** (⚙️) > **Configuration** > **Secrets** tab
+   - Paste the key into "OpenAI API Key"
+   - Click **Save Secrets**
+
+2. **For Claude (Anthropic):**
+   - Go to [Anthropic Console](https://console.anthropic.com/settings/keys)
+   - Click "Create Key"
+   - Give it a name (e.g., "Hashbase Dashboard")
+   - Copy the generated key
+   - In the app, click **Settings** (⚙️) > **Configuration** > **Secrets** tab
+   - Paste the key into "Claude API Key (Anthropic)"
+   - Click **Save Secrets**
+
+**Note:** You can configure one or both AI providers. The widget will show all available providers based on your configured API keys.
+
 #### **Apps Tab** - Enable/Disable Widgets
 
 Click the **Settings** button (⚙️) > **Configuration** > **Apps** tab to toggle widgets on or off. Changes take effect after refreshing the page.
@@ -111,6 +136,22 @@ Use this if you want to start fresh or are experiencing authentication issues.
 - Click "Deploy" to view deploy details in Netlify
 - Click "Site" to visit the live site
 - Color-coded badges for different deploy states
+
+### AI Chat Widget
+- Chat with AI assistants (OpenAI GPT-4 or Claude)
+- **Streaming responses** - See AI responses in real-time
+- **Multi-conversation support** - Manage multiple chat conversations with history
+- **Conversation history** - View and load previous conversations sorted by date
+- **Advanced LLM settings** - Configure temperature, max tokens, top-p, frequency/presence penalties
+- **Multi-provider support** - Switch between OpenAI and Claude
+- **Model selection** - Choose from GPT-4 Turbo, GPT-3.5, Claude 3.5 Sonnet, Claude 3 Opus/Haiku
+- **Message management** - Copy, delete individual messages
+- **Token tracking** - Approximate token usage display
+- Click the menu icon to access:
+  - **New Chat** - Start a fresh conversation
+  - **History** - Browse and load previous conversations
+  - **Settings** - Configure LLM parameters (temperature, tokens, etc.)
+- Press Enter to send, Shift+Enter for new line
 
 ## Project Structure
 
@@ -193,6 +234,30 @@ hashbase/
 - Verify you have sites with deploys in your Netlify account
 - Check the browser console for errors
 - Try refreshing manually with the refresh button
+
+### AI Chat Widget Issues
+
+**"No AI provider configured" error**
+- Open Settings > Secrets and add your OpenAI or Claude API key
+- Verify the API key is valid and has not expired
+- Make sure you've saved the secrets after entering them
+
+**API request errors**
+- Check that your API key is correct and active
+- Verify you have sufficient credits/quota in your OpenAI or Anthropic account
+- Check the browser console for detailed error messages
+- For OpenAI: Ensure your API key has access to the selected model (GPT-4 requires separate access)
+- For Claude: Ensure you're using a valid Anthropic API key (starts with `sk-ant-`)
+
+**Streaming not working**
+- This is a browser/network issue - the widget uses Server-Sent Events (SSE)
+- Try refreshing the page
+- Check your browser console for CORS or network errors
+
+**Chat history lost**
+- Chat history is stored in browser localStorage
+- Clearing browser data or using incognito mode will reset history
+- Use the "Clear All Data" feature in Settings only if you want to reset everything
 
 ### General Issues
 

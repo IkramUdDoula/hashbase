@@ -162,7 +162,7 @@ export function DeploymentWidget({ rowSpan = 2, dragRef }) {
             </>
           ) : (
             <>
-              <p className="text-sm text-destructive mb-2">Failed to load deploys</p>
+              {/* <p className="text-sm text-destructive mb-2">Failed to load deploys</p> */}
               <p className="text-xs text-muted-foreground mb-4">{error}</p>
               <Button variant="outline" size="sm" onClick={handleRefresh}>
                 Try Again

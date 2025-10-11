@@ -1,9 +1,10 @@
 import React, { useMemo, useEffect } from 'react';
 import { SiGmail, SiNetlify } from 'react-icons/si';
-import { TestTube } from 'lucide-react';
+import { TestTube, Sparkles } from 'lucide-react';
 import { UnreadEmailWidget } from './components/widgets/Gmail/UnreadEmailWidget';
 import { DeploymentWidget } from './components/widgets/Netlify/DeploymentWidget';
 import { TestSizingWidget } from './components/widgets/RnD/TestSizingWidget';
+import { AIChatWidget } from './components/widgets/AI/AIChatWidget';
 import { SettingsButton } from './components/SettingsButton';
 import { Canvas } from './components/Canvas';
 import { ScreenSizeGuard } from './components/ScreenSizeGuard';
@@ -59,6 +60,14 @@ function AppContent() {
       description: 'Test widget for sizing and layout experiments',
       icon: TestTube
     },
+    { 
+      id: 'ai-chat', 
+      component: AIChatWidget, 
+      rowSpan: 3,
+      name: 'AI Chat',
+      description: 'Chat with AI assistants (OpenAI GPT-4 & Claude)',
+      icon: Sparkles
+    },
     // Add more widgets here in the future:
     // { 
     //   id: 'github-prs', 
@@ -73,7 +82,7 @@ function AppContent() {
   // Filter widgets based on user preferences
   const enabledWidgets = useMemo(() => {
     return allWidgets.filter(widget => isWidgetEnabled(widget.id));
-  }, []);
+  }, [allWidgets]);
 
   return (
     <ScreenSizeGuard>
