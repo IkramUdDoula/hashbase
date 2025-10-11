@@ -10,6 +10,9 @@ widgets/
 │   └── UnreadEmailWidget.jsx    - Gmail unread emails widget
 ├── Netlify/
 │   └── DeploymentWidget.jsx     - Netlify deployment status widget
+├── News/
+│   ├── NewsWidget.jsx            - Latest news headlines widget
+│   └── NewsSettingsDialog.jsx    - Settings dialog for country/topic
 └── README.md
 ```
 

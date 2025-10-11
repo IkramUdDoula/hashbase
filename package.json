@@ -10,8 +10,12 @@
     "server": "echo 'DEPRECATED: The server is now integrated into npm run dev' && node server.js"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "axios": "^1.6.7",
+    "cheerio": "^1.0.0-rc.12",
+    "rss-parser": "^3.13.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "cors": "^2.8.5",

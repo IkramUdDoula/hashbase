@@ -1,11 +1,12 @@
 import React, { useMemo, useEffect } from 'react';
 import { SiGmail, SiNetlify, SiGithub } from 'react-icons/si';
-import { TestTube, Sparkles } from 'lucide-react';
+import { TestTube, Sparkles, Newspaper } from 'lucide-react';
 import { UnreadEmailWidget } from './components/widgets/Gmail/UnreadEmailWidget';
 import { DeploymentWidget } from './components/widgets/Netlify/DeploymentWidget';
-import { TestSizingWidget } from './components/widgets/RnD/TestSizingWidget';
 import { AIChatWidget } from './components/widgets/AI/AIChatWidget';
 import { CommitLogWidget } from './components/widgets/GitHub/CommitLogWidget';
+import { NewsWidget } from './components/widgets/News/NewsWidget';
+import { BD24LiveWidget } from './components/widgets/BD24Live/BD24LiveWidget';
 import { SettingsButton } from './components/SettingsButton';
 import { Canvas } from './components/Canvas';
 import { ScreenSizeGuard } from './components/ScreenSizeGuard';
@@ -37,14 +38,6 @@ function AppContent() {
       icon: SiNetlify
     },
     { 
-      id: 'rnd-sizing-test', 
-      component: TestSizingWidget, 
-      rowSpan: 2,
-      name: 'Test Widget (R&D)',
-      description: 'Test widget for sizing and layout experiments',
-      icon: TestTube
-    },
-    { 
       id: 'ai-chat', 
       component: AIChatWidget, 
       rowSpan: 3,
@@ -59,6 +52,22 @@ function AppContent() {
       name: 'GitHub Commits',
       description: 'View recent commits from your GitHub repository',
       icon: SiGithub
+    },
+    { 
+      id: 'news-headlines', 
+      component: NewsWidget, 
+      rowSpan: 2,
+      name: 'News Headlines',
+      description: 'Latest news from around the world with country and topic filtering',
+      icon: Newspaper
+    },
+    { 
+      id: 'bd24live-news', 
+      component: BD24LiveWidget, 
+      rowSpan: 2,
+      name: 'BD24 Live',
+      description: 'Latest news from BD24 Live (Bangladesh) via RSS feed - Auto-refreshes every 30 minutes',
+      icon: Newspaper
     },
   ];
 

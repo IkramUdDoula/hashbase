@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -276,6 +278,59 @@ app.get('/api/netlify/deploys', async (req, res) => {
   }
 });
 
+// ===== News API Endpoints =====
+
+// Check if NewsAPI is configured
+app.get('/api/news/status', (req, res) => {
+  const apiKey = process.env.NEWS_API_KEY;
+  const configured = !!apiKey;
+  res.json({ configured });
+});
+
+// Fetch news headlines
+app.get('/api/news', async (req, res) => {
+  try {
+    const { country = 'us', category = 'general' } = req.query;
+    const apiKey = process.env.NEWS_API_KEY;
+    
+    if (!apiKey) {
+      return res.status(401).json({ 
+        error: 'NewsAPI key not configured',
+        message: 'Please add NEWS_API_KEY to your .env file. Get a free key from https://newsapi.org',
+        articles: []
+      });
+    }
+
+    // Fetch news from NewsAPI
+    const response = await fetch(
+      `https://newsapi.org/v2/top-headlines?country=${country}&category=${category}&pageSize=20&apiKey=${apiKey}`
+    );
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'NewsAPI request failed');
+    }
+
+    const data = await response.json();
+    
+    // Filter out articles with removed content
+    const articles = (data.articles || []).filter(article => 
+      article.title && 
+      article.title !== '[Removed]' && 
+      article.url
+    );
+    
+    res.json({ articles });
+  } catch (error) {
+    console.error('Error fetching news:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch news',
+      message: error.message,
+      articles: []
+    });
+  }
+});
+
 // ===== Web Search API Endpoint =====
 
 // Perform web search using Tavily AI Search API
@@ -355,6 +410,176 @@ app.post('/api/search', async (req, res) => {
       error: 'Search failed',
       message: error.message,
       results: [] // Return empty results on error
+    });
+  }
+});
+
+// ===== Daily Star Scraper API Endpoints =====
+
+// Cache for Daily Star news (to avoid excessive scraping)
+let dailyStarCache = {
+  articles: [],
+  lastFetched: null,
+  cacheExpiry: 30 * 60 * 1000 // 30 minutes in milliseconds
+};
+
+// Check if Daily Star scraper is operational
+app.get('/api/dailystar/status', (req, res) => {
+  res.json({ operational: true });
+});
+
+// Scrape latest news from The Daily Star
+app.get('/api/dailystar/news', async (req, res) => {
+  try {
+    // Check if cache is still valid
+    const now = Date.now();
+    if (dailyStarCache.lastFetched && 
+        (now - dailyStarCache.lastFetched) < dailyStarCache.cacheExpiry &&
+        dailyStarCache.articles.length > 0) {
+      console.log('Returning cached Daily Star news');
+      return res.json({ 
+        articles: dailyStarCache.articles,
+        cached: true,
+        lastFetched: new Date(dailyStarCache.lastFetched).toISOString()
+      });
+    }
+
+    console.log('Scraping fresh Daily Star news...');
+    
+    // Fetch the homepage
+    const response = await axios.get('https://www.thedailystar.net/', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      timeout: 10000
+    });
+
+    const $ = cheerio.load(response.data);
+    const articles = [];
+
+    // Scrape articles from the homepage
+    // The Daily Star uses various article containers, we'll try multiple selectors
+    const articleSelectors = [
+      '.card-lg',
+      '.card-md', 
+      '.card-sm',
+      'article',
+      '.news-item'
+    ];
+
+    articleSelectors.forEach(selector => {
+      $(selector).each((index, element) => {
+        if (articles.length >= 20) return false; // Limit to 20 articles
+
+        const $el = $(element);
+        
+        // Try to find title
+        const titleEl = $el.find('h1, h2, h3, h4, .title, .headline').first();
+        const title = titleEl.text().trim();
+        
+        // Try to find link
+        let link = $el.find('a').first().attr('href') || titleEl.find('a').attr('href');
+        if (link && !link.startsWith('http')) {
+          link = `https://www.thedailystar.net${link.startsWith('/') ? '' : '/'}${link}`;
+        }
+        
+        // Try to find description
+        const description = $el.find('p, .excerpt, .description').first().text().trim();
+        
+        // Try to find image
+        let image = $el.find('img').first().attr('src') || $el.find('img').first().attr('data-src');
+        if (image && !image.startsWith('http')) {
+          image = `https://www.thedailystar.net${image.startsWith('/') ? '' : '/'}${image}`;
+        }
+        
+        // Try to find time/date
+        const timeEl = $el.find('time, .time, .date, .published').first();
+        const publishedAt = timeEl.attr('datetime') || timeEl.text().trim() || new Date().toISOString();
+
+        // Only add if we have at least a title and link
+        if (title && link && title.length > 10) {
+          // Check if article already exists (avoid duplicates)
+          const exists = articles.some(a => a.url === link || a.title === title);
+          if (!exists) {
+            articles.push({
+              title,
+              description: description || title,
+              url: link,
+              image: image || null,
+              publishedAt: publishedAt,
+              source: 'The Daily Star'
+            });
+          }
+        }
+      });
+    });
+
+    // If we didn't find enough articles with the above selectors, try a more generic approach
+    if (articles.length < 10) {
+      $('a').each((index, element) => {
+        if (articles.length >= 20) return false;
+
+        const $link = $(element);
+        const href = $link.attr('href');
+        
+        // Look for article links (usually contain specific patterns)
+        if (href && (href.includes('/news/') || href.includes('/article/') || href.includes('/story/'))) {
+          const title = $link.text().trim() || $link.find('h1, h2, h3, h4').text().trim();
+          
+          let fullUrl = href;
+          if (!fullUrl.startsWith('http')) {
+            fullUrl = `https://www.thedailystar.net${href.startsWith('/') ? '' : '/'}${href}`;
+          }
+
+          if (title && title.length > 20) {
+            const exists = articles.some(a => a.url === fullUrl || a.title === title);
+            if (!exists) {
+              articles.push({
+                title,
+                description: title,
+                url: fullUrl,
+                image: null,
+                publishedAt: new Date().toISOString(),
+                source: 'The Daily Star'
+              });
+            }
+          }
+        }
+      });
+    }
+
+    // Update cache
+    dailyStarCache = {
+      articles: articles.slice(0, 20), // Keep only top 20
+      lastFetched: now,
+      cacheExpiry: 30 * 60 * 1000
+    };
+
+    console.log(`Scraped ${articles.length} articles from Daily Star`);
+    
+    res.json({ 
+      articles: dailyStarCache.articles,
+      cached: false,
+      lastFetched: new Date(now).toISOString()
+    });
+  } catch (error) {
+    console.error('Error scraping Daily Star:', error);
+    
+    // If we have cached data, return it even if expired
+    if (dailyStarCache.articles.length > 0) {
+      console.log('Returning stale cache due to error');
+      return res.json({ 
+        articles: dailyStarCache.articles,
+        cached: true,
+        stale: true,
+        lastFetched: dailyStarCache.lastFetched ? new Date(dailyStarCache.lastFetched).toISOString() : null
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to scrape Daily Star news',
+      message: error.message,
+      articles: []
     });
   }
 });

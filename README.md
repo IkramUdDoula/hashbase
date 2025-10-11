@@ -8,6 +8,7 @@ A beautiful React single-page application that displays widgets for various serv
 - 🚀 **Netlify Widget** - Monitor latest deploys from all your projects
 - 🤖 **AI Chat Widget** - Chat with OpenAI (GPT-4) or Claude AI assistants with web search
 - 💻 **GitHub Widget** - View recent commits from your GitHub repositories
+- 📰 **News Widget** - Latest news headlines with country and topic filtering
 - 🔍 **Web Search Integration** - Enable real-time web search for AI responses using Tavily AI
 - ⚙️ **In-App Configuration** - Configure API secrets directly in the app (no .env file needed!)
 - 🎛️ **Widget Management** - Enable/disable widgets from the settings panel with search
@@ -29,6 +30,7 @@ A beautiful React single-page application that displays widgets for various serv
 - Claude API Key (for AI Chat widget with Claude models)
 - Tavily API Key (for web search in AI Chat - optional, free tier available)
 - GitHub Personal Access Token (for GitHub widget - optional)
+- NewsAPI Key (for News widget - optional, free tier available)
 
 ## Setup Instructions
 
@@ -138,6 +140,23 @@ Open your browser and navigate to `http://localhost:5000`
 
 **Note:** GitHub credentials are stored securely in your browser's local storage and never sent to any external server.
 
+#### **News Widget** - Configure via .env file
+
+1. Go to [NewsAPI.org](https://newsapi.org/register)
+2. Sign up for a free account (100 requests/day)
+3. Copy your API key from the dashboard
+4. Add the key to your `.env` file:
+   ```env
+   NEWS_API_KEY=your_api_key_here
+   ```
+5. Restart the dev server (`npm run dev`)
+6. Click the settings icon (⚙️) in the News widget to configure:
+   - Select your preferred country (20+ countries available)
+   - Select your preferred topic (General, Business, Technology, etc.)
+   - Click **Save Changes**
+
+**Note:** Settings are saved in your browser's localStorage and persist across sessions. The widget auto-refreshes every 5 minutes.
+
 #### **Apps Tab** - Enable/Disable Widgets
 
 Click the **Settings** button (⚙️) > **Configuration** > **Apps** tab to toggle widgets on or off. Use the search bar to quickly find specific widgets. Changes take effect after refreshing the page.
@@ -205,6 +224,16 @@ Use this if you want to start fresh or are experiencing authentication issues.
 - Click on any commit to view it on GitHub
 - Configure repository via the settings icon in the widget
 - Supports any public or private repository (with proper token permissions)
+
+### News Widget
+- Displays latest news headlines from around the world
+- **Country Selection** - Choose from 20+ countries (US, UK, Canada, India, etc.)
+- **Topic Filtering** - Filter by General, Business, Technology, Entertainment, Sports, Science, or Health
+- **Search** - Search through headlines by title, description, or source
+- **Settings Dialog** - Easy configuration via settings button
+- Auto-refreshes every 5 minutes
+- Click on any article to read the full story
+- Settings persist in localStorage
 
 ## Project Structure
 
@@ -334,6 +363,24 @@ hashbase/
 - Verify your token is valid and hasn't expired
 - Ensure the token has the `repo` scope
 - Try generating a new token from GitHub settings
+
+### News Widget Issues
+
+**"NewsAPI not configured" error**
+- Ensure you've added NEWS_API_KEY to your `.env` file
+- Restart the dev server after adding the key
+- Get a free API key from [newsapi.org/register](https://newsapi.org/register)
+
+**No articles showing**
+- Try different country/topic combinations
+- Some countries may have limited news in certain categories
+- Check NewsAPI dashboard for rate limit status (100 requests/day on free tier)
+- Click the refresh button to manually update
+
+**Articles are outdated**
+- Click the refresh button (🔄) to manually update
+- Check your internet connection
+- Verify NewsAPI service status
 
 ### General Issues
 

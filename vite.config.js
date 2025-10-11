@@ -7,6 +7,7 @@ import { google } from 'googleapis'
 import dotenv from 'dotenv'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
+import Parser from 'rss-parser'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -214,6 +215,59 @@ function createApiServer() {
     res.json({ configured })
   })
 
+  // ===== News API Endpoints =====
+
+  // Check if NewsAPI is configured
+  app.get('/api/news/status', (req, res) => {
+    const apiKey = process.env.NEWS_API_KEY
+    const configured = !!apiKey
+    res.json({ configured })
+  })
+
+  // Fetch news headlines
+  app.get('/api/news', async (req, res) => {
+    try {
+      const { country = 'us', category = 'general' } = req.query
+      const apiKey = process.env.NEWS_API_KEY
+      
+      if (!apiKey) {
+        return res.status(401).json({ 
+          error: 'NewsAPI key not configured',
+          message: 'Please add NEWS_API_KEY to your .env file. Get a free key from https://newsapi.org',
+          articles: []
+        })
+      }
+
+      // Fetch news from NewsAPI
+      const response = await fetch(
+        `https://newsapi.org/v2/top-headlines?country=${country}&category=${category}&pageSize=20&apiKey=${apiKey}`
+      )
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || 'NewsAPI request failed')
+      }
+
+      const data = await response.json()
+      
+      // Filter out articles with removed content
+      const articles = (data.articles || []).filter(article => 
+        article.title && 
+        article.title !== '[Removed]' && 
+        article.url
+      )
+      
+      res.json({ articles })
+    } catch (error) {
+      console.error('Error fetching news:', error)
+      res.status(500).json({ 
+        error: 'Failed to fetch news',
+        message: error.message,
+        articles: []
+      })
+    }
+  })
+
   // ===== Web Search API Endpoint =====
 
   // Perform web search using Tavily AI Search API
@@ -381,6 +435,113 @@ function createApiServer() {
       res.status(500).json({ 
         error: 'Failed to fetch deploys',
         message: error.message 
+      })
+    }
+  })
+
+  // ===== BD24 Live RSS Feed API Endpoints =====
+
+  // Cache for BD24 Live news (to avoid excessive requests)
+  let bd24LiveCache = {
+    articles: [],
+    lastFetched: null,
+    cacheExpiry: 30 * 60 * 1000 // 30 minutes in milliseconds
+  }
+
+  // Initialize RSS parser
+  const rssParser = new Parser()
+
+  // Check if BD24 Live RSS feed is operational
+  app.get('/api/bd24live/status', (req, res) => {
+    res.json({ operational: true })
+  })
+
+  // Fetch latest news from BD24 Live RSS feed
+  app.get('/api/bd24live/news', async (req, res) => {
+    try {
+      // Check if cache is still valid
+      const now = Date.now()
+      if (bd24LiveCache.lastFetched && 
+          (now - bd24LiveCache.lastFetched) < bd24LiveCache.cacheExpiry &&
+          bd24LiveCache.articles.length > 0) {
+        console.log('✅ Returning cached BD24 Live news')
+        return res.json({ 
+          articles: bd24LiveCache.articles,
+          cached: true,
+          lastFetched: new Date(bd24LiveCache.lastFetched).toISOString()
+        })
+      }
+
+      console.log('🔄 Fetching fresh BD24 Live news from RSS feed...')
+      
+      // Parse RSS feed
+      const feed = await rssParser.parseURL('https://www.bd24live.com/bangla/feed')
+      
+      console.log(`📰 RSS Feed: ${feed.title}`)
+      console.log(`📊 Total items in feed: ${feed.items.length}`)
+      
+      // Convert RSS items to article format
+      const articles = feed.items.slice(0, 20).map((item, index) => {
+        // Extract image from media:content or enclosure
+        let image = null
+        if (item['media:content'] && item['media:content']['$'] && item['media:content']['$'].url) {
+          image = item['media:content']['$'].url
+        } else if (item.enclosure && item.enclosure.url) {
+          image = item.enclosure.url
+        }
+        
+        return {
+          title: item.title || 'No Title',
+          description: item.contentSnippet || item.content || item.description || '',
+          url: item.link || item.guid || '',
+          image: image,
+          publishedAt: item.pubDate || item.isoDate || new Date().toISOString(),
+          source: feed.title || 'BD24 Live'
+        }
+      })
+
+      console.log(`\n📊 ========== RSS PARSING SUMMARY ==========`)
+      console.log(`Total articles parsed: ${articles.length}`)
+      
+      if (articles.length > 0) {
+        console.log(`📅 Sample articles:`)
+        articles.slice(0, 3).forEach((article, idx) => {
+          console.log(`  ${idx + 1}. ${article.title.substring(0, 60)}...`)
+          console.log(`     Published: ${article.publishedAt}`)
+        })
+        console.log(`========================================\n`)
+      }
+
+      // Update cache
+      bd24LiveCache = {
+        articles: articles,
+        lastFetched: now,
+        cacheExpiry: 30 * 60 * 1000
+      }
+      
+      res.json({ 
+        articles: bd24LiveCache.articles,
+        cached: false,
+        lastFetched: new Date(now).toISOString()
+      })
+    } catch (error) {
+      console.error('❌ Error fetching BD24 Live RSS:', error)
+      
+      // If we have cached data, return it even if expired
+      if (bd24LiveCache.articles.length > 0) {
+        console.log('⚠️  Returning stale cache due to error')
+        return res.json({ 
+          articles: bd24LiveCache.articles,
+          cached: true,
+          stale: true,
+          lastFetched: bd24LiveCache.lastFetched ? new Date(bd24LiveCache.lastFetched).toISOString() : null
+        })
+      }
+      
+      res.status(500).json({ 
+        error: 'Failed to fetch BD24 Live news',
+        message: error.message,
+        articles: []
       })
     }
   })

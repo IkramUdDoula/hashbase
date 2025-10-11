@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BaseWidget } from '../../BaseWidget';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Rocket, RefreshCw, Loader2, CheckCircle2, XCircle, Clock, AlertCircle, GitBranch, Box, Timer, Search, X } from 'lucide-react';
+import { Rocket, RefreshCw, Loader2, CheckCircle2, XCircle, Clock, AlertCircle, GitBranch, Box, Timer } from 'lucide-react';
 import { SiNetlify } from 'react-icons/si';
 import { fetchNetlifyDeploys, checkNetlifyStatus, getNetlifyDeployUrl } from '@/services/netlifyService';
+import { formatRelativeDate } from '@/lib/dateUtils';
+import { WidgetSearch } from '@/components/WidgetSearch';
+import { WidgetEmptyState } from '@/components/WidgetEmptyState';
 
 export function DeploymentWidget({ rowSpan = 2, dragRef }) {
   const [deploys, setDeploys] = useState([]);
@@ -66,33 +68,6 @@ export function DeploymentWidget({ rowSpan = 2, dragRef }) {
     loadDeploys();
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-
-    // Show relative time for less than 24 hours
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    
-    // Show full date with time for older dates
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = months[date.getMonth()];
-    const day = date.getDate();
-    const year = date.getFullYear();
-    
-    let hours = date.getHours();
-    const minutes = date.getMinutes();
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12; // 0 should be 12
-    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
-    
-    return `${month} ${day}, ${year} ${hours}:${minutesStr} ${ampm}`;
-  };
 
   const formatBuildTime = (seconds) => {
     if (!seconds) return 'N/A';
@@ -203,31 +178,17 @@ export function DeploymentWidget({ rowSpan = 2, dragRef }) {
         </div>
       ) : (
         <>
-          {/* Search bar */}
-          <div className="relative mb-1.5">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Search deploys..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-7 pr-7 h-8 text-sm rounded-lg border-gray-300 dark:border-gray-700 bg-transparent"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
+          <WidgetSearch
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search deploys..."
+          />
 
           {filteredDeploys.length === 0 ? (
-            <div className="flex flex-col items-center justify-center flex-1 text-center p-2">
-              <Search className="h-8 w-8 text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">No deploys match your search</p>
-            </div>
+            <WidgetEmptyState
+              icon={Rocket}
+              message="No deploys match your search"
+            />
           ) : (
             <div className="flex-1 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
               {filteredDeploys.map((deploy) => {
@@ -254,7 +215,7 @@ export function DeploymentWidget({ rowSpan = 2, dragRef }) {
                     <p className={`font-semibold text-sm line-clamp-1 ${textClasses}`}>{deploy.siteName}</p>
                   </div>
                   <span className={`text-xs whitespace-nowrap flex-shrink-0 ${metaTextClasses}`}>
-                    {formatDate(deploy.createdAt)}
+                    {formatRelativeDate(deploy.createdAt)}
                   </span>
                 </div>
                 

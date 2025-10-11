@@ -290,7 +290,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                   placeholder="Search apps..."
                   value={appsSearchQuery}
                   onChange={(e) => setAppsSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 rounded-lg border-gray-300 dark:border-gray-700 bg-transparent"
                 />
               </div>
               
@@ -363,7 +363,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                     placeholder="Search secrets..."
                     value={secretsSearchQuery}
                     onChange={(e) => setSecretsSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 rounded-lg border-gray-300 dark:border-gray-700 bg-transparent"
                   />
                 </div>
                 <Button
@@ -384,12 +384,14 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                     placeholder="Secret key (e.g., MY_API_KEY)"
                     value={newSecretKey}
                     onChange={(e) => setNewSecretKey(e.target.value)}
+                    className="rounded-lg border-gray-300 dark:border-gray-700 bg-transparent"
                   />
                   <Input
                     type="password"
                     placeholder="Secret value"
                     value={newSecretValue}
                     onChange={(e) => setNewSecretValue(e.target.value)}
+                    className="rounded-lg border-gray-300 dark:border-gray-700 bg-transparent"
                   />
                   <div className="flex gap-2">
                     <Button onClick={handleAddSecret} size="sm" className="flex-1">
@@ -421,7 +423,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                         value={secrets[field.key] || ''}
                         onChange={(e) => handleSecretChange(field.key, e.target.value)}
                         placeholder={field.placeholder}
-                        className="pr-10"
+                        className="pr-10 rounded-lg border-gray-300 dark:border-gray-700 bg-transparent"
                       />
                       <button
                         type="button"
