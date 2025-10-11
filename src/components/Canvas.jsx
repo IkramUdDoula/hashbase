@@ -248,7 +248,7 @@ export function Canvas({ widgets }) {
         // Skip the rows that this widget occupies
         rowIndex += widget.rowSpan;
       } else if (!occupied.has(rowIndex)) {
-        // Render empty drop zone - exactly 200px to match single row
+        // Render empty drop zone - fixed height to match single row
         rows.push(
           <DropZone
             key={`${colIndex}-${rowIndex}`}
@@ -256,7 +256,7 @@ export function Canvas({ widgets }) {
             colIndex={colIndex}
             onDrop={handleDrop}
           >
-            <div className="h-[200px] border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-600 text-sm">
+            <div className="h-[12rem] border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-600 text-sm">
               Drop widget here
             </div>
           </DropZone>
@@ -273,7 +273,7 @@ export function Canvas({ widgets }) {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="w-full max-w-[1800px] mx-auto">
+      <div className="w-full mx-auto px-4">
         {/* 5 columns layout */}
         <div className="grid grid-cols-5 gap-4">
           {layout.map((column, colIndex) => (

@@ -8,14 +8,14 @@ import {
 
 /**
  * BaseWidget Component
- * A simple widget container with fixed height based on rowSpan (1-4 rows)
+ * A simple widget container with dynamic height based on rowSpan (1-4 rows)
  * Includes custom minimalistic scrollbar styling
  * 
- * Height mapping:
- * - 1 row = 200px
- * - 2 rows = 400px
- * - 3 rows = 600px
- * - 4 rows = 800px
+ * Height mapping (responsive):
+ * - 1 row = h-[12rem] (192px base)
+ * - 2 rows = h-[25rem] (400px base)
+ * - 3 rows = h-[38rem] (608px base)
+ * - 4 rows = h-[51rem] (816px base)
  * 
  * @param {Object} props
  * @param {React.Component} props.logo - Logo icon component (used as drag handle)
@@ -41,12 +41,12 @@ export function BaseWidget({
   className = '',
   dragRef
 }) {
-  // Calculate fixed height based on rowSpan
+  // Calculate dynamic height based on rowSpan
   const heightMap = {
-    1: 'h-[200px]',
-    2: 'h-[400px]',
-    3: 'h-[600px]',
-    4: 'h-[800px]'
+    1: 'h-[12rem]',
+    2: 'h-[25rem]',
+    3: 'h-[38rem]',
+    4: 'h-[51rem]'
   };
   
   const heightClass = heightMap[rowSpan] || heightMap[1];

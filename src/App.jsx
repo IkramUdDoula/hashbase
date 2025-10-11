@@ -77,7 +77,7 @@ function AppContent() {
 
   return (
     <ScreenSizeGuard>
-      <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:bg-[#000000] dark:from-black dark:via-black dark:to-black p-8 transition-colors duration-200">
+      <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:bg-[#000000] dark:from-black dark:via-black dark:to-black p-4 md:p-6 lg:p-8 transition-colors duration-200">
         {/* Canvas with drag-and-drop widget rearrangement */}
         <Canvas widgets={enabledWidgets} />
 
