@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   MessageSquare, 
-  Send, 
   Loader2, 
   Trash2, 
   Settings, 
@@ -16,7 +15,9 @@ import {
   Menu,
   History,
   Plus,
-  ChevronDown
+  ChevronDown,
+  Globe,
+  RefreshCw
 } from 'lucide-react';
 import { 
   getAvailableProviders, 
@@ -45,8 +46,10 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
   const [showMenu, setShowMenu] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [searchEnabled, setSearchEnabled] = useState(false);
   const messagesEndRef = useRef(null);
   const menuRef = useRef(null);
+  const inputRef = useRef(null);
   const { addToast } = useToast();
 
   // Load chat history and settings
@@ -153,6 +156,7 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
       role: 'user',
       content: input.trim(),
       timestamp: new Date().toISOString(),
+      searchEnabled,
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -169,16 +173,60 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
       timestamp: new Date().toISOString(),
       provider: selectedProvider,
       model: selectedModel,
+      searchResults: null,
     };
 
     setMessages(prev => [...prev, assistantMessage]);
 
     try {
+      // If search is enabled, perform web search first
+      let searchContext = '';
+      let searchResults = null;
+      
+      if (searchEnabled) {
+        try {
+          const searchResponse = await fetch('http://localhost:3001/api/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: userMessage.content }),
+          });
+          
+          if (searchResponse.ok) {
+            const data = await searchResponse.json();
+            searchResults = data.results;
+            
+            // Add search context to the message
+            if (searchResults && searchResults.length > 0) {
+              searchContext = '\n\nWeb Search Results:\n' + 
+                searchResults.map((r, i) => 
+                  `${i + 1}. ${r.title}\n   ${r.snippet}\n   Source: ${r.url}`
+                ).join('\n\n');
+            }
+          }
+        } catch (searchError) {
+          console.error('Search error:', searchError);
+          // Continue without search results
+        }
+      }
+
       // Prepare messages for API (exclude id and timestamp)
       const apiMessages = [...messages, userMessage].map(msg => ({
         role: msg.role,
         content: msg.content,
       }));
+
+      // Add search context to the last user message if available
+      if (searchContext) {
+        apiMessages[apiMessages.length - 1].content += searchContext;
+        // Update the assistant message with search results
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === assistantMessageId 
+              ? { ...msg, searchResults }
+              : msg
+          )
+        );
+      }
 
       let fullResponse = '';
 
@@ -253,13 +301,6 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
 
   const handleDeleteMessage = (id) => {
     setMessages(prev => prev.filter(msg => msg.id !== id));
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
   };
 
   const getTotalTokens = () => {
@@ -375,90 +416,146 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
       ) : (
         <div className="flex flex-col h-full">
           {/* Messages */}
-          <div className={`flex-1 space-y-3 pr-1 mb-3 ${messages.length > 0 ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`}>
+          <div className={`flex-1 pr-1 mb-3 ${messages.length > 0 ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`}>
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center p-4 w-full">
-                <p className="text-sm text-muted-foreground">Start a conversation</p>
+              <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">Start a conversation</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-500">Type a message below to begin</p>
               </div>
             ) : (
-              messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {message.role === 'assistant' && (
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                      <Bot className="h-4 w-4 text-white" />
-                    </div>
-                  )}
+              <div className="space-y-4 py-4">
+                {messages.map((message) => (
                   <div
-                    className={`group relative max-w-[85%] rounded-lg px-3 py-2 ${
-                      message.role === 'user'
-                        ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-                    }`}
+                    key={message.id}
+                    className={`group flex gap-2 items-start ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className="text-sm whitespace-pre-wrap break-words">
-                      {message.content}
-                      {streaming && message.role === 'assistant' && message.content && (
-                        <span className="inline-block w-1 h-4 ml-1 bg-current animate-pulse" />
+                    {/* Action button - left side for user */}
+                    {message.role === 'user' && message.content && (
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity pt-1">
+                        <button
+                          onClick={() => handleCopyMessage(message.content, message.id)}
+                          className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                          title="Copy message"
+                        >
+                          {copiedId === message.id ? (
+                            <Check className="h-3.5 w-3.5 text-green-600" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Message Content */}
+                    <div className={`flex-1 ${
+                      message.role === 'user'
+                        ? 'bg-gray-100 dark:bg-gray-800 rounded-lg'
+                        : 'border border-gray-300 dark:border-gray-700 rounded-lg'
+                    } px-3 py-2`}>
+                      {/* Search indicator for user messages */}
+                      {message.role === 'user' && message.searchEnabled && (
+                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          <Globe className="h-3 w-3" />
+                          <span>Web search enabled</span>
+                        </div>
                       )}
-                    </div>
-                    <div className="flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => handleCopyMessage(message.content, message.id)}
-                        className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                        title="Copy message"
-                      >
-                        {copiedId === message.id ? (
-                          <Check className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
+                      
+                      {/* Search results for assistant messages */}
+                      {message.role === 'assistant' && message.searchResults && message.searchResults.length > 0 && (
+                        <div className="mb-3 p-2 bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                            <Globe className="h-3 w-3" />
+                            <span>Web results</span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {message.searchResults.slice(0, 3).map((result, idx) => (
+                              <a
+                                key={idx}
+                                href={result.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block text-xs hover:bg-gray-100 dark:hover:bg-gray-700/50 p-1.5 rounded transition-colors"
+                              >
+                                <div className="font-medium text-gray-700 dark:text-gray-300 line-clamp-1">{result.title}</div>
+                                <div className="text-gray-500 dark:text-gray-500 line-clamp-2 mt-0.5">{result.snippet}</div>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-wrap break-words leading-relaxed">
+                        {message.content || (
+                          <span className="text-gray-400 dark:text-gray-500 italic">Thinking...</span>
                         )}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteMessage(message.id)}
-                        className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                        title="Delete message"
-                      >
-                        <Trash2 className="h-3 w-3 text-red-600" />
-                      </button>
+                        {streaming && message.role === 'assistant' && message.content && (
+                          <span className="inline-block w-0.5 h-4 ml-1 bg-gray-400 dark:bg-gray-500 animate-pulse" />
+                        )}
+                      </div>
                     </div>
+
+                    {/* Action button - right side for AI */}
+                    {message.role === 'assistant' && message.content && (
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity pt-1">
+                        <button
+                          onClick={() => handleCopyMessage(message.content, message.id)}
+                          className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                          title="Copy message"
+                        >
+                          {copiedId === message.id ? (
+                            <Check className="h-3.5 w-3.5 text-green-600" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  {message.role === 'user' && (
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                      <User className="h-4 w-4 text-white" />
-                    </div>
-                  )}
-                </div>
-              ))
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
-          <div className="flex gap-2">
+          {/* Input Area */}
+          <div className="border-t border-gray-200 dark:border-gray-800 pt-3">
+            {/* Search toggle */}
+            <div className="flex items-center gap-2 mb-2">
+              <button
+                onClick={() => setSearchEnabled(!searchEnabled)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-colors ${
+                  searchEnabled
+                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    : 'text-gray-500 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+                title="Toggle web search"
+              >
+                <Globe className="h-3 w-3" />
+                <span>{searchEnabled ? 'Search on' : 'Search off'}</span>
+              </button>
+            </div>
+            
+            {/* Input box */}
             <textarea
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
               placeholder="Type a message..."
               disabled={loading}
-              rows={2}
-              className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-white dark:bg-gray-900 text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-600"
+              rows={1}
+              className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-foreground placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:border-gray-400 dark:focus:border-gray-600 transition-colors custom-scrollbar"
+              style={{ minHeight: '42px', maxHeight: '140px' }}
+              onInput={(e) => {
+                e.target.style.height = '42px';
+                e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px';
+              }}
             />
-            <Button
-              onClick={handleSend}
-              disabled={loading || !input.trim()}
-              size="icon"
-              className="self-end h-10 w-10"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
           </div>
         </div>
       )}

@@ -276,6 +276,77 @@ app.get('/api/netlify/deploys', async (req, res) => {
   }
 });
 
+// ===== Web Search API Endpoint =====
+
+// Perform web search using DuckDuckGo
+app.post('/api/search', async (req, res) => {
+  try {
+    const { query } = req.body;
+    
+    if (!query) {
+      return res.status(400).json({ 
+        error: 'Query is required',
+        message: 'Please provide a search query'
+      });
+    }
+
+    // Use DuckDuckGo Instant Answer API (no API key required)
+    const searchUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
+    
+    const response = await fetch(searchUrl);
+    
+    if (!response.ok) {
+      throw new Error('Search API request failed');
+    }
+
+    const data = await response.json();
+    
+    // Format results
+    const results = [];
+    
+    // Add abstract if available
+    if (data.Abstract) {
+      results.push({
+        title: data.Heading || 'Summary',
+        snippet: data.Abstract,
+        url: data.AbstractURL || data.AbstractSource || '',
+      });
+    }
+    
+    // Add related topics
+    if (data.RelatedTopics && data.RelatedTopics.length > 0) {
+      data.RelatedTopics.slice(0, 5).forEach(topic => {
+        if (topic.Text && topic.FirstURL) {
+          results.push({
+            title: topic.Text.split(' - ')[0] || topic.Text,
+            snippet: topic.Text,
+            url: topic.FirstURL,
+          });
+        }
+      });
+    }
+    
+    // If no results from DuckDuckGo, try a simple web scraping approach
+    if (results.length === 0) {
+      // Fallback: return a message indicating limited results
+      results.push({
+        title: 'Search Results',
+        snippet: `Search query: "${query}". Limited results available. Consider using a dedicated search API for better results.`,
+        url: `https://duckduckgo.com/?q=${encodeURIComponent(query)}`,
+      });
+    }
+    
+    res.json({ results });
+  } catch (error) {
+    console.error('Error performing search:', error);
+    res.status(500).json({ 
+      error: 'Search failed',
+      message: error.message,
+      results: [] // Return empty results on error
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`\nTo authenticate with Gmail, visit: http://localhost:${PORT}/api/auth/url`);

@@ -1,137 +1,100 @@
 # AI Chat Widget Updates
 
-## Summary
-Successfully transformed the AI Chat widget with enhanced menu system, conversation management, and advanced LLM configuration options.
+## Recent Improvements
 
-## New Features
+### UI/UX Redesign (Inspired by Claude & ChatGPT)
 
-### 1. Menu Dropdown System
-- **Replaced**: Settings icon → Menu icon
-- **Dropdown Options**:
-  - **New Chat**: Start a fresh conversation
-  - **History**: View and manage previous conversations
-  - **Settings**: Configure LLM parameters
+The chat interface has been completely redesigned with a modern, clean aesthetic:
 
-### 2. Chat History Management
-- **Multi-conversation support**: Each chat is now saved as a separate conversation
-- **History modal**: Browse all previous conversations in a beautiful card-based UI
-- **Date sorting**: Conversations sorted by most recent first
-- **Conversation metadata**:
-  - Title (first user message preview)
-  - Message count
-  - Date and time
-  - Model used
-- **Quick actions**:
-  - Click to load a conversation
-  - Delete individual conversations
-- **Smart timestamps**: "Today", "Yesterday", "X days ago", or full date
+#### Visual Improvements
+- **Modern Message Bubbles**: User messages now appear in blue rounded bubbles (similar to iMessage/ChatGPT style)
+- **Enhanced Avatars**: Larger, more prominent gradient avatars for both user and assistant
+- **Better Spacing**: Increased padding and spacing between messages for improved readability
+- **Refined Typography**: Better text hierarchy with improved font sizes and line heights
+- **Smooth Animations**: Added subtle hover effects and transitions throughout
 
-### 3. Advanced LLM Settings Modal
-Configure model parameters to fine-tune AI responses:
-- **Temperature** (0-2): Controls randomness/creativity
-- **Max Tokens** (100-4000): Maximum response length
-- **Top P** (0-1): Nucleus sampling parameter
-- **Frequency Penalty** (0-2): Reduces token repetition
-- **Presence Penalty** (0-2): Encourages new topics
-- Settings apply to both OpenAI and Claude providers
-- Visual sliders with real-time value display
-- Reset to defaults option
+#### Empty State
+- **Welcoming Interface**: New empty state with a gradient icon and friendly message
+- **Clear Call-to-Action**: Helpful text explaining features including web search capability
 
-### 4. Enhanced Storage System
-- **Current conversation**: Stored separately for quick access
-- **Conversation history**: All conversations saved with metadata
-- **Auto-save**: Conversations automatically saved as you chat
-- **Seamless switching**: Switch between conversations without losing data
+#### Message Features
+- **Search Indicators**: Visual badges showing when web search is enabled
+- **Search Results Display**: Inline display of web search results with clickable links
+- **Improved Actions**: Better positioned copy and delete buttons with hover states
+- **Streaming Indicator**: Refined cursor animation for streaming responses
 
-## Technical Implementation
+#### Input Area
+- **Modern Input Box**: Rounded corners with better focus states
+- **Auto-expanding Textarea**: Input grows as you type (up to 120px)
+- **Search Toggle**: Easy-to-use button to enable/disable web search
+- **Enhanced Send Button**: Larger, more prominent blue button with better disabled states
 
-### New Components Created
-1. **`LLMSettingsModal.jsx`**
-   - Modal for configuring LLM parameters
-   - Exports `getLLMSettings()` helper function
-   - Stores settings in localStorage
+### Web Search Integration
 
-2. **`ChatHistoryModal.jsx`**
-   - Modal for viewing conversation history
-   - Card-based UI with date sorting
-   - Exports helper functions:
-     - `saveConversation()`
-     - `deleteConversation()`
-     - `getAllConversations()`
+Added real-time web search capability to enhance AI responses:
 
-### Updated Components
-1. **`AIChatWidget.jsx`**
-   - Integrated menu dropdown system
-   - Added conversation management
-   - Implemented history loading
-   - Connected to new modals
+#### Features
+- **Toggle Control**: Enable/disable search per message with a simple button
+- **DuckDuckGo Integration**: Uses DuckDuckGo's API (no API key required)
+- **Context Enhancement**: Search results are automatically added to the AI's context
+- **Visual Feedback**: 
+  - User messages show a "Web search enabled" badge
+  - Assistant messages display search results in a highlighted box
+  - Top 3 search results are shown with clickable links
 
-2. **`aiService.js`**
-   - Integrated LLM settings into API calls
-   - Applies user-configured parameters to both OpenAI and Claude
+#### How It Works
+1. Click the "Enable search" button above the input box
+2. Type your question and send
+3. The system searches the web for relevant information
+4. Search results are passed to the AI for context
+5. AI responds with information based on both its knowledge and search results
 
-### Storage Keys
-- `hashbase_ai_llm_settings`: LLM configuration parameters
-- `hashbase_ai_current_conversation`: Active conversation
-- `hashbase_ai_conversations`: All conversation history
-- `hashbase_ai_chat_settings`: Provider/model preferences
+#### Technical Details
+- **API Endpoint**: `/api/search` on the backend server
+- **Search Provider**: DuckDuckGo Instant Answer API
+- **Fallback Handling**: Gracefully handles search failures
+- **No API Key Required**: Uses free DuckDuckGo API
 
-## User Experience Improvements
+### Code Changes
 
-### Before
-- Single continuous chat history
-- Basic settings icon
-- No conversation management
-- Fixed LLM parameters
+#### Frontend (`AIChatWidget.jsx`)
+- Added `searchEnabled` state to track search toggle
+- Added `inputRef` for better input control
+- Enhanced `handleSend` to perform web searches when enabled
+- Completely redesigned message rendering with new styles
+- Added search results display in assistant messages
+- Improved input area with search toggle button
 
-### After
-- Multiple managed conversations
-- Intuitive menu dropdown
-- Full conversation history with search/load
-- Customizable LLM parameters
-- Better organization and control
+#### Backend (`server.js`)
+- Added `/api/search` POST endpoint
+- Integrated DuckDuckGo API for web searches
+- Proper error handling and fallback responses
+- Returns formatted search results with title, snippet, and URL
 
-## Usage Instructions
+## Usage
 
-### Starting a New Chat
-1. Click the menu icon (☰) in the widget header
-2. Select "New Chat"
-3. Previous conversation is automatically saved
+### Basic Chat
+1. Type your message in the input box
+2. Press Enter or click the send button
+3. View the AI's response
 
-### Viewing History
-1. Click menu → "History"
-2. Browse conversations sorted by date
-3. Click any conversation card to load it
-4. Delete unwanted conversations with the trash icon
+### With Web Search
+1. Click "Enable search" button (shows globe icon)
+2. Type your question
+3. Send the message
+4. The AI will use web search results to provide more accurate, up-to-date information
 
-### Configuring LLM Settings
-1. Click menu → "Settings"
-2. Adjust sliders for desired parameters
-3. Click "Save Settings"
-4. Settings apply to all future messages
+### Tips
+- Use web search for current events, recent information, or factual queries
+- Disable search for creative tasks, coding help, or general conversation
+- Search results appear above the AI's response for transparency
 
-### Managing Conversations
-- Conversations auto-save as you chat
-- Switch between conversations via History
-- Each conversation preserves its model/provider
-- Delete conversations individually from History modal
+## Future Enhancements
 
-## Build Status
-✅ Build successful - all features tested and verified
-
-## Files Modified
-- `src/components/widgets/AI/AIChatWidget.jsx` (major update)
-- `src/services/aiService.js` (LLM settings integration)
-- `README.md` (documentation update)
-
-## Files Created
-- `src/components/widgets/AI/LLMSettingsModal.jsx`
-- `src/components/widgets/AI/ChatHistoryModal.jsx`
-- `AI_CHAT_UPDATES.md` (this file)
-
-## Next Steps (Optional Enhancements)
-- Add search/filter in conversation history
-- Export/import conversations
-- Conversation tags or categories
-- System message configuration
-- Conversation sharing
+Potential improvements for future versions:
+- Add more search providers (Google Custom Search, Bing, etc.)
+- Implement search result caching
+- Add citation links in AI responses
+- Allow users to select which search results to include
+- Add image search capability
+- Implement search history

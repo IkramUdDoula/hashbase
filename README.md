@@ -6,7 +6,8 @@ A beautiful React single-page application that displays widgets for various serv
 
 - 📧 **Gmail Widget** - Display unread emails from Gmail
 - 🚀 **Netlify Widget** - Monitor latest deploys from all your projects
-- 🤖 **AI Chat Widget** - Chat with OpenAI (GPT-4) or Claude AI assistants
+- 🤖 **AI Chat Widget** - Chat with OpenAI (GPT-4) or Claude AI assistants with web search
+- 🔍 **Web Search Integration** - Enable real-time web search for AI responses
 - ⚙️ **In-App Configuration** - Configure API secrets directly in the app (no .env file needed!)
 - 🎛️ **Widget Management** - Enable/disable widgets from the settings panel
 - 🎨 Beautiful, modern UI with Tailwind CSS and shadcn/ui
@@ -139,6 +140,8 @@ Use this if you want to start fresh or are experiencing authentication issues.
 
 ### AI Chat Widget
 - Chat with AI assistants (OpenAI GPT-4 or Claude)
+- **Modern UI** - Redesigned interface inspired by Claude and ChatGPT
+- **Web Search Integration** - Enable real-time web search for up-to-date information
 - **Streaming responses** - See AI responses in real-time
 - **Multi-conversation support** - Manage multiple chat conversations with history
 - **Conversation history** - View and load previous conversations sorted by date
@@ -152,6 +155,7 @@ Use this if you want to start fresh or are experiencing authentication issues.
   - **History** - Browse and load previous conversations
   - **Settings** - Configure LLM parameters (temperature, tokens, etc.)
 - Press Enter to send, Shift+Enter for new line
+- Toggle web search on/off to enhance responses with real-time information
 
 ## Project Structure
 
