@@ -142,9 +142,9 @@ export function UnreadEmailWidget({ rowSpan = 2, dragRef }) {
       ) : error ? (
         <div className="flex flex-col items-center justify-center h-full text-center p-4">
           <Mail className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-sm text-destructive mb-2">
+          {/* <p className="text-sm text-destructive mb-2">
             {isAuthenticated ? 'Failed to load emails' : 'Not authenticated'}
-          </p>
+          </p> */}
           <p className="text-xs text-muted-foreground mb-4">{error}</p>
           <div className="flex gap-2">
             {!isAuthenticated ? (

@@ -63,6 +63,7 @@ export function BaseWidget({
         </div>
       )}
       <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{appName}</span>
+      <p>-</p>
       <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{widgetName}</span>
     </div>
   );

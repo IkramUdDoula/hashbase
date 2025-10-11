@@ -264,19 +264,22 @@ app.post('/api/gmail/mark-read', async (req, res) => {
 
 // Check if Netlify is configured
 app.get('/api/netlify/status', (req, res) => {
-  const configured = !!process.env.NETLIFY_ACCESS_TOKEN;
+  // Only check headers - no fallback to .env
+  const accessToken = req.headers['x-netlify-access-token'];
+  const configured = !!accessToken;
   res.json({ configured });
 });
 
 // Fetch all deploys from all sites
 app.get('/api/netlify/deploys', async (req, res) => {
   try {
-    const accessToken = process.env.NETLIFY_ACCESS_TOKEN;
+    // Only accept token from headers - no fallback to .env
+    const accessToken = req.headers['x-netlify-access-token'];
     
     if (!accessToken) {
       return res.status(401).json({ 
         error: 'Not configured',
-        message: 'Please add NETLIFY_ACCESS_TOKEN to your .env file'
+        message: 'Please add your Netlify access token in Settings > Secrets'
       });
     }
 

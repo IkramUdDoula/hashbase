@@ -145,21 +145,30 @@ export function DeploymentWidget({ rowSpan = 2, dragRef }) {
       ) : error ? (
         <div className="flex flex-col items-center justify-center h-full text-center p-4">
           <Rocket className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-sm text-destructive mb-2">
-            {isConfigured ? 'Failed to load deploys' : 'Not configured'}
-          </p>
-          <p className="text-xs text-muted-foreground mb-4">{error}</p>
-          <div className="flex gap-2">
-            {!isConfigured ? (
-              <div className="text-xs text-muted-foreground max-w-xs">
-                Add your Netlify access token to the .env file to see your deploys
-              </div>
-            ) : (
+          {!isConfigured ? (
+            <>
+              <p className="text-sm text-muted-foreground mb-2">Netlify access token not configured</p>
+              <p className="text-xs text-muted-foreground mb-4">
+                Add your Netlify access token in Settings to see your deploys
+              </p>
+              <a
+                href="https://app.netlify.com/user/applications#personal-access-tokens"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Get your token from Netlify →
+              </a>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-destructive mb-2">Failed to load deploys</p>
+              <p className="text-xs text-muted-foreground mb-4">{error}</p>
               <Button variant="outline" size="sm" onClick={handleRefresh}>
                 Try Again
               </Button>
-            )}
-          </div>
+            </>
+          )}
         </div>
       ) : deploys.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-full text-center p-4">
@@ -169,51 +178,64 @@ export function DeploymentWidget({ rowSpan = 2, dragRef }) {
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-1">
-          {deploys.map((deploy) => (
-            <div
-              key={deploy.id}
-              className="p-4 rounded-lg bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => handleOpenDeploy(deploy.id, deploy.siteId)}
-            >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  {getStateIcon(deploy.state)}
-                  <p className="font-semibold text-green-900 dark:text-green-100 text-sm line-clamp-1">{deploy.siteName}</p>
+          {deploys.map((deploy) => {
+            const isError = deploy.state === 'error';
+            const cardClasses = isError
+              ? "p-4 rounded-lg border border-red-500 dark:border-red-600 hover:shadow-md transition-shadow cursor-pointer"
+              : "p-4 rounded-lg border border-border hover:shadow-md transition-shadow cursor-pointer";
+            const textClasses = isError
+              ? "text-red-600 dark:text-red-400"
+              : "text-foreground";
+            const metaTextClasses = isError
+              ? "text-red-600 dark:text-red-400"
+              : "text-muted-foreground";
+            
+            return (
+              <div
+                key={deploy.id}
+                className={cardClasses}
+                onClick={() => handleOpenDeploy(deploy.id, deploy.siteId)}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {getStateIcon(deploy.state)}
+                    <p className={`font-semibold text-sm line-clamp-1 ${textClasses}`}>{deploy.siteName}</p>
+                  </div>
+                  <span className={`text-xs whitespace-nowrap flex-shrink-0 ${metaTextClasses}`}>
+                    {formatDate(deploy.createdAt)}
+                  </span>
                 </div>
-                <span className="text-xs text-green-700 dark:text-green-300 whitespace-nowrap flex-shrink-0">
-                  {formatDate(deploy.createdAt)}
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-3 text-xs text-green-700 dark:text-green-300 flex-wrap">
-                {deploy.branch && (
-                  <div className="flex items-center gap-1">
-                    <GitBranch className="h-3 w-3" />
-                    <span className="line-clamp-1">{deploy.branch}</span>
-                  </div>
-                )}
-                {deploy.context && (
-                  <div className="flex items-center gap-1">
-                    <Box className="h-3 w-3" />
-                    <span>{deploy.context}</span>
-                  </div>
-                )}
-                {deploy.buildTime && (
-                  <div className="flex items-center gap-1">
-                    <Timer className="h-3 w-3" />
-                    <span>{formatBuildTime(deploy.buildTime)}</span>
-                  </div>
-                )}
-              </div>
-              
-              {deploy.errorMessage && (
-                <div className="flex items-start gap-2 text-xs text-red-600 dark:text-red-400 mt-2">
-                  <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                  <span className="line-clamp-2">{deploy.errorMessage}</span>
+                
+                <div className={`flex items-center gap-3 text-xs flex-wrap ${metaTextClasses}`}>
+                  {deploy.branch && (
+                    <div className="flex items-center gap-1">
+                      <GitBranch className="h-3 w-3" />
+                      <span className="line-clamp-1">{deploy.branch}</span>
+                    </div>
+                  )}
+                  {deploy.context && (
+                    <div className="flex items-center gap-1">
+                      <Box className="h-3 w-3" />
+                      <span>{deploy.context}</span>
+                    </div>
+                  )}
+                  {deploy.buildTime && (
+                    <div className="flex items-center gap-1">
+                      <Timer className="h-3 w-3" />
+                      <span>{formatBuildTime(deploy.buildTime)}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+                
+                {deploy.errorMessage && (
+                  <div className="flex items-start gap-2 text-xs text-red-600 dark:text-red-400 mt-2">
+                    <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    <span className="line-clamp-2">{deploy.errorMessage}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </BaseWidget>

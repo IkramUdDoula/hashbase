@@ -6,11 +6,14 @@ A beautiful React single-page application that displays widgets for various serv
 
 - 📧 **Gmail Widget** - Display unread emails from Gmail
 - 🚀 **Netlify Widget** - Monitor latest deploys from all your projects
+- ⚙️ **In-App Configuration** - Configure API secrets directly in the app (no .env file needed!)
+- 🎛️ **Widget Management** - Enable/disable widgets from the settings panel
 - 🎨 Beautiful, modern UI with Tailwind CSS and shadcn/ui
 - 🔄 Auto-refresh every 60 seconds
 - 📱 Responsive design
 - 🌓 Dark mode support
 - ⚡ Fast development with Vite
+- 🔐 Secure local storage for API credentials
 
 ## Prerequisites
 
@@ -27,51 +30,7 @@ A beautiful React single-page application that displays widgets for various serv
 npm install
 ```
 
-### 2. Set Up Gmail API Credentials (Optional)
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
-3. Enable the Gmail API:
-   - Go to "APIs & Services" > "Library"
-   - Search for "Gmail API"
-   - Click "Enable"
-4. Create OAuth 2.0 credentials:
-   - Go to "APIs & Services" > "Credentials"
-   - Click "Create Credentials" > "OAuth client ID"
-   - Choose "Web application"
-   - Add authorized redirect URI: `http://localhost:3001/oauth2callback`
-   - Copy the Client ID and Client Secret
-
-### 3. Set Up Netlify API Token (Optional)
-
-1. Go to [Netlify Personal Access Tokens](https://app.netlify.com/user/applications#personal-access-tokens)
-2. Click "New access token"
-3. Give it a descriptive name (e.g., "Hashbase Dashboard")
-4. Copy the generated token
-
-### 4. Configure Environment Variables
-
-Copy `.env.example` to `.env` and update it with your credentials:
-
-```env
-# Gmail API Credentials (optional)
-GMAIL_CLIENT_ID=your_client_id_here
-GMAIL_CLIENT_SECRET=your_client_secret_here
-GMAIL_REDIRECT_URI=http://localhost:3001/oauth2callback
-
-# Netlify API Credentials (optional)
-NETLIFY_ACCESS_TOKEN=your_netlify_access_token_here
-
-# Server Configuration
-PORT=3001
-
-# Frontend Configuration
-VITE_API_URL=http://localhost:3001
-```
-
-**Note:** You can configure only the widgets you want to use. Each widget will show a configuration message if its credentials are not set.
-
-### 5. Run the Application
+### 2. Run the Application
 
 You need to run both the backend server and the frontend development server:
 
@@ -85,15 +44,49 @@ npm run server
 npm run dev
 ```
 
-### 6. Authenticate with Gmail (if using Gmail widget)
-
-1. Click the login button in the Gmail widget
-2. Authorize the application with your Gmail account
-3. After authorization, you'll be redirected back and your credentials will be saved locally in `token.json`
-
-### 7. Access the Application
+### 3. Access the Application
 
 Open your browser and navigate to the URL shown by Vite (typically `http://localhost:5173`)
+
+### 4. Configure Your Widgets
+
+#### **Gmail Widget** - Configure via .env file
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the Gmail API:
+   - Go to "APIs & Services" > "Library"
+   - Search for "Gmail API" and click "Enable"
+4. Create OAuth 2.0 credentials:
+   - Go to "APIs & Services" > "Credentials"
+   - Click "Create Credentials" > "OAuth client ID"
+   - Choose "Web application"
+   - Add authorized redirect URI: `http://localhost:3001/oauth2callback`
+   - Copy the **Client ID** and **Client Secret**
+5. Copy `.env.example` to `.env` and add your credentials:
+   ```env
+   GMAIL_CLIENT_ID=your_client_id_here
+   GMAIL_CLIENT_SECRET=your_client_secret_here
+   GMAIL_REDIRECT_URI=http://localhost:3001/oauth2callback
+   ```
+6. Restart the backend server
+7. Click the login button in the Gmail widget to authenticate
+
+#### **Netlify Widget** - Configure via Settings
+
+1. Go to [Netlify Personal Access Tokens](https://app.netlify.com/user/applications#personal-access-tokens)
+2. Click "New access token"
+3. Give it a descriptive name (e.g., "Hashbase Dashboard")
+4. Copy the generated token
+5. In the app, click the **Settings** button (⚙️) > **Configuration** > **Secrets** tab
+6. Paste the token into "Netlify Access Token"
+7. Click **Save Secrets**
+
+**Note:** Netlify credentials are stored securely in your browser's local storage and never sent to any external server.
+
+#### **Apps Tab** - Enable/Disable Widgets
+
+Click the **Settings** button (⚙️) > **Configuration** > **Apps** tab to toggle widgets on or off. Changes take effect after refreshing the page.
 
 ## Usage
 
@@ -157,30 +150,34 @@ hashbase/
 
 ## Security Notes
 
-- Gmail credentials are stored locally in `token.json`
-- Netlify access token is stored in `.env` file
-- The `.env` file contains sensitive information and should never be committed to version control
+- **Gmail credentials** are stored in `.env` file on the server (never committed to git)
+- **Netlify credentials** are stored in your browser's localStorage and never leave your device
+- Gmail OAuth tokens are stored locally in `token.json` on the server
 - OAuth tokens are refreshed automatically by the Google API client
 - All API calls are proxied through the backend server to keep credentials secure
+- The `.env` file should never be committed to version control
 
 ## Troubleshooting
 
 ### Gmail Widget Issues
 
 **"Not authenticated" error**
-- Make sure you've completed the Gmail authentication process
+- Ensure you've added Gmail credentials to your `.env` file
+- Restart the backend server after adding credentials
+- Make sure you've completed the Gmail authentication process by clicking the login button
 - Check that `token.json` exists in the project root
 - Try re-authenticating by deleting `token.json` and clicking the login button
+- Ensure the Gmail API is enabled in Google Cloud Console
 
 **No emails showing**
 - Check the browser console for errors
 - Verify your Gmail account has unread emails
-- Ensure the Gmail API is enabled in Google Cloud Console
+- Verify your credentials are correct in the `.env` file
 
 ### Netlify Widget Issues
 
 **"Not configured" error**
-- Ensure `NETLIFY_ACCESS_TOKEN` is set in your `.env` file
+- Open Settings > Secrets and add your Netlify Access Token
 - Verify the token is valid and has not expired
 - Check that you have Netlify sites in your account
 
