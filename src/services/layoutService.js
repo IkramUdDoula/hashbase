@@ -199,8 +199,20 @@ export function loadLayoutConfig() {
       return null;
     }
     
-    // Convert occupiedDropzones array back to Set
-    config.occupiedDropzones = new Set(config.occupiedDropzones || []);
+    // Convert occupiedDropzones to Set
+    // Handle edge cases: could be array, object, or undefined
+    if (Array.isArray(config.occupiedDropzones)) {
+      config.occupiedDropzones = new Set(config.occupiedDropzones);
+    } else {
+      // Rebuild from widgets if corrupted or missing
+      console.warn('⚠️ Rebuilding occupiedDropzones from widget data...');
+      config.occupiedDropzones = new Set();
+      Object.values(config.widgets).forEach(widgetData => {
+        if (widgetData.dropzones && Array.isArray(widgetData.dropzones)) {
+          widgetData.dropzones.forEach(dz => config.occupiedDropzones.add(dz));
+        }
+      });
+    }
     
     console.log('📂 Layout configuration loaded:', {
       version: config.version,

@@ -97,33 +97,30 @@ export function Canvas({ widgets }) {
 
   const [layout, setLayout] = useState(getInitialLayout);
   
+  // Initialize layout configuration on mount
+  useEffect(() => {
+    const loadedConfig = loadLayoutConfig();
+    if (loadedConfig) {
+      // Validate and fix if needed
+      if (!loadedConfig.occupiedDropzones || !(loadedConfig.occupiedDropzones instanceof Set)) {
+        loadedConfig.occupiedDropzones = new Set();
+        Object.values(loadedConfig.widgets || {}).forEach(widgetData => {
+          if (widgetData.dropzones && Array.isArray(widgetData.dropzones)) {
+            widgetData.dropzones.forEach(dz => loadedConfig.occupiedDropzones.add(dz));
+          }
+        });
+        saveLayoutConfig(loadedConfig);
+      }
+      setLayoutConfig(loadedConfig);
+    }
+  }, []);
+  
   // Update layout configuration whenever layout changes
   useEffect(() => {
     const config = createLayoutConfig(layout);
     setLayoutConfig(config);
     saveLayoutConfig(config);
-    
-    // Debug logging
-    const debugInfo = getLayoutDebugInfo(config);
-    console.log('📊 Layout Configuration Updated:', {
-      totalDropzones: debugInfo.totalDropzones,
-      occupied: debugInfo.occupiedDropzones,
-      empty: debugInfo.emptyDropzones,
-      widgets: debugInfo.widgets.map(w => ({
-        id: w.id,
-        dropzone: w.startDropzone,
-        occupies: w.dropzones,
-        height: w.rowSpan
-      }))
-    });
   }, [layout]);
-  
-  // Debug: Log layout on mount and when widgets change
-  useEffect(() => {
-    console.log('📊 Canvas layout:', layout);
-    console.log('🎨 Widgets passed to Canvas:', widgets.map(w => ({ id: w.id, name: w.name })));
-    console.log('📦 Total widgets:', widgets.length);
-  }, [layout, widgets]);
   
   // Widget row spans - tracks how many rows each widget occupies
   const getInitialRowSpans = () => {
@@ -191,8 +188,6 @@ export function Canvas({ widgets }) {
       const widgetRowSpan = rowSpans[widgetId];
       const targetDropzone = getDropzoneNumber(targetCol, targetRow);
       
-      console.log(`🎯 Attempting to drop widget "${widgetId}" at dropzone ${targetDropzone} (col: ${targetCol}, row: ${targetRow})`);
-      
       // Find and remove widget from current position
       let removedWidget = null;
       let originalCol = -1;
@@ -210,7 +205,7 @@ export function Canvas({ widgets }) {
       const tempConfig = createLayoutConfig(newLayout);
       const occupiedDropzones = new Set(tempConfig.occupiedDropzones);
       
-      // Validate if widget can fit using enhanced validation
+      // Validate if widget can fit
       const fitCheck = canWidgetFit(
         targetDropzone,
         widgetRowSpan,
@@ -220,15 +215,12 @@ export function Canvas({ widgets }) {
       );
       
       if (!fitCheck.canFit) {
-        console.warn(`❌ Cannot drop widget: ${fitCheck.reason}`);
         // Can't fit, restore widget to original position
         if (removedWidget && originalCol !== -1) {
           newLayout[originalCol].push(removedWidget);
         }
         return newLayout;
       }
-      
-      console.log(`✅ Widget fits! Will occupy dropzones: ${fitCheck.requiredDropzones.join(', ')}`);
       
       // Place widget in target position
       newLayout[targetCol].push({
@@ -240,26 +232,27 @@ export function Canvas({ widgets }) {
       // Sort widgets in column by startRow
       newLayout[targetCol].sort((a, b) => a.startRow - b.startRow);
       
+      // Refresh page after successful drop to ensure synchronization
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+      
       return newLayout;
     });
   };
 
   // Handle widget resize with enhanced validation
   const handleResize = (widgetId, newRowSpan) => {
-    // Clamp between 1 and 4
     const clampedSpan = Math.max(1, Math.min(4, newRowSpan));
-    
-    console.log(`📏 Attempting to resize widget "${widgetId}" to ${clampedSpan} rows`);
     
     // Check if resize is possible before updating
     let canResize = false;
-    let targetDropzone = null;
     
     // Find widget's current position
     for (let c = 0; c < COLUMNS; c++) {
       const widget = layout[c].find(w => w.id === widgetId);
       if (widget) {
-        targetDropzone = getDropzoneNumber(c, widget.startRow);
+        const targetDropzone = getDropzoneNumber(c, widget.startRow);
         
         // Create temporary config without this widget
         const tempLayout = layout.map(col => col.filter(w => w.id !== widgetId));
@@ -276,19 +269,12 @@ export function Canvas({ widgets }) {
         );
         
         canResize = fitCheck.canFit;
-        
-        if (!canResize) {
-          console.warn(`❌ Cannot resize: ${fitCheck.reason}`);
-        } else {
-          console.log(`✅ Resize allowed! Will occupy dropzones: ${fitCheck.requiredDropzones.join(', ')}`);
-        }
-        
         break;
       }
     }
     
     if (!canResize) {
-      return; // Don't resize if it doesn't fit
+      return;
     }
     
     setRowSpans(prev => ({
@@ -323,18 +309,16 @@ export function Canvas({ widgets }) {
     const widgetRowSpan = rowSpans[widgetId];
     const targetDropzone = getDropzoneNumber(targetCol, targetRow);
     
-    // Create temporary layout without the widget being dragged
     const tempLayout = layout.map(col => col.filter(w => w.id !== widgetId));
     const tempConfig = createLayoutConfig(tempLayout);
     const occupiedDropzones = new Set(tempConfig.occupiedDropzones);
     
-    // Check if widget fits
     const fitCheck = canWidgetFit(
       targetDropzone,
       widgetRowSpan,
       occupiedDropzones,
       widgetId,
-      layoutConfig
+      tempConfig
     );
     
     return fitCheck.canFit;

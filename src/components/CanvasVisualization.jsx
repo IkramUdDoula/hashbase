@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   loadLayoutConfig,
@@ -14,6 +14,7 @@ import {
 export function CanvasVisualization() {
   const [layoutConfig, setLayoutConfig] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const loadConfig = () => {
     const config = loadLayoutConfig();
@@ -21,6 +22,14 @@ export function CanvasVisualization() {
     if (config) {
       const info = getLayoutDebugInfo(config);
       setDebugInfo(info);
+    }
+  };
+
+  const handleCopyConfig = () => {
+    if (layoutConfig) {
+      navigator.clipboard.writeText(JSON.stringify(layoutConfig, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -220,8 +229,30 @@ export function CanvasVisualization() {
 
       {/* Raw Config (for debugging) */}
       <details className="border-2 border-gray-300 dark:border-gray-700 rounded-lg p-4">
-        <summary className="cursor-pointer text-sm font-semibold text-gray-900 dark:text-gray-100 hover:text-gray-600 dark:hover:text-gray-400">
-          Raw Configuration Data (for debugging)
+        <summary className="cursor-pointer text-sm font-semibold text-gray-900 dark:text-gray-100 hover:text-gray-600 dark:hover:text-gray-400 flex items-center justify-between">
+          <span>Raw Configuration Data (for debugging)</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleCopyConfig();
+            }}
+            className="flex items-center gap-2 ml-4"
+          >
+            {copied ? (
+              <>
+                <Check className="h-4 w-4" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4" />
+                Copy
+              </>
+            )}
+          </Button>
         </summary>
         <pre className="mt-3 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs overflow-x-auto">
           {JSON.stringify(layoutConfig, null, 2)}
