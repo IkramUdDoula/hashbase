@@ -1,35 +1,19 @@
 import React, { useMemo, useEffect } from 'react';
-import { SiGmail, SiNetlify } from 'react-icons/si';
+import { SiGmail, SiNetlify, SiGithub } from 'react-icons/si';
 import { TestTube, Sparkles } from 'lucide-react';
 import { UnreadEmailWidget } from './components/widgets/Gmail/UnreadEmailWidget';
 import { DeploymentWidget } from './components/widgets/Netlify/DeploymentWidget';
 import { TestSizingWidget } from './components/widgets/RnD/TestSizingWidget';
 import { AIChatWidget } from './components/widgets/AI/AIChatWidget';
+import { CommitLogWidget } from './components/widgets/GitHub/CommitLogWidget';
 import { SettingsButton } from './components/SettingsButton';
 import { Canvas } from './components/Canvas';
 import { ScreenSizeGuard } from './components/ScreenSizeGuard';
 import { ToastProvider, useToast } from './components/ui/toast';
-import { isWidgetEnabled } from './services/widgetRegistry';
+import { isWidgetEnabled, ensureWidgetsEnabled } from './services/widgetRegistry';
 
 function AppContent() {
   const { addToast } = useToast();
-
-  // Check for auth callback
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const authStatus = params.get('auth');
-    
-    if (authStatus === 'success') {
-      addToast('Gmail authentication successful!', 'success');
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (authStatus === 'error') {
-      const message = params.get('message') || 'Authentication failed';
-      addToast(`Gmail authentication failed: ${message}`, 'error');
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [addToast]);
 
   // Define all available widgets with metadata
   // rowSpan: 1-4 (number of rows the widget occupies in a column)
@@ -68,25 +52,56 @@ function AppContent() {
       description: 'Chat with AI assistants (OpenAI GPT-4 & Claude)',
       icon: Sparkles
     },
-    // Add more widgets here in the future:
-    // { 
-    //   id: 'github-prs', 
-    //   component: GitHubPRWidget, 
-    //   rowSpan: 2,
-    //   name: 'GitHub Pull Requests',
-    //   description: 'Track your GitHub pull requests',
-    //   icon: SiGithub
-    // },
+    { 
+      id: 'github-commits', 
+      component: CommitLogWidget, 
+      rowSpan: 3,
+      name: 'GitHub Commits',
+      description: 'View recent commits from your GitHub repository',
+      icon: SiGithub
+    },
   ];
+
+  // Ensure all widgets are enabled by default on first load
+  useEffect(() => {
+    console.log('🔧 All widgets defined:', allWidgets.map(w => ({ id: w.id, name: w.name })));
+    const widgetIds = allWidgets.map(w => w.id);
+    console.log('🔧 Ensuring widgets enabled:', widgetIds);
+    ensureWidgetsEnabled(widgetIds);
+  }, []);
+
+  // Check for auth callback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const authStatus = params.get('auth');
+    
+    if (authStatus === 'success') {
+      addToast('Gmail authentication successful!', 'success');
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (authStatus === 'error') {
+      const message = params.get('message') || 'Authentication failed';
+      addToast(`Gmail authentication failed: ${message}`, 'error');
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [addToast]);
 
   // Filter widgets based on user preferences
   const enabledWidgets = useMemo(() => {
-    return allWidgets.filter(widget => isWidgetEnabled(widget.id));
+    console.log('🔍 Filtering widgets...');
+    const filtered = allWidgets.filter(widget => {
+      const enabled = isWidgetEnabled(widget.id);
+      console.log(`  - ${widget.id} (${widget.name}): ${enabled ? '✅ ENABLED' : '❌ DISABLED'}`);
+      return enabled;
+    });
+    console.log('✅ Enabled widgets count:', filtered.length, filtered.map(w => w.id));
+    return filtered;
   }, [allWidgets]);
 
   return (
     <ScreenSizeGuard>
-      <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:bg-[#000000] dark:from-black dark:via-black dark:to-black p-4 md:p-6 lg:p-8 transition-colors duration-200">
+      <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:bg-[#000000] dark:from-black dark:via-black dark:to-black p-4 transition-colors duration-200">
         {/* Canvas with drag-and-drop widget rearrangement */}
         <Canvas widgets={enabledWidgets} />
 

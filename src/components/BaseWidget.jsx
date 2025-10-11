@@ -59,7 +59,7 @@ export function BaseWidget({
       {Logo && (
         <div 
           ref={dragRef}
-          className="cursor-move p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="cursor-move p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           title="Drag to rearrange"
         >
           <Logo className="h-4 w-4 text-gray-700 dark:text-gray-300" />
@@ -74,7 +74,7 @@ export function BaseWidget({
   return (
     <div className={`w-full flex flex-col bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 rounded-xl shadow-sm ${heightClass} ${className}`}>
       {/* Header */}
-      <div className="px-6 pt-4 pb-3 flex-shrink-0 border-b border-gray-100 dark:border-gray-800">
+      <div className="px-3 pt-2 pb-1.5 flex-shrink-0 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center justify-between">
           {tooltip ? (
             <TooltipProvider>
@@ -90,14 +90,14 @@ export function BaseWidget({
           ) : (
             headerContent
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {headerActions}
           </div>
         </div>
       </div>
       
       {/* Content with custom scrollbar */}
-      <div className="flex-1 overflow-hidden flex flex-col px-6 py-4">
+      <div className="flex-1 overflow-hidden flex flex-col px-3 py-2">
         <ScrollbarStyles />
         {children}
       </div>

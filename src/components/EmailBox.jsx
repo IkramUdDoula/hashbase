@@ -153,11 +153,11 @@ export function EmailBox() {
     <Card className="w-full flex flex-col border-2 rounded-xl">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Mail className="h-5 w-5" />
             <CardTitle className="text-xl">Unread Emails</CardTitle>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {emails.length > 0 && (
               <Badge variant="secondary">{emails.length}</Badge>
             )}
@@ -196,13 +196,13 @@ export function EmailBox() {
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-4">
-            <Mail className="h-12 w-12 text-muted-foreground mb-4" />
+          <div className="flex flex-col items-center justify-center h-full text-center p-2">
+            <Mail className="h-12 w-12 text-muted-foreground mb-2" />
             <p className="text-sm text-destructive mb-2">
               {isAuthenticated ? 'Failed to load emails' : 'Not authenticated'}
             </p>
-            <p className="text-xs text-muted-foreground mb-4">{error}</p>
-            <div className="flex gap-2">
+            <p className="text-xs text-muted-foreground mb-2">{error}</p>
+            <div className="flex gap-1">
               {!isAuthenticated ? (
                 <Button variant="default" size="sm" onClick={handleAuthenticate} disabled={authenticating}>
                   {authenticating ? (
@@ -220,14 +220,14 @@ export function EmailBox() {
             </div>
           </div>
         ) : emails.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-4">
-            <Mail className="h-12 w-12 text-muted-foreground mb-4" />
+          <div className="flex flex-col items-center justify-center h-full text-center p-2">
+            <Mail className="h-12 w-12 text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">No unread emails</p>
-            <p className="text-xs text-muted-foreground mt-1">You're all caught up! 🎉</p>
+            <p className="text-xs text-muted-foreground mt-1">You're all caught up!</p>
           </div>
         ) : (
           <>
-            <div className="space-y-3">
+            <div className="space-y-1.5">
               {currentEmails.map((email) => {
                 // Extract sender name and email from the "from" field
                 const fromMatch = email.from.match(/^(.+?)\s*<(.+?)>$/) || [null, email.from, ''];
@@ -237,10 +237,10 @@ export function EmailBox() {
                 return (
                   <div
                     key={email.id}
-                    className="p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors relative group"
+                    className="p-1.5 rounded-lg border bg-card hover:bg-accent/50 transition-colors relative group"
                   >
                     {/* Top Row: Sender Name and Time */}
-                    <div className="flex items-start justify-between gap-2 mb-0.5">
+                    <div className="flex items-start justify-between gap-1 mb-0.5">
                       <p className="font-semibold text-sm line-clamp-1 flex-1">{senderName}</p>
                       <span className="text-xs text-muted-foreground whitespace-nowrap">
                         {formatDate(email.date)}
@@ -248,10 +248,10 @@ export function EmailBox() {
                     </div>
                     
                     {/* Sender Email */}
-                    <p className="text-xs text-muted-foreground line-clamp-1 mb-2">{senderEmail}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-1 mb-1">{senderEmail}</p>
                     
                     {/* Subject and Action Icons */}
-                    <div className="flex items-end justify-between gap-2">
+                    <div className="flex items-end justify-between gap-1">
                       <p className="text-sm font-medium line-clamp-1 flex-1">{email.subject}</p>
                       
                       {/* Action Icons - Bottom Right */}
@@ -288,7 +288,7 @@ export function EmailBox() {
             
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between pt-3 border-t mt-3">
+              <div className="flex items-center justify-between pt-1.5 border-t mt-1.5">
                 <Button
                   variant="outline"
                   size="sm"

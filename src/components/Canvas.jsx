@@ -24,14 +24,28 @@ export function Canvas({ widgets }) {
           if (isNewFormat) {
             // Validate that all widget IDs in saved layout exist in current widgets
             const currentWidgetIds = new Set(widgets.map(w => w.id));
-            const allIdsValid = parsed.every(col =>
-              col.every(w => currentWidgetIds.has(w.id))
-            );
-            if (allIdsValid) {
+            const savedWidgetIds = new Set();
+            parsed.forEach(col => col.forEach(w => savedWidgetIds.add(w.id)));
+            
+            // Check if all saved widgets still exist
+            const allSavedIdsValid = Array.from(savedWidgetIds).every(id => currentWidgetIds.has(id));
+            
+            // Check if there are NEW widgets not in the saved layout
+            const hasNewWidgets = Array.from(currentWidgetIds).some(id => !savedWidgetIds.has(id));
+            
+            console.log('🔍 Layout validation:', {
+              currentWidgets: Array.from(currentWidgetIds),
+              savedWidgets: Array.from(savedWidgetIds),
+              allSavedIdsValid,
+              hasNewWidgets
+            });
+            
+            if (allSavedIdsValid && !hasNewWidgets) {
+              console.log('✅ Using saved layout');
               return parsed;
             }
-            // Widget IDs changed, clear layout
-            console.log('Widget IDs changed, resetting layout');
+            // Widget IDs changed or new widgets added, clear layout
+            console.log('🔄 Widget configuration changed, resetting layout');
             localStorage.removeItem('widgetLayout');
             localStorage.removeItem('widgetRowSpans');
           }
@@ -73,11 +87,12 @@ export function Canvas({ widgets }) {
 
   const [layout, setLayout] = useState(getInitialLayout);
   
-  // Debug: Log layout on mount
+  // Debug: Log layout on mount and when widgets change
   useEffect(() => {
-    console.log('Canvas layout:', layout);
-    console.log('Widgets:', widgets);
-  }, []);
+    console.log('📊 Canvas layout:', layout);
+    console.log('🎨 Widgets passed to Canvas:', widgets.map(w => ({ id: w.id, name: w.name })));
+    console.log('📦 Total widgets:', widgets.length);
+  }, [layout, widgets]);
   
   // Widget row spans - tracks how many rows each widget occupies
   const getInitialRowSpans = () => {
@@ -273,9 +288,9 @@ export function Canvas({ widgets }) {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="w-full mx-auto px-4">
+      <div className="w-full h-full">
         {/* 5 columns layout */}
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-5 gap-4 h-full">
           {layout.map((column, colIndex) => (
             <div 
               key={colIndex} 

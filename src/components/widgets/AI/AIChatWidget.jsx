@@ -404,10 +404,10 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
         dragRef={dragRef}
       >
       {!isConfigured ? (
-        <div className="flex flex-col items-center justify-center h-full text-center p-4">
-          <Bot className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-sm text-muted-foreground mb-2">No AI provider configured</p>
-          <p className="text-xs text-muted-foreground mb-4">
+        <div className="flex flex-col items-center justify-center h-full text-center p-2">
+          <Bot className="h-12 w-12 text-muted-foreground mb-2" />
+          <p className="text-sm text-muted-foreground mb-1">No AI provider configured</p>
+          <p className="text-xs text-muted-foreground mb-2">
             Add your OpenAI or Claude API key in Settings to start chatting
           </p>
           <div className="space-y-2 text-xs text-left">
@@ -432,18 +432,18 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
       ) : (
         <div className="flex flex-col h-full">
           {/* Messages */}
-          <div className={`flex-1 pr-1 mb-3 ${messages.length > 0 ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`}>
+          <div className={`flex-1 pr-1 mb-1.5 ${messages.length > 0 ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`}>
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">Start a conversation</h3>
+              <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1">Start a conversation</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-500">Type a message below to begin</p>
               </div>
             ) : (
-              <div className="space-y-4 py-4">
+              <div className="space-y-2 py-2">
                 {messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`group flex gap-2 items-start ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`group flex gap-1 items-start ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     {/* Action button - left side for user */}
                     {message.role === 'user' && message.content && (
@@ -461,16 +461,16 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
                         </button>
                       </div>
                     )}
-
+                    
                     {/* Message Content */}
                     <div className={`flex-1 min-w-0 max-w-full ${
                       message.role === 'user'
                         ? 'bg-gray-100 dark:bg-gray-800 rounded-lg'
                         : 'border border-gray-300 dark:border-gray-700 rounded-lg'
-                    } px-3 py-2`}>
+                    } px-1.5 py-1`}>
                       {/* Search indicator for user messages */}
                       {message.role === 'user' && message.searchEnabled && (
-                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        <div className="flex items-center gap-0.5 text-xs text-gray-500 dark:text-gray-400 mb-0.5">
                           <Globe className="h-3 w-3" />
                           <span>Web search enabled</span>
                         </div>
@@ -478,17 +478,17 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
                       
                       {/* Search results for assistant messages */}
                       {message.role === 'assistant' && message.searchResults && message.searchResults.length > 0 && (
-                        <div className="mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                        <div className="mb-1.5 pb-1.5 border-b border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center gap-0.5 text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
                             <Globe className="h-3.5 w-3.5 flex-shrink-0" />
                             <span>Sources</span>
                           </div>
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-1">
                             {message.searchResults.slice(0, 5).map((result, idx) => {
                               const urlObj = new URL(result.url);
                               const domain = urlObj.hostname.replace('www.', '');
                               return (
-                                <div key={idx} className="flex gap-2">
+                                <div key={idx} className="flex gap-1">
                                   <span className="text-xs text-gray-400 dark:text-gray-500 font-medium flex-shrink-0">{idx + 1}.</span>
                                   <a
                                     href={result.url}
@@ -540,12 +540,12 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
           </div>
 
           {/* Input Area */}
-          <div className="border-t border-gray-200 dark:border-gray-800 pt-3">
+          <div className="border-t border-gray-200 dark:border-gray-800 pt-1.5">
             {/* Search toggle */}
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-1 mb-1">
               <button
                 onClick={() => setSearchEnabled(!searchEnabled)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-colors ${
+                className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs transition-colors ${
                   searchEnabled
                     ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                     : 'text-gray-500 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -571,7 +571,7 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
               placeholder="Type a message..."
               disabled={loading}
               rows={1}
-              className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-foreground placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:border-gray-400 dark:focus:border-gray-600 transition-colors custom-scrollbar"
+              className="w-full px-1.5 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-foreground placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:border-gray-400 dark:focus:border-gray-600 transition-colors custom-scrollbar"
               style={{ minHeight: '42px', maxHeight: '140px' }}
               onInput={(e) => {
                 e.target.style.height = '42px';

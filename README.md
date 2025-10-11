@@ -7,9 +7,11 @@ A beautiful React single-page application that displays widgets for various serv
 - 📧 **Gmail Widget** - Display unread emails from Gmail
 - 🚀 **Netlify Widget** - Monitor latest deploys from all your projects
 - 🤖 **AI Chat Widget** - Chat with OpenAI (GPT-4) or Claude AI assistants with web search
+- 💻 **GitHub Widget** - View recent commits from your GitHub repositories
 - 🔍 **Web Search Integration** - Enable real-time web search for AI responses using Tavily AI
 - ⚙️ **In-App Configuration** - Configure API secrets directly in the app (no .env file needed!)
-- 🎛️ **Widget Management** - Enable/disable widgets from the settings panel
+- 🎛️ **Widget Management** - Enable/disable widgets from the settings panel with search
+- 🔑 **Advanced Secrets Management** - Add custom secrets, search, and alphabetically sorted display
 - 🎨 Beautiful, modern UI with Tailwind CSS and shadcn/ui
 - 🔄 Auto-refresh every 60 seconds
 - 📱 Responsive design
@@ -26,6 +28,7 @@ A beautiful React single-page application that displays widgets for various serv
 - OpenAI API Key (for AI Chat widget with GPT models)
 - Claude API Key (for AI Chat widget with Claude models)
 - Tavily API Key (for web search in AI Chat - optional, free tier available)
+- GitHub Personal Access Token (for GitHub widget - optional)
 
 ## Setup Instructions
 
@@ -118,9 +121,34 @@ Open your browser and navigate to `http://localhost:5000`
 
 **Note:** Web search is optional. Without a Tavily API key, the AI will respond using only its training data.
 
+#### **GitHub Widget** - Configure via Settings
+
+1. Go to [GitHub Personal Access Tokens](https://github.com/settings/tokens)
+2. Click "Generate new token" > "Generate new token (classic)"
+3. Give it a descriptive name (e.g., "Hashbase Dashboard")
+4. Select the `repo` scope (required to read commit data)
+5. Click "Generate token" and copy the generated token
+6. In the app, click **Settings** (⚙️) > **Configuration** > **Secrets** tab
+7. Paste the token into "GitHub Personal Access Token"
+8. Click **Save Secrets**
+9. In the GitHub widget, click the settings icon to configure your repository:
+   - Enter the repository owner (e.g., "facebook")
+   - Enter the repository name (e.g., "react")
+   - Click **Save**
+
+**Note:** GitHub credentials are stored securely in your browser's local storage and never sent to any external server.
+
 #### **Apps Tab** - Enable/Disable Widgets
 
-Click the **Settings** button (⚙️) > **Configuration** > **Apps** tab to toggle widgets on or off. Changes take effect after refreshing the page.
+Click the **Settings** button (⚙️) > **Configuration** > **Apps** tab to toggle widgets on or off. Use the search bar to quickly find specific widgets. Changes take effect after refreshing the page.
+
+#### **Secrets Tab** - Advanced Management
+
+The Secrets tab now includes:
+- **Search functionality** - Quickly find specific API keys
+- **Alphabetical sorting** - All secrets are displayed in alphabetical order
+- **Custom secrets** - Add your own custom API keys using the "+" button
+- **Delete custom secrets** - Remove custom secrets with the trash icon
 
 #### **Clear All Data**
 
@@ -168,6 +196,15 @@ Use this if you want to start fresh or are experiencing authentication issues.
   - **Settings** - Configure LLM parameters (temperature, tokens, etc.)
 - Press Enter to send, Shift+Enter for new line
 - Toggle web search on/off to enhance responses with real-time information
+
+### GitHub Widget
+- Displays recent commits from your configured GitHub repository
+- Shows commit messages, authors, timestamps, and commit SHAs
+- Author avatars displayed when available
+- Auto-refreshes every 5 minutes
+- Click on any commit to view it on GitHub
+- Configure repository via the settings icon in the widget
+- Supports any public or private repository (with proper token permissions)
 
 ## Project Structure
 
@@ -280,6 +317,23 @@ hashbase/
 - Chat history is stored in browser localStorage
 - Clearing browser data or using incognito mode will reset history
 - Use the "Clear All Data" feature in Settings only if you want to reset everything
+
+### GitHub Widget Issues
+
+**"GitHub not configured" error**
+- Open Settings > Secrets and add your GitHub Personal Access Token
+- Verify the token has the `repo` scope enabled
+- Configure the repository in the widget settings (click the settings icon)
+
+**"Repository not found" error**
+- Verify the owner and repository name are correct
+- Ensure your token has access to the repository (for private repos)
+- Check that the repository exists on GitHub
+
+**"Invalid GitHub token" error**
+- Verify your token is valid and hasn't expired
+- Ensure the token has the `repo` scope
+- Try generating a new token from GitHub settings
 
 ### General Issues
 

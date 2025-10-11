@@ -69,95 +69,39 @@ function createApiServer() {
       // Return tokens to be stored in localStorage
       const tokensJson = JSON.stringify(tokens)
       
-      // Redirect back to the frontend app
+      // Redirect back to the frontend app with success parameter
       const frontendUrl = process.env.VITE_FRONTEND_URL || 'http://localhost:5000'
       res.send(`
         <html>
           <head>
             <title>Authentication Successful</title>
-            <style>
-              body {
-                font-family: system-ui, -apple-system, sans-serif;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 100vh;
-                margin: 0;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-              }
-              .container {
-                text-align: center;
-                padding: 2rem;
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 1rem;
-                backdrop-filter: blur(10px);
-              }
-              h1 { margin: 0 0 1rem 0; }
-              p { margin: 0 0 1.5rem 0; opacity: 0.9; }
-              .spinner {
-                border: 3px solid rgba(255, 255, 255, 0.3);
-                border-top: 3px solid white;
-                border-radius: 50%;
-                width: 40px;
-                height: 40px;
-                animation: spin 1s linear infinite;
-                margin: 0 auto;
-              }
-              @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            </style>
             <script>
               // Store tokens in localStorage
               localStorage.setItem('gmail_tokens', '${tokensJson.replace(/'/g, "\\'")}')
-              setTimeout(() => {
-                window.location.href = '${frontendUrl}';
-              }, 2000);
+              // Redirect immediately with success parameter
+              window.location.href = '${frontendUrl}?auth=success';
             </script>
           </head>
           <body>
-            <div class="container">
-              <h1>✅ Authentication Successful!</h1>
-              <p>Redirecting you back to the app...</p>
-              <div class="spinner"></div>
-            </div>
+            <p>Redirecting...</p>
           </body>
         </html>
       `)
     } catch (error) {
       console.error('Error getting tokens:', error)
+      const frontendUrl = process.env.VITE_FRONTEND_URL || 'http://localhost:5000'
+      const errorMessage = encodeURIComponent(error.message)
       res.status(500).send(`
         <html>
           <head>
             <title>Authentication Failed</title>
-            <style>
-              body {
-                font-family: system-ui, -apple-system, sans-serif;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 100vh;
-                margin: 0;
-                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-                color: white;
-              }
-              .container {
-                text-align: center;
-                padding: 2rem;
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 1rem;
-                backdrop-filter: blur(10px);
-              }
-            </style>
+            <script>
+              // Redirect with error parameter
+              window.location.href = '${frontendUrl}?auth=error&message=${errorMessage}';
+            </script>
           </head>
           <body>
-            <div class="container">
-              <h1>❌ Authentication Failed</h1>
-              <p>Error: ${error.message}</p>
-              <p><a href="${process.env.VITE_FRONTEND_URL || 'http://localhost:5000'}" style="color: white;">Return to app</a></p>
-            </div>
+            <p>Redirecting...</p>
           </body>
         </html>
       `)

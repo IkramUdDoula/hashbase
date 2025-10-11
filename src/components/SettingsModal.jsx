@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Eye, EyeOff, Save, Key, AppWindow, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { X, Eye, EyeOff, Save, Key, AppWindow, Trash2, Search, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,11 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
   const [showSecrets, setShowSecrets] = useState({});
   const [saveStatus, setSaveStatus] = useState('');
   const [clearClickCount, setClearClickCount] = useState(0);
+  const [appsSearchQuery, setAppsSearchQuery] = useState('');
+  const [secretsSearchQuery, setSecretsSearchQuery] = useState('');
+  const [newSecretKey, setNewSecretKey] = useState('');
+  const [newSecretValue, setNewSecretValue] = useState('');
+  const [showAddSecret, setShowAddSecret] = useState(false);
   const clearTimeoutRef = useRef(null);
   const modalRef = useRef(null);
 
@@ -90,6 +95,23 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
     }
   };
 
+  const handleAddSecret = () => {
+    if (newSecretKey.trim() && newSecretValue.trim()) {
+      handleSecretChange(newSecretKey.trim(), newSecretValue.trim());
+      setNewSecretKey('');
+      setNewSecretValue('');
+      setShowAddSecret(false);
+    }
+  };
+
+  const handleDeleteSecret = (key) => {
+    setSecretsState(prev => {
+      const updated = { ...prev };
+      delete updated[key];
+      return updated;
+    });
+  };
+
   const handleClearAllData = () => {
     console.log('🗑️ handleClearAllData called, click count:', clearClickCount);
     
@@ -133,8 +155,6 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
     }
   };
 
-  if (!isOpen) return null;
-
   const secretFields = [
     {
       key: SECRET_KEYS.NETLIFY_ACCESS_TOKEN,
@@ -159,8 +179,55 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
       label: 'Tavily API Key (Web Search)',
       description: 'Get from tavily.com (free tier: 1000 searches/month)',
       placeholder: 'tvly-xxxxxxxxxxxxx'
+    },
+    {
+      key: SECRET_KEYS.GITHUB_TOKEN,
+      label: 'GitHub Personal Access Token',
+      description: 'Get from github.com/settings/tokens (needs repo scope)',
+      placeholder: 'ghp_xxxxxxxxxxxxx'
     }
   ];
+
+  // Filter and sort apps based on search query
+  const filteredApps = useMemo(() => {
+    if (!appsSearchQuery.trim()) return availableWidgets;
+    const query = appsSearchQuery.toLowerCase();
+    return availableWidgets.filter(widget => 
+      widget.name.toLowerCase().includes(query) || 
+      widget.description.toLowerCase().includes(query)
+    );
+  }, [availableWidgets, appsSearchQuery]);
+
+  // Get all secrets (predefined + custom) and sort alphabetically
+  const allSecrets = useMemo(() => {
+    const predefinedKeys = secretFields.map(f => f.key);
+    const customKeys = Object.keys(secrets).filter(key => !predefinedKeys.includes(key));
+    
+    // Combine predefined and custom secrets
+    const combined = [
+      ...secretFields,
+      ...customKeys.map(key => ({
+        key,
+        label: key,
+        description: 'Custom secret',
+        placeholder: '••••••••',
+        isCustom: true
+      }))
+    ];
+    
+    // Sort alphabetically by label
+    combined.sort((a, b) => a.label.localeCompare(b.label));
+    
+    // Filter by search query
+    if (!secretsSearchQuery.trim()) return combined;
+    const query = secretsSearchQuery.toLowerCase();
+    return combined.filter(field => 
+      field.label.toLowerCase().includes(query) || 
+      field.description.toLowerCase().includes(query)
+    );
+  }, [secrets, secretsSearchQuery]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -215,8 +282,25 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                 Enable or disable widgets to show on your canvas. Changes will take effect after refreshing the page.
               </p>
               
+              {/* Search bar for apps */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search apps..."
+                  value={appsSearchQuery}
+                  onChange={(e) => setAppsSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
               <div className="space-y-3">
-                {availableWidgets.map((widget) => {
+                {filteredApps.length === 0 ? (
+                  <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
+                    No apps found matching "{appsSearchQuery}"
+                  </p>
+                ) : (
+                  filteredApps.map((widget) => {
                   const isEnabled = widgetPrefs[widget.id] !== false;
                   return (
                     <div
@@ -244,7 +328,8 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                       </button>
                     </div>
                   );
-                })}
+                  })
+                )}
               </div>
 
               <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-800">
@@ -268,14 +353,62 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 Configure your API credentials. These are stored securely in your browser's local storage and never sent to any external server.
               </p>
-              {/* <div className="p-3 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 mb-4">
-                <p className="text-xs text-gray-900 dark:text-gray-100">
-                  <strong>Note:</strong> Gmail credentials are configured via the <code className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">.env</code> file on the server. See README for instructions.
-                </p>
-              </div> */}
+              
+              {/* Search bar and Add button for secrets */}
+              <div className="flex gap-2 mb-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search secrets..."
+                    value={secretsSearchQuery}
+                    onChange={(e) => setSecretsSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button
+                  onClick={() => setShowAddSecret(!showAddSecret)}
+                  variant="outline"
+                  size="icon"
+                  title="Add custom secret"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Add custom secret form */}
+              {showAddSecret && (
+                <div className="p-4 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 space-y-3">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Add Custom Secret</h3>
+                  <Input
+                    placeholder="Secret key (e.g., MY_API_KEY)"
+                    value={newSecretKey}
+                    onChange={(e) => setNewSecretKey(e.target.value)}
+                  />
+                  <Input
+                    type="password"
+                    placeholder="Secret value"
+                    value={newSecretValue}
+                    onChange={(e) => setNewSecretValue(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button onClick={handleAddSecret} size="sm" className="flex-1">
+                      Add Secret
+                    </Button>
+                    <Button onClick={() => setShowAddSecret(false)} variant="outline" size="sm" className="flex-1">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-4">
-                {secretFields.map((field) => (
+                {allSecrets.length === 0 ? (
+                  <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
+                    No secrets found matching "{secretsSearchQuery}"
+                  </p>
+                ) : (
+                  allSecrets.map((field) => (
                   <div key={field.key} className="space-y-2">
                     <Label htmlFor={field.key} className="text-sm font-medium">
                       {field.label}
@@ -301,9 +434,20 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                           <Eye className="h-4 w-4" />
                         )}
                       </button>
+                      {field.isCustom && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSecret(field.key)}
+                          className="absolute right-12 top-1/2 -translate-y-1/2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200"
+                          title="Delete custom secret"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
 
               <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-800">
