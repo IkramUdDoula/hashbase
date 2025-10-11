@@ -278,7 +278,7 @@ app.get('/api/netlify/deploys', async (req, res) => {
 
 // ===== Web Search API Endpoint =====
 
-// Perform web search using DuckDuckGo
+// Perform web search using Tavily AI Search API
 app.post('/api/search', async (req, res) => {
   try {
     const { query } = req.body;
@@ -290,13 +290,37 @@ app.post('/api/search', async (req, res) => {
       });
     }
 
-    // Use DuckDuckGo Instant Answer API (no API key required)
-    const searchUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
+    // Get Tavily API key from request headers
+    const tavilyApiKey = req.headers['x-tavily-api-key'];
     
-    const response = await fetch(searchUrl);
+    if (!tavilyApiKey) {
+      return res.status(401).json({ 
+        error: 'Tavily API key not configured',
+        message: 'Please add your Tavily API key in Settings > Secrets to enable web search',
+        results: []
+      });
+    }
+
+    // Use Tavily AI Search API
+    const response = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        api_key: tavilyApiKey,
+        query: query,
+        search_depth: 'basic', // 'basic' or 'advanced'
+        include_answer: false,
+        include_images: false,
+        include_raw_content: false,
+        max_results: 5,
+      }),
+    });
     
     if (!response.ok) {
-      throw new Error('Search API request failed');
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || errorData.message || 'Tavily API request failed');
     }
 
     const data = await response.json();
@@ -304,35 +328,23 @@ app.post('/api/search', async (req, res) => {
     // Format results
     const results = [];
     
-    // Add abstract if available
-    if (data.Abstract) {
-      results.push({
-        title: data.Heading || 'Summary',
-        snippet: data.Abstract,
-        url: data.AbstractURL || data.AbstractSource || '',
+    // Process Tavily results
+    if (data.results && Array.isArray(data.results)) {
+      data.results.forEach(result => {
+        results.push({
+          title: result.title || 'No title',
+          snippet: result.content || result.snippet || '',
+          url: result.url || '',
+          score: result.score || 0,
+        });
       });
     }
     
-    // Add related topics
-    if (data.RelatedTopics && data.RelatedTopics.length > 0) {
-      data.RelatedTopics.slice(0, 5).forEach(topic => {
-        if (topic.Text && topic.FirstURL) {
-          results.push({
-            title: topic.Text.split(' - ')[0] || topic.Text,
-            snippet: topic.Text,
-            url: topic.FirstURL,
-          });
-        }
-      });
-    }
-    
-    // If no results from DuckDuckGo, try a simple web scraping approach
+    // If no results, return empty array with helpful message
     if (results.length === 0) {
-      // Fallback: return a message indicating limited results
-      results.push({
-        title: 'Search Results',
-        snippet: `Search query: "${query}". Limited results available. Consider using a dedicated search API for better results.`,
-        url: `https://duckduckgo.com/?q=${encodeURIComponent(query)}`,
+      return res.json({ 
+        results: [],
+        message: 'No search results found for this query'
       });
     }
     

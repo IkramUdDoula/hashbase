@@ -7,7 +7,7 @@ A beautiful React single-page application that displays widgets for various serv
 - 📧 **Gmail Widget** - Display unread emails from Gmail
 - 🚀 **Netlify Widget** - Monitor latest deploys from all your projects
 - 🤖 **AI Chat Widget** - Chat with OpenAI (GPT-4) or Claude AI assistants with web search
-- 🔍 **Web Search Integration** - Enable real-time web search for AI responses
+- 🔍 **Web Search Integration** - Enable real-time web search for AI responses using Tavily AI
 - ⚙️ **In-App Configuration** - Configure API secrets directly in the app (no .env file needed!)
 - 🎛️ **Widget Management** - Enable/disable widgets from the settings panel
 - 🎨 Beautiful, modern UI with Tailwind CSS and shadcn/ui
@@ -25,6 +25,7 @@ A beautiful React single-page application that displays widgets for various serv
 - Netlify Personal Access Token (for Netlify widget)
 - OpenAI API Key (for AI Chat widget with GPT models)
 - Claude API Key (for AI Chat widget with Claude models)
+- Tavily API Key (for web search in AI Chat - optional, free tier available)
 
 ## Setup Instructions
 
@@ -106,6 +107,17 @@ Open your browser and navigate to `http://localhost:5000`
 
 **Note:** You can configure one or both AI providers. The widget will show all available providers based on your configured API keys.
 
+3. **For Web Search (Optional):**
+   - Go to [Tavily AI](https://tavily.com)
+   - Sign up for a free account (1000 searches/month)
+   - Copy your API key from the dashboard
+   - In the app, click **Settings** (⚙️) > **Configuration** > **Secrets** tab
+   - Paste the key into "Tavily API Key (Web Search)"
+   - Click **Save Secrets**
+   - Toggle the search button in the AI Chat widget to enable web search
+
+**Note:** Web search is optional. Without a Tavily API key, the AI will respond using only its training data.
+
 #### **Apps Tab** - Enable/Disable Widgets
 
 Click the **Settings** button (⚙️) > **Configuration** > **Apps** tab to toggle widgets on or off. Changes take effect after refreshing the page.
@@ -141,7 +153,7 @@ Use this if you want to start fresh or are experiencing authentication issues.
 ### AI Chat Widget
 - Chat with AI assistants (OpenAI GPT-4 or Claude)
 - **Modern UI** - Redesigned interface inspired by Claude and ChatGPT
-- **Web Search Integration** - Enable real-time web search for up-to-date information
+- **Web Search Integration** - Enable real-time web search powered by Tavily AI for up-to-date information
 - **Streaming responses** - See AI responses in real-time
 - **Multi-conversation support** - Manage multiple chat conversations with history
 - **Conversation history** - View and load previous conversations sorted by date
@@ -252,6 +264,12 @@ hashbase/
 - Check the browser console for detailed error messages
 - For OpenAI: Ensure your API key has access to the selected model (GPT-4 requires separate access)
 - For Claude: Ensure you're using a valid Anthropic API key (starts with `sk-ant-`)
+
+**Web search not working**
+- Ensure you've added a Tavily API key in Settings > Secrets
+- Verify the API key is valid and you haven't exceeded your monthly quota
+- Check that the search toggle is enabled (globe icon should be highlighted)
+- The search will gracefully fail if there are issues, and the AI will respond without search results
 
 **Streaming not working**
 - This is a browser/network issue - the widget uses Server-Sent Events (SSE)

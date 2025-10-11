@@ -25,6 +25,7 @@ import {
   estimateTokenCount,
   AI_PROVIDERS 
 } from '@/services/aiService';
+import { getSecret, SECRET_KEYS } from '@/services/secretsService';
 import { useToast } from '@/components/ui/toast';
 import { LLMSettingsModal, getLLMSettings } from './LLMSettingsModal';
 import { ChatHistoryModal, saveConversation } from './ChatHistoryModal';
@@ -185,26 +186,41 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
       
       if (searchEnabled) {
         try {
-          const searchResponse = await fetch('http://localhost:3001/api/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: userMessage.content }),
-          });
+          const tavilyApiKey = getSecret(SECRET_KEYS.TAVILY_API_KEY);
           
-          if (searchResponse.ok) {
-            const data = await searchResponse.json();
-            searchResults = data.results;
+          if (!tavilyApiKey) {
+            addToast('Tavily API key not configured. Please add it in Settings > Secrets', 'error');
+            // Continue without search
+          } else {
+            const searchResponse = await fetch('/api/search', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'x-tavily-api-key': tavilyApiKey,
+              },
+              body: JSON.stringify({ query: userMessage.content }),
+            });
             
-            // Add search context to the message
-            if (searchResults && searchResults.length > 0) {
-              searchContext = '\n\nWeb Search Results:\n' + 
-                searchResults.map((r, i) => 
-                  `${i + 1}. ${r.title}\n   ${r.snippet}\n   Source: ${r.url}`
-                ).join('\n\n');
+            if (searchResponse.ok) {
+              const data = await searchResponse.json();
+              searchResults = data.results;
+              
+              // Add search context to the message
+              if (searchResults && searchResults.length > 0) {
+                searchContext = '\n\nWeb Search Results:\n' + 
+                  searchResults.map((r, i) => 
+                    `${i + 1}. ${r.title}\n   ${r.snippet}\n   Source: ${r.url}`
+                  ).join('\n\n');
+              }
+            } else {
+              const errorData = await searchResponse.json().catch(() => ({}));
+              console.error('Search error:', errorData);
+              addToast(errorData.message || 'Search failed', 'error');
             }
           }
         } catch (searchError) {
           console.error('Search error:', searchError);
+          addToast('Search failed: ' + searchError.message, 'error');
           // Continue without search results
         }
       }
@@ -447,7 +463,7 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
                     )}
 
                     {/* Message Content */}
-                    <div className={`flex-1 ${
+                    <div className={`flex-1 min-w-0 max-w-full ${
                       message.role === 'user'
                         ? 'bg-gray-100 dark:bg-gray-800 rounded-lg'
                         : 'border border-gray-300 dark:border-gray-700 rounded-lg'
@@ -462,24 +478,30 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
                       
                       {/* Search results for assistant messages */}
                       {message.role === 'assistant' && message.searchResults && message.searchResults.length > 0 && (
-                        <div className="mb-3 p-2 bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-700">
-                          <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
-                            <Globe className="h-3 w-3" />
-                            <span>Web results</span>
+                        <div className="mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                            <Globe className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span>Sources</span>
                           </div>
-                          <div className="space-y-1.5">
-                            {message.searchResults.slice(0, 3).map((result, idx) => (
-                              <a
-                                key={idx}
-                                href={result.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block text-xs hover:bg-gray-100 dark:hover:bg-gray-700/50 p-1.5 rounded transition-colors"
-                              >
-                                <div className="font-medium text-gray-700 dark:text-gray-300 line-clamp-1">{result.title}</div>
-                                <div className="text-gray-500 dark:text-gray-500 line-clamp-2 mt-0.5">{result.snippet}</div>
-                              </a>
-                            ))}
+                          <div className="flex flex-col gap-2">
+                            {message.searchResults.slice(0, 5).map((result, idx) => {
+                              const urlObj = new URL(result.url);
+                              const domain = urlObj.hostname.replace('www.', '');
+                              return (
+                                <div key={idx} className="flex gap-2">
+                                  <span className="text-xs text-gray-400 dark:text-gray-500 font-medium flex-shrink-0">{idx + 1}.</span>
+                                  <a
+                                    href={result.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs hover:underline break-words min-w-0"
+                                  >
+                                    <div className="font-medium text-gray-700 dark:text-gray-300">{domain}</div>
+                                    <div className="text-blue-600 dark:text-blue-400 line-clamp-2">{result.title}</div>
+                                  </a>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}

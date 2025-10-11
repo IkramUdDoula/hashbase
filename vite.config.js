@@ -270,6 +270,89 @@ function createApiServer() {
     res.json({ configured })
   })
 
+  // ===== Web Search API Endpoint =====
+
+  // Perform web search using Tavily AI Search API
+  app.post('/api/search', async (req, res) => {
+    try {
+      const { query } = req.body
+      
+      if (!query) {
+        return res.status(400).json({ 
+          error: 'Query is required',
+          message: 'Please provide a search query'
+        })
+      }
+
+      // Get Tavily API key from request headers
+      const tavilyApiKey = req.headers['x-tavily-api-key']
+      
+      if (!tavilyApiKey) {
+        return res.status(401).json({ 
+          error: 'Tavily API key not configured',
+          message: 'Please add your Tavily API key in Settings > Secrets to enable web search',
+          results: []
+        })
+      }
+
+      // Use Tavily AI Search API
+      const response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          api_key: tavilyApiKey,
+          query: query,
+          search_depth: 'basic', // 'basic' or 'advanced'
+          include_answer: false,
+          include_images: false,
+          include_raw_content: false,
+          max_results: 5,
+        }),
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || errorData.message || 'Tavily API request failed')
+      }
+
+      const data = await response.json()
+      
+      // Format results
+      const results = []
+      
+      // Process Tavily results
+      if (data.results && Array.isArray(data.results)) {
+        data.results.forEach(result => {
+          results.push({
+            title: result.title || 'No title',
+            snippet: result.content || result.snippet || '',
+            url: result.url || '',
+            score: result.score || 0,
+          })
+        })
+      }
+      
+      // If no results, return empty array with helpful message
+      if (results.length === 0) {
+        return res.json({ 
+          results: [],
+          message: 'No search results found for this query'
+        })
+      }
+      
+      res.json({ results })
+    } catch (error) {
+      console.error('Error performing search:', error)
+      res.status(500).json({ 
+        error: 'Search failed',
+        message: error.message,
+        results: [] // Return empty results on error
+      })
+    }
+  })
+
   // Fetch all deploys from all sites
   app.get('/api/netlify/deploys', async (req, res) => {
     try {

@@ -153,6 +153,12 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
       label: 'Claude API Key (Anthropic)',
       description: 'Get from console.anthropic.com/settings/keys',
       placeholder: 'sk-ant-xxxxxxxxxxxxx'
+    },
+    {
+      key: SECRET_KEYS.TAVILY_API_KEY,
+      label: 'Tavily API Key (Web Search)',
+      description: 'Get from tavily.com (free tier: 1000 searches/month)',
+      placeholder: 'tvly-xxxxxxxxxxxxx'
     }
   ];
 

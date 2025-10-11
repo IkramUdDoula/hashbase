@@ -70,8 +70,6 @@ export function getAvailableProviders() {
       id: AI_PROVIDERS.OPENAI,
       name: 'OpenAI',
       models: [
-        { id: AI_MODELS.OPENAI.GPT5_HIGH, name: 'GPT-5 High' },
-        { id: AI_MODELS.OPENAI.GPT5_MEDIUM, name: 'GPT-5 Medium' },
         { id: AI_MODELS.OPENAI.GPT4_TURBO, name: 'GPT-4 Turbo' },
         { id: AI_MODELS.OPENAI.GPT4, name: 'GPT-4' },
         { id: AI_MODELS.OPENAI.GPT35_TURBO, name: 'GPT-3.5 Turbo' },
