@@ -13,6 +13,9 @@ A beautiful React single-page application that displays widgets for various serv
 - ⚙️ **In-App Configuration** - Configure API secrets directly in the app (no .env file needed!)
 - 🎛️ **Widget Management** - Enable/disable widgets from the settings panel with search
 - 🔑 **Advanced Secrets Management** - Add custom secrets, search, and alphabetically sorted display
+- 🎯 **Drag & Drop Layout** - Customize widget positions with intelligent validation and persistence
+- 📐 **Dynamic Widget Sizing** - Resize widgets from 1-4 rows with automatic fit validation
+- 💾 **Layout Persistence** - Your custom layout survives page refreshes and server restarts
 - 🎨 Beautiful, modern UI with Tailwind CSS and shadcn/ui
 - 🔄 Auto-refresh every 60 seconds
 - 📱 Responsive design
@@ -180,6 +183,19 @@ In Settings > Secrets tab, there's a "Clear All Data" button in the Danger Zone 
 Use this if you want to start fresh or are experiencing authentication issues.
 
 ## Usage
+
+### Widget Layout System
+
+The dashboard features a powerful drag-and-drop layout system:
+
+- **Drag & Drop** - Click and drag any widget to move it to a new position
+- **Resize Widgets** - Click the resize icon (⇕) in the bottom-right corner to cycle through sizes (1-4 rows)
+- **Visual Feedback** - Blue ring indicates valid drop zones, red ring indicates invalid positions
+- **Smart Validation** - System prevents overlapping widgets and validates fit before allowing drops
+- **Auto-Save** - Layout automatically saves to localStorage and persists across sessions
+- **5×4 Grid** - 5 columns with up to 4 rows each (20 total positions)
+
+For detailed technical documentation, see [LAYOUT_SYSTEM.md](./LAYOUT_SYSTEM.md)
 
 ### Gmail Widget
 - Displays your unread emails

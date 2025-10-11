@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Eye, EyeOff, Save, Key, AppWindow, Trash2, Search, Plus } from 'lucide-react';
+import { X, Eye, EyeOff, Save, Key, AppWindow, Trash2, Search, Plus, Grid3x3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { getSecrets, setSecrets, SECRET_KEYS } from '@/services/secretsService';
 import { getWidgetPreferences, setWidgetPreferences } from '@/services/widgetRegistry';
 import { ScrollbarStyles } from '@/components/ui/scrollbar-styles';
+import { CanvasVisualization } from './CanvasVisualization';
 
 export function SettingsModal({ isOpen, onClose, availableWidgets }) {
   const [activeTab, setActiveTab] = useState('apps');
@@ -270,6 +271,17 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
               <Key className="h-4 w-4" />
               Secrets
             </button>
+            <button
+              onClick={() => setActiveTab('canvas')}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${
+                activeTab === 'canvas'
+                  ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-b-2 border-gray-900 dark:border-gray-100'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+              }`}
+            >
+              <Grid3x3 className="h-4 w-4" />
+              Canvas
+            </button>
           </div>
         </div>
 
@@ -498,6 +510,10 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                 </div>
               </div>
             </div>
+          )}
+
+          {activeTab === 'canvas' && (
+            <CanvasVisualization />
           )}
         </div>
       </div>
