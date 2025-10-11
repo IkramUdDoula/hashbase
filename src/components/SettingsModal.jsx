@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Eye, EyeOff, Save, Key, AppWindow, Trash2, Search, Plus, Grid3x3 } from 'lucide-react';
+import { X, Eye, EyeOff, Save, Key, AppWindow, Trash2, Search, Grid3x3, Download, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { getSecrets, setSecrets, SECRET_KEYS } from '@/services/secretsService';
 import { getWidgetPreferences, setWidgetPreferences } from '@/services/widgetRegistry';
+import { downloadConfig, uploadConfig, getConfigSummary } from '@/services/configService';
 import { ScrollbarStyles } from '@/components/ui/scrollbar-styles';
 import { CanvasVisualization } from './CanvasVisualization';
 
@@ -18,9 +19,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
   const [clearClickCount, setClearClickCount] = useState(0);
   const [appsSearchQuery, setAppsSearchQuery] = useState('');
   const [secretsSearchQuery, setSecretsSearchQuery] = useState('');
-  const [newSecretKey, setNewSecretKey] = useState('');
-  const [newSecretValue, setNewSecretValue] = useState('');
-  const [showAddSecret, setShowAddSecret] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
   const clearTimeoutRef = useRef(null);
   const modalRef = useRef(null);
 
@@ -96,15 +95,6 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
     }
   };
 
-  const handleAddSecret = () => {
-    if (newSecretKey.trim() && newSecretValue.trim()) {
-      handleSecretChange(newSecretKey.trim(), newSecretValue.trim());
-      setNewSecretKey('');
-      setNewSecretValue('');
-      setShowAddSecret(false);
-    }
-  };
-
   const handleDeleteSecret = (key) => {
     setSecretsState(prev => {
       const updated = { ...prev };
@@ -153,6 +143,40 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
         setTimeout(() => setSaveStatus(''), 3000);
         setClearClickCount(0);
       }
+    }
+  };
+
+  const handleDownloadConfig = async () => {
+    try {
+      await downloadConfig();
+      setSaveStatus('Configuration downloaded successfully!');
+      setTimeout(() => setSaveStatus(''), 3000);
+    } catch (error) {
+      console.error('Error downloading config:', error);
+      setSaveStatus('Error downloading configuration');
+      setTimeout(() => setSaveStatus(''), 3000);
+    }
+  };
+
+  const handleUploadConfig = async () => {
+    try {
+      setUploadStatus('Uploading...');
+      const result = await uploadConfig();
+      
+      if (result.success) {
+        const encryptMsg = result.encrypted ? ' (secrets were encrypted)' : '';
+        setUploadStatus(`${result.message}${encryptMsg}. Refreshing in 2 seconds...`);
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        setUploadStatus(`Error: ${result.message}`);
+        setTimeout(() => setUploadStatus(''), 5000);
+      }
+    } catch (error) {
+      console.error('Error uploading config:', error);
+      setUploadStatus(`Error: ${error.message}`);
+      setTimeout(() => setUploadStatus(''), 5000);
     }
   };
 
@@ -366,55 +390,17 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                 Configure your API credentials. These are stored securely in your browser's local storage and never sent to any external server.
               </p>
               
-              {/* Search bar and Add button for secrets */}
-              <div className="flex gap-2 mb-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    type="text"
-                    placeholder="Search secrets..."
-                    value={secretsSearchQuery}
-                    onChange={(e) => setSecretsSearchQuery(e.target.value)}
-                    className="pl-10 rounded-lg border-gray-300 dark:border-gray-700 bg-transparent"
-                  />
-                </div>
-                <Button
-                  onClick={() => setShowAddSecret(!showAddSecret)}
-                  variant="outline"
-                  size="icon"
-                  title="Add custom secret"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+              {/* Search bar for secrets */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search secrets..."
+                  value={secretsSearchQuery}
+                  onChange={(e) => setSecretsSearchQuery(e.target.value)}
+                  className="pl-10 rounded-lg border-gray-300 dark:border-gray-700 bg-transparent"
+                />
               </div>
-
-              {/* Add custom secret form */}
-              {showAddSecret && (
-                <div className="p-4 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 space-y-3">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Add Custom Secret</h3>
-                  <Input
-                    placeholder="Secret key (e.g., MY_API_KEY)"
-                    value={newSecretKey}
-                    onChange={(e) => setNewSecretKey(e.target.value)}
-                    className="rounded-lg border-gray-300 dark:border-gray-700 bg-transparent"
-                  />
-                  <Input
-                    type="password"
-                    placeholder="Secret value"
-                    value={newSecretValue}
-                    onChange={(e) => setNewSecretValue(e.target.value)}
-                    className="rounded-lg border-gray-300 dark:border-gray-700 bg-transparent"
-                  />
-                  <div className="flex gap-2">
-                    <Button onClick={handleAddSecret} size="sm" className="flex-1">
-                      Add Secret
-                    </Button>
-                    <Button onClick={() => setShowAddSecret(false)} variant="outline" size="sm" className="flex-1">
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              )}
 
               <div className="space-y-4">
                 {allSecrets.length === 0 ? (
@@ -478,10 +464,43 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                 </Button>
               </div>
 
-              <div className="mt-6 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
+              <div className="mt-6 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">Configuration Backup & Restore</h3>
+                <p className="text-xs text-blue-800 dark:text-blue-200 mb-3">
+                  Export your entire dashboard configuration with automatic AES-256 encryption.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleDownloadConfig}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2 flex-1"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download Config
+                  </Button>
+                  <Button
+                    onClick={handleUploadConfig}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2 flex-1"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload Config
+                  </Button>
+                </div>
+                {uploadStatus && (
+                  <p className={`text-xs mt-2 ${
+                    uploadStatus.includes('Error') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                  }`}>
+                    {uploadStatus}
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
                 <p className="text-xs text-gray-900 dark:text-gray-100">
-                  <strong>Note:</strong> Your secrets are stored locally in your browser. They will not be synced across devices.
-                  Make sure to back them up if needed.
+                  <strong>Note:</strong> Your secrets are stored locally in your browser. Use the backup feature above to transfer settings between devices or browsers.
                 </p>
               </div>
 

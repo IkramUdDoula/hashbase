@@ -19,6 +19,7 @@ A modern, highly customizable React dashboard application featuring drag-and-dro
 - 🎛️ **Widget Management** - Enable/disable widgets from settings panel with search functionality
 - ⚙️ **In-App Configuration** - Configure API secrets directly in the app (stored in localStorage)
 - 🔑 **Advanced Secrets Management** - Add custom secrets, search, alphabetically sorted display
+- 📥 **Config Export/Import** - Download and upload entire dashboard configuration with automatic AES-256 encryption
 - 🔍 **Web Search Integration** - Real-time web search for AI responses using Tavily AI API
 - 🎨 **Beautiful Modern UI** - Built with Tailwind CSS and shadcn/ui components
 - 🌓 **Dark Mode Support** - Full dark mode with smooth transitions
@@ -51,13 +52,42 @@ npm install
 
 ### 2. Configure Environment Variables
 
-Copy the example environment file and add your Gmail API credentials:
+Copy the example environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and add your Gmail API credentials (see Gmail Widget configuration below for details).
+**Required Configuration:**
+
+1. **Gmail API Credentials** (for Gmail widget)
+   - See Gmail Widget configuration section below for detailed setup
+   - Add `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, and `GMAIL_REDIRECT_URI` to `.env`
+
+2. **Config Encryption Key** (for secure config export/import)
+   
+   Generate a 64-character encryption key:
+   ```bash
+   node generate-encryption-key.js
+   ```
+   
+   This will output:
+   ```
+   VITE_CONFIG_ENCRYPTION_KEY=cfcd868eeeecfe941addf4ca73214bbb25eaec2a635c292ba2223aeee297b7e0
+   ```
+   
+   Copy the entire line and paste it into your `.env` file.
+   
+   **⚠️ IMPORTANT:** 
+   - The key must be exactly **64 hexadecimal characters** (32 bytes)
+   - Keep this key secure and backed up
+   - Without this key, you cannot decrypt exported configs
+   - Use the same key on all devices where you want to import configs
+   - **Restart the dev server** after adding the key
+
+3. **News API Key** (optional, for News widget)
+   - Get a free key from [newsapi.org/register](https://newsapi.org/register)
+   - Add `NEWS_API_KEY` to `.env`
 
 ### 3. Run the Application
 
@@ -189,21 +219,72 @@ Click the **Settings** button (⚙️) > **Configuration** > **Apps** tab to tog
 
 #### **Secrets Tab** - Advanced Management
 
-The Secrets tab now includes:
+The Secrets tab includes:
 - **Search functionality** - Quickly find specific API keys
 - **Alphabetical sorting** - All secrets are displayed in alphabetical order
-- **Custom secrets** - Add your own custom API keys using the "+" button
-- **Delete custom secrets** - Remove custom secrets with the trash icon
+
+#### **Configuration Backup & Restore**
+
+In Settings > Secrets tab, you can backup and restore your entire dashboard configuration:
+
+**Download Config:**
+- Click "Download Config" in Settings > Secrets tab to export all settings
+- **Automatic Encryption:** API secrets are automatically encrypted using `VITE_CONFIG_ENCRYPTION_KEY` from `.env`
+  - Uses AES-256-GCM encryption (industry standard)
+  - Encryption happens automatically - no user prompts
+  - Secrets are unreadable in the exported JSON file
+- **What's Included:**
+  - ✅ API secrets (Netlify, OpenAI, Claude, Tavily, GitHub) - **encrypted**
+  - ✅ Widget layout and canvas configuration
+  - ✅ Widget preferences (enabled/disabled state)
+  - ✅ Theme preference (light/dark mode)
+  - ✅ AI chat conversations and settings
+  - ✅ News widget settings
+  - ✅ GitHub widget repository configuration
+  - ❌ Gmail OAuth tokens (excluded - managed by .env file)
+- File is named `hashbase-config-YYYY-MM-DD.json`
+- Safe to store in cloud storage, email, or USB drives
+
+**Upload Config:**
+- Click "Upload Config" to import settings from a previously exported JSON file
+- Automatically decrypts secrets using the same encryption key from `.env`
+- **Important:** The same `VITE_CONFIG_ENCRYPTION_KEY` must be in your `.env` file
+- Page automatically refreshes after successful import
+- Perfect for:
+  - Migrating to a new device
+  - Switching between browsers
+  - Quick dashboard setup
+  - Backing up your configuration
+
+**Cross-Device Setup:**
+1. On Device A: Download config (secrets encrypted)
+2. Copy your `.env` file (with `VITE_CONFIG_ENCRYPTION_KEY`) to Device B
+3. On Device B: Upload config (secrets automatically decrypted)
+4. Done! All settings restored
+
+**Security & Encryption:**
+- **Algorithm:** AES-256-GCM (authenticated encryption)
+- **Key Storage:** Encryption key stored in `.env` file (gitignored, never committed)
+- **What's Encrypted:** Only API secrets are encrypted
+- **What's Not Encrypted:** Layout, preferences, and widget settings (for compatibility)
+- **Key Requirement:** 64 hexadecimal characters (32 bytes)
+- **Decryption:** Requires the exact same encryption key
+- **No Password Recovery:** If you lose the encryption key, encrypted secrets cannot be recovered
+
+**Troubleshooting:**
+- **Secrets not encrypted?** Check console for warnings, ensure key is 64 characters, restart dev server
+- **Import fails?** Ensure the same encryption key is in `.env` on the import device
+- **"Encryption key mismatch" error?** The config was encrypted with a different key
 
 #### **Clear All Data**
 
 In Settings > Secrets tab, there's a "Clear All Data" button in the Danger Zone that will:
-- Remove all API tokens (Gmail, Netlify)
+- Remove all API tokens (Gmail OAuth, Netlify, OpenAI, Claude, etc.)
 - Clear all widget preferences
 - Reset widget layouts
 - Clear all localStorage data
 
-Use this if you want to start fresh or are experiencing authentication issues.
+Use this if you want to start fresh or are experiencing authentication issues. **Note:** You'll need to re-authenticate with Gmail after clearing data.
 
 ## Usage
 
@@ -298,6 +379,7 @@ hashbase/
 │   ├── services/
 │   │   ├── aiService.js                # OpenAI & Claude API integration
 │   │   ├── bd24LiveService.js          # BD24 Live RSS feed service
+│   │   ├── configService.js            # Config export/import for backup & restore
 │   │   ├── githubService.js            # GitHub API service
 │   │   ├── gmailService.js             # Gmail API service
 │   │   ├── layoutService.js            # Layout management & validation logic
