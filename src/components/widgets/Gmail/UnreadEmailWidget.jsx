@@ -1,25 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Widget } from '../Widget';
+import { BaseWidget } from '../../BaseWidget';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Mail, RefreshCw, Loader2, LogIn, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Mail, RefreshCw, Loader2, LogIn, ExternalLink } from 'lucide-react';
 import { fetchUnreadEmails, getAuthUrl, checkAuthStatus, getGmailUrl } from '@/services/gmailService';
 
-const EMAILS_PER_PAGE = 3;
-
-export function GmailWidget() {
+export function UnreadEmailWidget({ rowSpan = 2 }) {
   const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
 
   const loadEmails = async () => {
     try {
       setError(null);
-      // Check authentication status first
       const authStatus = await checkAuthStatus();
       setIsAuthenticated(authStatus);
       
@@ -52,30 +48,6 @@ export function GmailWidget() {
     }
   };
 
-  const handleDismiss = async (emailId) => {
-    try {
-      setDismissingIds(prev => new Set(prev).add(emailId));
-      await markAsRead(emailId);
-      
-      setEmails(prevEmails => {
-        const newEmails = prevEmails.filter(email => email.id !== emailId);
-        const totalPages = Math.ceil(newEmails.length / EMAILS_PER_PAGE);
-        if (currentPage >= totalPages && totalPages > 0) {
-          setCurrentPage(totalPages - 1);
-        }
-        return newEmails;
-      });
-    } catch (err) {
-      console.error('Error dismissing email:', err);
-    } finally {
-      setDismissingIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(emailId);
-        return newSet;
-      });
-    }
-  };
-
   const handleOpenEmail = (emailId) => {
     const gmailUrl = getGmailUrl(emailId);
     window.open(gmailUrl, '_blank');
@@ -105,26 +77,7 @@ export function GmailWidget() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    setCurrentPage(0);
     loadEmails();
-  };
-
-  // Pagination calculations
-  const totalPages = Math.ceil(emails.length / EMAILS_PER_PAGE);
-  const startIndex = currentPage * EMAILS_PER_PAGE;
-  const endIndex = startIndex + EMAILS_PER_PAGE;
-  const currentEmails = emails.slice(startIndex, endIndex);
-
-  const goToNextPage = () => {
-    if (currentPage < totalPages - 1) {
-      setCurrentPage(prev => prev + 1);
-    }
-  };
-
-  const goToPreviousPage = () => {
-    if (currentPage > 0) {
-      setCurrentPage(prev => prev - 1);
-    }
   };
 
   const formatDate = (dateString) => {
@@ -171,12 +124,13 @@ export function GmailWidget() {
   );
 
   return (
-    <Widget
+    <BaseWidget
       icon={Mail}
       title="Unread Emails"
       description="Your latest unread messages from Gmail"
       badge={badge}
       headerActions={headerActions}
+      rowSpan={rowSpan}
     >
       {loading ? (
         <div className="flex items-center justify-center h-full">
@@ -213,74 +167,40 @@ export function GmailWidget() {
           <p className="text-xs text-muted-foreground mt-1">You're all caught up! 🎉</p>
         </div>
       ) : (
-        <>
-          <div className="space-y-3">
-            {currentEmails.map((email) => {
-              const fromMatch = email.from.match(/^(.+?)\s*<(.+?)>$/) || [null, email.from, ''];
-              const senderName = fromMatch[1].trim();
-              const senderEmail = fromMatch[2].trim();
-              
-              return (
-                <div
-                  key={email.id}
-                  className="p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors relative group"
-                >
-                  <div className="flex items-start justify-between gap-2 mb-0.5">
-                    <p className="font-semibold text-sm line-clamp-1 flex-1">{senderName}</p>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDate(email.date)}
-                    </span>
-                  </div>
-                  
-                  <p className="text-xs text-muted-foreground line-clamp-1 mb-2">{senderEmail}</p>
-                  
-                  <div className="flex items-end justify-between gap-2">
-                    <p className="text-sm font-medium line-clamp-1 flex-1">{email.subject}</p>
-                    
-                    <div className="flex gap-1 flex-shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleOpenEmail(email.id)}
-                        title="Open in Gmail"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
+        <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-1">
+          {emails.map((email) => {
+            const fromMatch = email.from.match(/^(.+?)\s*<(.+?)>$/) || [null, email.from, ''];
+            const senderName = fromMatch[1].trim();
+            const senderEmail = fromMatch[2].trim();
+            
+            return (
+              <div
+                key={email.id}
+                className="p-4 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 hover:shadow-md transition-shadow cursor-pointer group"
+                onClick={() => handleOpenEmail(email.id)}
+              >
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <p className="font-semibold text-blue-900 dark:text-blue-100 text-sm line-clamp-1 flex-1">
+                    {senderName}
+                  </p>
+                  <span className="text-xs text-blue-700 dark:text-blue-300 whitespace-nowrap">
+                    {formatDate(email.date)}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-          
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-3 border-t mt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToPreviousPage}
-                disabled={currentPage === 0}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                Page {currentPage + 1} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToNextPage}
-                disabled={currentPage === totalPages - 1}
-              >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-          )}
-        </>
+                
+                <p className="text-xs text-blue-600 dark:text-blue-400 line-clamp-1 mb-2">{senderEmail}</p>
+                
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100 line-clamp-1 flex-1">
+                    {email.subject}
+                  </p>
+                  <ExternalLink className="h-4 w-4 text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
-    </Widget>
+    </BaseWidget>
   );
 }

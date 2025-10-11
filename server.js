@@ -260,6 +260,102 @@ app.post('/api/gmail/mark-read', async (req, res) => {
   }
 });
 
+// ===== Netlify API Endpoints =====
+
+// Check if Netlify is configured
+app.get('/api/netlify/status', (req, res) => {
+  const configured = !!process.env.NETLIFY_ACCESS_TOKEN;
+  res.json({ configured });
+});
+
+// Fetch all deploys from all sites
+app.get('/api/netlify/deploys', async (req, res) => {
+  try {
+    const accessToken = process.env.NETLIFY_ACCESS_TOKEN;
+    
+    if (!accessToken) {
+      return res.status(401).json({ 
+        error: 'Not configured',
+        message: 'Please add NETLIFY_ACCESS_TOKEN to your .env file'
+      });
+    }
+
+    // Fetch all sites
+    const sitesResponse = await fetch('https://api.netlify.com/api/v1/sites', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!sitesResponse.ok) {
+      throw new Error(`Failed to fetch sites: ${sitesResponse.statusText}`);
+    }
+
+    const sites = await sitesResponse.json();
+    
+    // Fetch latest deploys for each site
+    const deployPromises = sites.map(async (site) => {
+      try {
+        const deploysResponse = await fetch(
+          `https://api.netlify.com/api/v1/sites/${site.id}/deploys?per_page=1`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (!deploysResponse.ok) {
+          console.error(`Failed to fetch deploys for site ${site.name}`);
+          return null;
+        }
+
+        const deploys = await deploysResponse.json();
+        
+        if (deploys.length === 0) {
+          return null;
+        }
+
+        const deploy = deploys[0];
+        
+        return {
+          id: deploy.id,
+          siteId: site.id,
+          siteName: site.name,
+          state: deploy.state,
+          context: deploy.context,
+          branch: deploy.branch,
+          commitRef: deploy.commit_ref,
+          commitUrl: deploy.commit_url,
+          createdAt: deploy.created_at,
+          publishedAt: deploy.published_at,
+          deployUrl: deploy.deploy_ssl_url || deploy.deploy_url,
+          siteUrl: site.url,
+          errorMessage: deploy.error_message,
+          buildTime: deploy.deploy_time,
+        };
+      } catch (error) {
+        console.error(`Error fetching deploys for site ${site.name}:`, error);
+        return null;
+      }
+    });
+
+    const allDeploys = await Promise.all(deployPromises);
+    const validDeploys = allDeploys.filter(deploy => deploy !== null);
+    
+    // Sort by creation date (most recent first)
+    validDeploys.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    res.json({ deploys: validDeploys });
+  } catch (error) {
+    console.error('Error fetching Netlify deploys:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch deploys',
+      message: error.message 
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`\nTo authenticate with Gmail, visit: http://localhost:${PORT}/api/auth/url`);

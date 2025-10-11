@@ -1,21 +1,23 @@
-# Hashbase - Gmail Unread Email Viewer
+# Hashbase - Dashboard Widget Platform
 
-A beautiful React single-page application that displays your unread Gmail emails in a centered box on a canvas-like interface. Built with React, Vite, Tailwind CSS, and shadcn/ui.
+A beautiful React single-page application that displays widgets for various services including Gmail and Netlify. Built with React, Vite, Tailwind CSS, and shadcn/ui.
 
 ## Features
 
-- 📧 Display unread emails from Gmail
+- 📧 **Gmail Widget** - Display unread emails from Gmail
+- 🚀 **Netlify Widget** - Monitor latest deploys from all your projects
 - 🎨 Beautiful, modern UI with Tailwind CSS and shadcn/ui
 - 🔄 Auto-refresh every 60 seconds
 - 📱 Responsive design
-- 🎯 Centered box layout (20% width, 50% height)
+- 🌓 Dark mode support
 - ⚡ Fast development with Vite
 
 ## Prerequisites
 
 - Node.js (v20.x or higher)
 - npm or yarn
-- Gmail API credentials from Google Cloud Console
+- Gmail API credentials from Google Cloud Console (for Gmail widget)
+- Netlify Personal Access Token (for Netlify widget)
 
 ## Setup Instructions
 
@@ -25,7 +27,7 @@ A beautiful React single-page application that displays your unread Gmail emails
 npm install
 ```
 
-### 2. Set Up Gmail API Credentials
+### 2. Set Up Gmail API Credentials (Optional)
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select an existing one
@@ -40,19 +42,36 @@ npm install
    - Add authorized redirect URI: `http://localhost:3001/oauth2callback`
    - Copy the Client ID and Client Secret
 
-### 3. Configure Environment Variables
+### 3. Set Up Netlify API Token (Optional)
 
-Your `.env` file should already exist. Update it with your Gmail API credentials:
+1. Go to [Netlify Personal Access Tokens](https://app.netlify.com/user/applications#personal-access-tokens)
+2. Click "New access token"
+3. Give it a descriptive name (e.g., "Hashbase Dashboard")
+4. Copy the generated token
+
+### 4. Configure Environment Variables
+
+Copy `.env.example` to `.env` and update it with your credentials:
 
 ```env
+# Gmail API Credentials (optional)
 GMAIL_CLIENT_ID=your_client_id_here
 GMAIL_CLIENT_SECRET=your_client_secret_here
 GMAIL_REDIRECT_URI=http://localhost:3001/oauth2callback
+
+# Netlify API Credentials (optional)
+NETLIFY_ACCESS_TOKEN=your_netlify_access_token_here
+
+# Server Configuration
 PORT=3001
+
+# Frontend Configuration
 VITE_API_URL=http://localhost:3001
 ```
 
-### 4. Run the Application
+**Note:** You can configure only the widgets you want to use. Each widget will show a configuration message if its credentials are not set.
+
+### 5. Run the Application
 
 You need to run both the backend server and the frontend development server:
 
@@ -66,27 +85,33 @@ npm run server
 npm run dev
 ```
 
-### 5. Authenticate with Gmail
+### 6. Authenticate with Gmail (if using Gmail widget)
 
-1. The backend server will display an authentication URL in the console
-2. Visit `http://localhost:3001/api/auth/url` to get the authorization URL
-3. Click the URL and authorize the application with your Gmail account
-4. After authorization, you'll be redirected back and your credentials will be saved locally in `token.json`
+1. Click the login button in the Gmail widget
+2. Authorize the application with your Gmail account
+3. After authorization, you'll be redirected back and your credentials will be saved locally in `token.json`
 
-### 6. Access the Application
+### 7. Access the Application
 
 Open your browser and navigate to the URL shown by Vite (typically `http://localhost:5173`)
 
 ## Usage
 
-- The app will automatically fetch and display your unread emails
-- Emails are refreshed every 60 seconds
-- Click the refresh button to manually refresh the email list
-- The box shows:
-  - Sender name
-  - Email subject
-  - Email snippet
-  - Time received
+### Gmail Widget
+- Displays your unread emails
+- Auto-refreshes every 60 seconds
+- Click the refresh button to manually refresh
+- Click on emails to open them in Gmail
+- Shows sender, subject, and time received
+
+### Netlify Widget
+- Displays latest deploys from all your Netlify projects
+- Shows deploy status (ready, building, error)
+- Displays build time, branch, and context
+- Auto-refreshes every 60 seconds
+- Click "Deploy" to view deploy details in Netlify
+- Click "Site" to visit the live site
+- Color-coded badges for different deploy states
 
 ## Project Structure
 
@@ -94,21 +119,29 @@ Open your browser and navigate to the URL shown by Vite (typically `http://local
 hashbase/
 ├── src/
 │   ├── components/
-│   │   ├── ui/           # shadcn/ui components
-│   │   └── EmailBox.jsx  # Main email display component
+│   │   ├── ui/                    # shadcn/ui components
+│   │   ├── widgets/
+│   │   │   ├── GmailWidget.jsx   # Gmail widget component
+│   │   │   └── NetlifyWidget.jsx # Netlify widget component
+│   │   ├── Widget.jsx             # Base widget component
+│   │   └── SettingsButton.jsx     # Settings/theme toggle
 │   ├── services/
-│   │   └── gmailService.js  # Gmail API service
+│   │   ├── gmailService.js        # Gmail API service
+│   │   └── netlifyService.js      # Netlify API service
+│   ├── contexts/
+│   │   └── ThemeContext.jsx       # Dark mode context
 │   ├── lib/
-│   │   └── utils.js      # Utility functions
-│   ├── App.jsx           # Main app component
-│   ├── main.jsx          # Entry point
-│   └── index.css         # Global styles with Tailwind
-├── server.js             # Express backend for Gmail API
-├── .env                  # Environment variables (not in git)
-├── package.json          # Dependencies and scripts
-├── vite.config.js        # Vite configuration
-├── tailwind.config.js    # Tailwind CSS configuration
-└── README.md             # This file
+│   │   └── utils.js               # Utility functions
+│   ├── App.jsx                    # Main app component
+│   ├── main.jsx                   # Entry point
+│   └── index.css                  # Global styles with Tailwind
+├── server.js                      # Express backend for APIs
+├── .env                           # Environment variables (not in git)
+├── .env.example                   # Example environment variables
+├── package.json                   # Dependencies and scripts
+├── vite.config.js                 # Vite configuration
+├── tailwind.config.js             # Tailwind CSS configuration
+└── README.md                      # This file
 ```
 
 ## Technologies Used
@@ -119,30 +152,54 @@ hashbase/
 - **shadcn/ui** - Beautiful UI components
 - **Express** - Backend server
 - **Google APIs** - Gmail integration
+- **Netlify API** - Deploy monitoring
 - **Lucide React** - Icon library
 
 ## Security Notes
 
 - Gmail credentials are stored locally in `token.json`
+- Netlify access token is stored in `.env` file
 - The `.env` file contains sensitive information and should never be committed to version control
 - OAuth tokens are refreshed automatically by the Google API client
+- All API calls are proxied through the backend server to keep credentials secure
 
 ## Troubleshooting
 
-### "Not authenticated" error
+### Gmail Widget Issues
+
+**"Not authenticated" error**
 - Make sure you've completed the Gmail authentication process
 - Check that `token.json` exists in the project root
-- Try re-authenticating by deleting `token.json` and following step 5 again
+- Try re-authenticating by deleting `token.json` and clicking the login button
 
-### Backend server not connecting
+**No emails showing**
+- Check the browser console for errors
+- Verify your Gmail account has unread emails
+- Ensure the Gmail API is enabled in Google Cloud Console
+
+### Netlify Widget Issues
+
+**"Not configured" error**
+- Ensure `NETLIFY_ACCESS_TOKEN` is set in your `.env` file
+- Verify the token is valid and has not expired
+- Check that you have Netlify sites in your account
+
+**No deploys showing**
+- Verify you have sites with deploys in your Netlify account
+- Check the browser console for errors
+- Try refreshing manually with the refresh button
+
+### General Issues
+
+**Backend server not connecting**
 - Ensure the backend server is running on port 3001
 - Check that `VITE_API_URL` in `.env` matches your backend URL
 - Verify no other application is using port 3001
 
-### No emails showing
-- Check the browser console for errors
-- Verify your Gmail account has unread emails
-- Ensure the Gmail API is enabled in Google Cloud Console
+**Widgets not updating**
+- Check your internet connection
+- Verify the backend server is running
+- Check browser console for network errors
 
 ## License
 

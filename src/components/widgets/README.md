@@ -1,39 +1,104 @@
 # Widgets System
 
-This directory contains reusable widget components for the Hashbase dashboard.
+This directory contains reusable widget components for the Hashbase dashboard, organized by service/category.
 
 ## Structure
 
-- **Widget.jsx** - Base widget component with consistent styling and layout
-- **GmailWidget.jsx** - Gmail unread emails widget
-- **WidgetTemplate.jsx** - Template for creating new widgets
+```
+widgets/
+├── Gmail/
+│   └── UnreadEmailWidget.jsx    - Gmail unread emails widget
+├── Netlify/
+│   └── DeploymentWidget.jsx     - Netlify deployment status widget
+└── README.md
+```
+
+## Widget Architecture
+
+### BaseWidget Component
+All widgets use the `BaseWidget` component which provides:
+- **Fixed height** based on `rowSpan` (1-4 rows)
+- **Dynamic card pagination** - cards adapt to available space
+- **Consistent styling** and layout
+- **Overflow handling** with scrollable content area
+
+### Row Span System
+- **1 row** = 200px height, shows 1 card (no scrolling needed)
+- **2 rows** = 400px height, shows 3 cards (no scrolling needed)
+- **3 rows** = 600px height, shows 5 cards (no scrolling needed)
+- **4 rows** = 800px height, shows 7 cards (no scrolling needed)
+
+Users can resize widgets using the +/- buttons in the UI. Additional cards are paginated.
 
 ## Adding a New Widget
 
-1. **Copy the template:**
+1. **Create a new folder** for your service/category:
    ```bash
-   cp WidgetTemplate.jsx YourWidget.jsx
+   mkdir src/components/widgets/YourService
    ```
 
-2. **Customize your widget:**
-   - Update the icon, title, and description
-   - Implement your data fetching logic
-   - Design your item cards/layout
-   - Add any specific actions or interactions
+2. **Create your widget component:**
+   ```javascript
+   // src/components/widgets/YourService/YourWidget.jsx
+   import React, { useState, useEffect, useMemo } from 'react';
+   import { BaseWidget } from '../../BaseWidget';
+   import { Button } from '@/components/ui/button';
+   import { Badge } from '@/components/ui/badge';
+   import { YourIcon } from 'lucide-react';
+   
+   export function YourWidget({ rowSpan = 2 }) {
+     // Calculate cards per page based on rowSpan (no scrolling)
+     const cardsPerPage = useMemo(() => {
+       const heightMap = { 1: 1, 2: 3, 3: 5, 4: 7 };
+       return heightMap[rowSpan] || 3;
+     }, [rowSpan]);
+     
+     // Your data fetching and pagination logic
+     const [items, setItems] = useState([]);
+     const [currentPage, setCurrentPage] = useState(0);
+     
+     // Pagination
+     const totalPages = Math.ceil(items.length / cardsPerPage);
+     const currentItems = items.slice(
+       currentPage * cardsPerPage,
+       (currentPage + 1) * cardsPerPage
+     );
+     
+     return (
+       <BaseWidget
+         icon={YourIcon}
+         title="Your Widget"
+         description="Widget description"
+         rowSpan={rowSpan}
+       >
+         <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+           {currentItems.map(item => (
+             <div key={item.id} className="p-3 rounded-lg border bg-card">
+               {/* Your card content */}
+             </div>
+           ))}
+         </div>
+         
+         {/* Pagination controls if needed */}
+       </BaseWidget>
+     );
+   }
+   ```
 
 3. **Add to App.jsx:**
    ```javascript
-   import { YourWidget } from './components/widgets/YourWidget';
+   import { YourWidget } from './components/widgets/YourService/YourWidget';
    
    const widgets = [
-     { id: 'gmail', component: GmailWidget },
-     { id: 'your-widget', component: YourWidget },
+     { id: 'your-widget', component: YourWidget, rowSpan: 2 },
    ];
    ```
 
 ## Widget Features
 
 All widgets automatically include:
+- ✅ Fixed height based on user-configurable rowSpan (1-4)
+- ✅ Dynamic card pagination based on available space
 - ✅ Auto-refresh every 60 seconds
 - ✅ Refresh on tab visibility change
 - ✅ Manual refresh button
@@ -41,29 +106,30 @@ All widgets automatically include:
 - ✅ Error handling
 - ✅ Consistent styling
 - ✅ Responsive design
+- ✅ Drag-and-drop repositioning
+- ✅ Resizable via UI controls
 
 ## Example Widgets to Build
 
-- **GitHub Widget** - Show recent notifications, PRs, issues
-- **Netlify Widget** - Display recent deployments and build status
-- **Calendar Widget** - Show upcoming events
-- **Weather Widget** - Display current weather
-- **Tasks Widget** - Show your to-do list
-- **RSS Feed Widget** - Display latest articles
+- **GitHub/** - PRs, issues, notifications
+- **Calendar/** - Upcoming events
+- **Weather/** - Current weather
+- **Tasks/** - To-do list
+- **RSS/** - Latest articles
+- **Twitter/** - Recent tweets
 
-## Widget Props
-
-The base `Widget` component accepts:
+## BaseWidget Props
 
 ```javascript
-<Widget
+<BaseWidget
   icon={IconComponent}           // Lucide icon component
   title="Widget Title"           // Widget header title
   description="Description"      // Optional subtitle
   badge={<Badge>5</Badge>}      // Optional badge (e.g., count)
   headerActions={<Button />}     // Optional header action buttons
+  rowSpan={1-4}                 // Number of rows (height)
   className="custom-class"       // Optional additional classes
 >
   {/* Your widget content */}
-</Widget>
+</BaseWidget>
 ```
