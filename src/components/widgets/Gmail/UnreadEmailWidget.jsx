@@ -3,9 +3,10 @@ import { BaseWidget } from '../../BaseWidget';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Mail, RefreshCw, Loader2, LogIn, ExternalLink } from 'lucide-react';
+import { SiGmail } from 'react-icons/si';
 import { fetchUnreadEmails, getAuthUrl, checkAuthStatus, getGmailUrl } from '@/services/gmailService';
 
-export function UnreadEmailWidget({ rowSpan = 2 }) {
+export function UnreadEmailWidget({ rowSpan = 2, dragRef }) {
   const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -125,12 +126,14 @@ export function UnreadEmailWidget({ rowSpan = 2 }) {
 
   return (
     <BaseWidget
-      icon={Mail}
-      title="Unread Emails"
-      description="Your latest unread messages from Gmail"
+      logo={SiGmail}
+      appName="Gmail"
+      widgetName="Unread"
+      tooltip="Your latest unread messages from Gmail"
       badge={badge}
       headerActions={headerActions}
       rowSpan={rowSpan}
+      dragRef={dragRef}
     >
       {loading ? (
         <div className="flex items-center justify-center h-full">

@@ -7,7 +7,7 @@ export function DropZone({ rowIndex, colIndex, onDrop, children }) {
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: WIDGET_TYPE,
     drop: (item) => {
-      onDrop(item.widgetId, rowIndex, colIndex);
+      onDrop(item.widgetId, colIndex, rowIndex);
     },
     collect: (monitor) => ({
       isOver: monitor.isOver(),

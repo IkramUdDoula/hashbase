@@ -3,9 +3,10 @@ import { BaseWidget } from '../../BaseWidget';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Rocket, RefreshCw, Loader2, CheckCircle2, XCircle, Clock, AlertCircle, GitBranch, Box, Timer } from 'lucide-react';
+import { SiNetlify } from 'react-icons/si';
 import { fetchNetlifyDeploys, checkNetlifyStatus, getNetlifyDeployUrl } from '@/services/netlifyService';
 
-export function DeploymentWidget({ rowSpan = 2 }) {
+export function DeploymentWidget({ rowSpan = 2, dragRef }) {
   const [deploys, setDeploys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -128,12 +129,14 @@ export function DeploymentWidget({ rowSpan = 2 }) {
 
   return (
     <BaseWidget
-      icon={Rocket}
-      title="Netlify Deploys"
-      description="Latest deploys from all your projects"
+      logo={SiNetlify}
+      appName="Netlify"
+      widgetName="Deploys"
+      tooltip="Latest deploys from all your projects"
       badge={badge}
       headerActions={headerActions}
       rowSpan={rowSpan}
+      dragRef={dragRef}
     >
       {loading ? (
         <div className="flex items-center justify-center h-full">

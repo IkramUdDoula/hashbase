@@ -1,4 +1,10 @@
 import React from 'react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 /**
  * BaseWidget Component
@@ -12,24 +18,28 @@ import React from 'react';
  * - 4 rows = 800px
  * 
  * @param {Object} props
- * @param {React.Component} props.icon - Icon component to display in header
- * @param {string} props.title - Widget title
- * @param {string} props.description - Widget description (optional)
+ * @param {React.Component} props.logo - Logo icon component (used as drag handle)
+ * @param {string} props.appName - Application name (e.g., "Gmail")
+ * @param {string} props.widgetName - Widget name (e.g., "Unread")
+ * @param {string} props.tooltip - Tooltip text (optional)
  * @param {React.ReactNode} props.badge - Badge element to display in header (optional)
  * @param {React.ReactNode} props.headerActions - Action buttons for header (optional)
  * @param {number} props.rowSpan - Number of rows (1-4) this widget occupies
  * @param {React.ReactNode} props.children - Widget content
  * @param {string} props.className - Additional CSS classes
+ * @param {React.Ref} props.dragRef - Ref for drag handle
  */
 export function BaseWidget({ 
-  icon: Icon, 
-  title, 
-  description, 
+  logo: Logo, 
+  appName,
+  widgetName, 
+  tooltip, 
   badge,
   headerActions,
   rowSpan = 1,
   children,
-  className = ''
+  className = '',
+  dragRef
 }) {
   // Calculate fixed height based on rowSpan
   const heightMap = {
@@ -41,23 +51,46 @@ export function BaseWidget({
   
   const heightClass = heightMap[rowSpan] || heightMap[1];
   
+  const headerContent = (
+    <div className="flex items-center gap-2">
+      {Logo && (
+        <div 
+          ref={dragRef}
+          className="cursor-move p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          title="Drag to rearrange"
+        >
+          <Logo className="h-4 w-4 text-gray-700 dark:text-gray-300" />
+        </div>
+      )}
+      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{appName}</span>
+      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{widgetName}</span>
+    </div>
+  );
+  
   return (
     <div className={`w-full flex flex-col bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 rounded-xl shadow-sm ${heightClass} ${className}`}>
       {/* Header */}
       <div className="px-6 pt-4 pb-3 flex-shrink-0 border-b border-gray-100 dark:border-gray-800">
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2">
-            {Icon && <Icon className="h-5 w-5 text-gray-700 dark:text-gray-300" />}
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-          </div>
+        <div className="flex items-center justify-between">
+          {tooltip ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {headerContent}
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{tooltip}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            headerContent
+          )}
           <div className="flex items-center gap-2">
             {badge}
             {headerActions}
           </div>
         </div>
-        {description && (
-          <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
-        )}
       </div>
       
       {/* Content with custom scrollbar */}

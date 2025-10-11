@@ -2,7 +2,7 @@ import React from 'react';
 import { BaseWidget } from '@/components/BaseWidget';
 import { FlaskConical } from 'lucide-react';
 
-export function TestSizingWidget({ rowSpan = 1 }) {
+export function TestSizingWidget({ rowSpan = 1, dragRef }) {
   // Generate 10 dummy cards
   const dummyCards = Array.from({ length: 10 }, (_, i) => ({
     id: i + 1,
@@ -12,10 +12,12 @@ export function TestSizingWidget({ rowSpan = 1 }) {
 
   return (
     <BaseWidget
-      icon={FlaskConical}
-      title="R&D Sizing Test"
-      description="Testing vertical sizing with 10 dummy cards"
+      logo={FlaskConical}
+      appName="R&D"
+      widgetName="Sizing Test"
+      tooltip="Testing vertical sizing with 10 dummy cards"
       rowSpan={rowSpan}
+      dragRef={dragRef}
     >
       {/* Scrollable container for cards */}
       <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-1">

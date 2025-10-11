@@ -222,12 +222,13 @@ export function Canvas({ widgets }) {
     const rows = [];
     
     // Create drop zones for each row position
-    for (let rowIndex = 0; rowIndex < MAX_ROWS_PER_COLUMN; rowIndex++) {
+    let rowIndex = 0;
+    while (rowIndex < MAX_ROWS_PER_COLUMN) {
       // Check if this row is the start of a widget
       const widget = column.find(w => w && w.startRow === rowIndex);
       
       if (widget) {
-        // Render widget with its rowSpan - flexible height based on content
+        // Render widget with its rowSpan
         rows.push(
           <DropZone
             key={`${colIndex}-${rowIndex}`}
@@ -235,21 +236,19 @@ export function Canvas({ widgets }) {
             colIndex={colIndex}
             onDrop={handleDrop}
           >
-            <div className="min-h-[200px] h-auto">
-              <DraggableWidget
-                widgetId={widget.id}
-                widget={getWidgetById(widget.id)}
-                rowSpan={widget.rowSpan}
-                onResize={handleResize}
-              />
-            </div>
+            <DraggableWidget
+              widgetId={widget.id}
+              widget={getWidgetById(widget.id)}
+              rowSpan={widget.rowSpan}
+              onResize={handleResize}
+            />
           </DropZone>
         );
         
         // Skip the rows that this widget occupies
-        rowIndex += widget.rowSpan - 1;
+        rowIndex += widget.rowSpan;
       } else if (!occupied.has(rowIndex)) {
-        // Render empty drop zone
+        // Render empty drop zone - exactly 200px to match single row
         rows.push(
           <DropZone
             key={`${colIndex}-${rowIndex}`}
@@ -257,11 +256,15 @@ export function Canvas({ widgets }) {
             colIndex={colIndex}
             onDrop={handleDrop}
           >
-            <div className="min-h-[200px] h-auto border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-600 text-sm py-20">
+            <div className="h-[200px] border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-600 text-sm">
               Drop widget here
             </div>
           </DropZone>
         );
+        rowIndex++;
+      } else {
+        // Row is occupied but not the start of a widget, skip it
+        rowIndex++;
       }
     }
     

@@ -1,6 +1,12 @@
 import React from 'react';
 import { useDrag } from 'react-dnd';
-import { GripVertical, Maximize2, Minimize2 } from 'lucide-react';
+import { RiExpandUpDownFill } from 'react-icons/ri';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 const WIDGET_TYPE = 'WIDGET';
 
@@ -16,50 +22,40 @@ export function DraggableWidget({ widgetId, widget, rowSpan = 1, onResize }) {
   if (!widget) return null;
 
   const WidgetComponent = widget.component;
+  
+  // Cycle through sizes: 1 -> 2 -> 3 -> 4 -> 1 -> ...
+  const handleResizeClick = () => {
+    const nextSize = rowSpan >= 4 ? 1 : rowSpan + 1;
+    onResize(widgetId, nextSize);
+  };
 
   return (
     <div
       ref={dragPreview}
-      className={`relative transition-opacity h-full ${
+      className={`relative transition-opacity ${
         isDragging ? 'opacity-50' : 'opacity-100'
       }`}
     >
-      {/* Drag Handle */}
-      <div
-        ref={drag}
-        className="absolute top-2 left-2 z-10 cursor-move p-1 rounded bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 shadow-sm transition-colors"
-        title="Drag to rearrange"
-      >
-        <GripVertical className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-      </div>
+      {/* Dynamic Resize Icon in Bottom Right Corner */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={handleResizeClick}
+              className="absolute bottom-2 right-2 z-10 p-1.5 rounded-lg bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 shadow-md transition-all hover:scale-110 border border-gray-200 dark:border-gray-700"
+              title="Click to cycle widget height"
+            >
+              <RiExpandUpDownFill className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Click to cycle height (current: {rowSpan} row{rowSpan > 1 ? 's' : ''})</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       
-      {/* Size Controls */}
-      <div className="absolute top-2 right-2 z-10 flex gap-1">
-        <button
-          onClick={() => onResize(widgetId, rowSpan - 1)}
-          disabled={rowSpan <= 1}
-          className="p-1 rounded bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 shadow-sm transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Decrease height"
-        >
-          <Minimize2 className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-        </button>
-        <div className="px-2 py-1 rounded bg-white/80 dark:bg-gray-800/80 shadow-sm text-xs font-medium text-gray-700 dark:text-gray-300">
-          {rowSpan}
-        </div>
-        <button
-          onClick={() => onResize(widgetId, rowSpan + 1)}
-          disabled={rowSpan >= 4}
-          className="p-1 rounded bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 shadow-sm transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Increase height"
-        >
-          <Maximize2 className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-        </button>
-      </div>
-      
-      {/* Widget Content - Pass rowSpan to widget component */}
-      <div className="h-full overflow-hidden pointer-events-auto">
-        <WidgetComponent rowSpan={rowSpan} />
-      </div>
+      {/* Widget Content - Pass rowSpan and drag ref to widget component */}
+      <WidgetComponent rowSpan={rowSpan} dragRef={drag} />
     </div>
   );
 }
