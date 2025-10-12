@@ -1,12 +1,13 @@
 import React, { useMemo, useEffect } from 'react';
 import { SiGmail, SiNetlify, SiGithub } from 'react-icons/si';
 import { TestTube, Sparkles, Newspaper } from 'lucide-react';
-import { UnreadEmailWidget } from './components/widgets/Gmail/UnreadEmailWidget';
-import { DeploymentWidget } from './components/widgets/Netlify/DeploymentWidget';
+import { UnreadEmailWidgetV2 } from './components/widgets/Gmail/UnreadEmailWidgetV2';
+import { DeploymentWidgetV2 } from './components/widgets/Netlify/DeploymentWidgetV2';
 import { AIChatWidget } from './components/widgets/AI/AIChatWidget';
-import { CommitLogWidget } from './components/widgets/GitHub/CommitLogWidget';
-import { NewsWidget } from './components/widgets/News/NewsWidget';
-import { BD24LiveWidget } from './components/widgets/BD24Live/BD24LiveWidget';
+import { GitHubCommitsWidget } from './components/widgets/GitHub/GitHubCommitsWidget';
+import { NewsWidgetV2 } from './components/widgets/News/NewsWidgetV2';
+import { BD24LiveWidgetV2 } from './components/widgets/BD24Live/BD24LiveWidgetV2';
+import { DemoWidget } from './components/widgets/Demo/DemoWidget';
 import { SettingsButton } from './components/SettingsButton';
 import { Canvas } from './components/Canvas';
 import { ScreenSizeGuard } from './components/ScreenSizeGuard';
@@ -22,19 +23,27 @@ function AppContent() {
   // 1 row = 1 card, 2 rows = 3 cards, 3 rows = 5 cards, 4 rows = 7 cards
   const allWidgets = [
     { 
+      id: 'demo-widget', 
+      component: DemoWidget, 
+      rowSpan: 3,
+      name: 'Demo Widget',
+      description: 'Comprehensive demonstration of BaseWidgetV2 features - All states, settings modal, search, and more',
+      icon: TestTube
+    },
+    { 
       id: 'gmail-unread', 
-      component: UnreadEmailWidget, 
+      component: UnreadEmailWidgetV2, 
       rowSpan: 2,
       name: 'Gmail Unread',
-      description: 'View your latest unread emails from Gmail',
+      description: 'View your latest unread emails from Gmail with OAuth2 authentication',
       icon: SiGmail
     },
     { 
       id: 'netlify-deploys', 
-      component: DeploymentWidget, 
+      component: DeploymentWidgetV2, 
       rowSpan: 3,
       name: 'Netlify Deploys',
-      description: 'Monitor your Netlify deployment status',
+      description: 'Monitor your Netlify deployment status with real-time updates',
       icon: SiNetlify
     },
     { 
@@ -47,15 +56,15 @@ function AppContent() {
     },
     { 
       id: 'github-commits', 
-      component: CommitLogWidget, 
+      component: GitHubCommitsWidget, 
       rowSpan: 3,
       name: 'GitHub Commits',
-      description: 'View recent commits from your GitHub repository',
+      description: 'View recent commits from your GitHub repositories with advanced features',
       icon: SiGithub
     },
     { 
       id: 'news-headlines', 
-      component: NewsWidget, 
+      component: NewsWidgetV2, 
       rowSpan: 2,
       name: 'News Headlines',
       description: 'Latest news from around the world with country and topic filtering',
@@ -63,7 +72,7 @@ function AppContent() {
     },
     { 
       id: 'bd24live-news', 
-      component: BD24LiveWidget, 
+      component: BD24LiveWidgetV2, 
       rowSpan: 2,
       name: 'BD24 Live',
       description: 'Latest news from BD24 Live (Bangladesh) via RSS feed - Auto-refreshes every 30 minutes',

@@ -59,7 +59,7 @@ export function BaseWidget({
       {Logo && (
         <div 
           ref={dragRef}
-          className="cursor-move p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="cursor-move p-0.5 rounded hover:bg-white/50 dark:hover:bg-white/10 transition-colors"
           title="Drag to rearrange"
         >
           <Logo className="h-4 w-4 text-gray-700 dark:text-gray-300" />

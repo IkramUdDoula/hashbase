@@ -4,13 +4,14 @@ A modern, highly customizable React dashboard application featuring drag-and-dro
 
 ## Features
 
-### Widget Features
-- 📧 **Gmail Widget** - Display unread emails from Gmail with OAuth2 authentication
-- 🚀 **Netlify Widget** - Monitor latest deploys from all your Netlify projects
+### Widget Features (All using BaseWidgetV2)
+- 📧 **Gmail Widget V2** - Display unread emails with OAuth2 authentication, dual error actions, auto-refresh
+- 🚀 **Netlify Widget V2** - Monitor deploys with status badges, color-coded cards, build time tracking
 - 🤖 **AI Chat Widget** - Chat with OpenAI (GPT-4, GPT-3.5) or Claude AI (Sonnet, Opus, Haiku) with streaming responses
-- 💻 **GitHub Widget** - View recent commits from any GitHub repository
-- 📰 **News Widget** - Latest news headlines with country (20+ countries) and topic filtering
-- 🌐 **BD24 Live Widget** - Bangladesh news from BD24 Live via RSS feed with 30-minute caching
+- 💻 **GitHub Commits Widget** - View commits from all repositories with settings modal, status indicators, auto-refresh
+- 📰 **News Widget V2** - Latest headlines with country/category filtering, settings modal, search
+- 🌐 **BD24 Live Widget V2** - Bangladesh news via RSS with timestamp display, 30-minute auto-refresh
+- 🧪 **Demo Widget** - Comprehensive showcase of all BaseWidgetV2 features and states
 
 ### Core Features
 - 🎯 **Advanced Drag & Drop Layout** - Powered by react-dnd with intelligent position validation
@@ -609,14 +610,39 @@ npm run server   # [DEPRECATED] Run standalone Express server
 
 See `src/components/widgets/README.md` for detailed widget development guide.
 
+### BaseWidgetV2 - Standardized Widget Container
+
+All widgets now use **BaseWidgetV2**, a comprehensive widget container with:
+
+**Built-in State Management:**
+- `loading` - Loading spinner with optional message
+- `error` - Error state with icon, message, and dual action buttons
+- `empty` - Empty state with icon and messages
+- `positive` - Content state with optional search
+
+**Features:**
+- Settings modal support with standardized UI
+- Integrated search functionality
+- Refresh button with loading state
+- Customizable header with logo, app name, widget name, and badges
+- Secondary error actions (e.g., "Try Again" + "Authenticate")
+- Responsive height system (1-4 rows)
+- Modern UI with dark blue toggle buttons and light white hover effects
+
+**Documentation:**
+- `WIDGET_UPGRADE_GUIDE.md` - Complete migration guide from BaseWidget to BaseWidgetV2
+- `BASEWIDGET_V2_*.md` - Detailed component documentation
+- `DemoWidget.jsx` - Comprehensive feature showcase
+
 ### Project Architecture Highlights
 
 - **Integrated Dev Server** - Vite plugin architecture combines frontend and backend in one process
 - **Path Aliases** - Use `@/` to import from `src/` directory (configured in `jsconfig.json`)
-- **Component Composition** - BaseWidget provides consistent UI, individual widgets focus on data
+- **Component Composition** - BaseWidgetV2 provides consistent UI, individual widgets focus on data
 - **Service Layer** - All API calls abstracted into service modules for reusability
 - **State Management** - React hooks + localStorage for persistence (no Redux needed)
 - **Styling** - Tailwind utility classes + shadcn/ui components for consistency
+- **Standardized Widgets** - All widgets follow BaseWidgetV2 patterns for consistency
 
 ### Building for Production
 

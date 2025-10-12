@@ -29,7 +29,7 @@ export function WidgetSearch({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="pl-7 pr-7 h-8 text-sm rounded-lg border-gray-300 dark:border-gray-700 bg-transparent"
+        className="pl-7 pr-7 h-8 text-sm rounded-lg border-gray-300 dark:border-gray-700 bg-transparent focus-visible:ring-1"
       />
       {value && (
         <button
