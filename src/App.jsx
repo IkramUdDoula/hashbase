@@ -1,37 +1,27 @@
 import React, { useMemo, useEffect } from 'react';
 import { SiGmail, SiNetlify, SiGithub } from 'react-icons/si';
-import { TestTube, Sparkles, Newspaper } from 'lucide-react';
+import { Sparkles, Newspaper } from 'lucide-react';
 import { UnreadEmailWidgetV2 } from './components/widgets/Gmail/UnreadEmailWidgetV2';
 import { DeploymentWidgetV2 } from './components/widgets/Netlify/DeploymentWidgetV2';
 import { AIChatWidget } from './components/widgets/AI/AIChatWidget';
 import { GitHubCommitsWidget } from './components/widgets/GitHub/GitHubCommitsWidget';
 import { NewsWidgetV2 } from './components/widgets/News/NewsWidgetV2';
 import { BD24LiveWidgetV2 } from './components/widgets/BD24Live/BD24LiveWidgetV2';
-import { DemoWidget } from './components/widgets/Demo/DemoWidget';
 import { SettingsButton } from './components/SettingsButton';
 import { Canvas } from './components/Canvas';
 import { ScreenSizeGuard } from './components/ScreenSizeGuard';
 import { ToastProvider, useToast } from './components/ui/toast';
-import { isWidgetEnabled, ensureWidgetsEnabled } from './services/widgetRegistry';
+import { isWidgetEnabled, setWidgetPreferences } from './services/widgetRegistry';
 
 function AppContent() {
   const { addToast } = useToast();
 
   // Define all available widgets with metadata
-  // rowSpan: 1 (all widgets now occupy 1 row for uniform layout)
   const allWidgets = [
-    { 
-      id: 'demo-widget', 
-      component: DemoWidget, 
-      rowSpan: 1,
-      name: 'Demo Widget',
-      description: 'Comprehensive demonstration of BaseWidgetV2 features - All states, settings modal, search, and more',
-      icon: TestTube
-    },
     { 
       id: 'gmail-unread', 
       component: UnreadEmailWidgetV2, 
-      rowSpan: 1,
+      rowSpan: 2,
       name: 'Gmail Unread',
       description: 'View your latest unread emails from Gmail with OAuth2 authentication',
       icon: SiGmail
@@ -63,7 +53,7 @@ function AppContent() {
     { 
       id: 'news-headlines', 
       component: NewsWidgetV2, 
-      rowSpan: 1,
+      rowSpan: 4,
       name: 'News Headlines',
       description: 'Latest news from around the world with country and topic filtering',
       icon: Newspaper
@@ -78,12 +68,30 @@ function AppContent() {
     },
   ];
 
-  // Ensure all widgets are enabled by default on first load
+  // Set default widget preferences and layout
   useEffect(() => {
-    console.log('🔧 All widgets defined:', allWidgets.map(w => ({ id: w.id, name: w.name })));
-    const widgetIds = allWidgets.map(w => w.id);
-    console.log('🔧 Ensuring widgets enabled:', widgetIds);
-    ensureWidgetsEnabled(widgetIds);
+    const hasPreferences = localStorage.getItem('hashbase_widget_preferences');
+    const layoutVersion = localStorage.getItem('hashbase_layout_version');
+    
+    // Migration: Reset layout if version doesn't match
+    if (layoutVersion !== '2.0') {
+      localStorage.removeItem('widgetLayout');
+      localStorage.removeItem('widgetRowSpans');
+      localStorage.setItem('hashbase_layout_version', '2.0');
+    }
+    
+    if (!hasPreferences) {
+      // First time user - only enable News and Gmail
+      const defaultPreferences = {
+        'news-headlines': true,
+        'gmail-unread': true,
+        'netlify-deploys': false,
+        'ai-chat': false,
+        'github-commits': false,
+        'bd24live-news': false
+      };
+      setWidgetPreferences(defaultPreferences);
+    }
   }, []);
 
   // Check for auth callback
@@ -105,14 +113,7 @@ function AppContent() {
 
   // Filter widgets based on user preferences
   const enabledWidgets = useMemo(() => {
-    console.log('🔍 Filtering widgets...');
-    const filtered = allWidgets.filter(widget => {
-      const enabled = isWidgetEnabled(widget.id);
-      console.log(`  - ${widget.id} (${widget.name}): ${enabled ? '✅ ENABLED' : '❌ DISABLED'}`);
-      return enabled;
-    });
-    console.log('✅ Enabled widgets count:', filtered.length, filtered.map(w => w.id));
-    return filtered;
+    return allWidgets.filter(widget => isWidgetEnabled(widget.id));
   }, [allWidgets]);
 
   return (

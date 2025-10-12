@@ -51,22 +51,12 @@ export function Canvas({ widgets }) {
             const disabledWidgetIds = Array.from(savedWidgetIds).filter(id => !currentWidgetIds.has(id));
             const hasDisabledWidgets = disabledWidgetIds.length > 0;
             
-            console.log('🔍 Layout validation:', {
-              currentWidgets: Array.from(currentWidgetIds),
-              savedWidgets: Array.from(savedWidgetIds),
-              hasNewWidgets,
-              newWidgetIds,
-              hasDisabledWidgets,
-              disabledWidgetIds
-            });
-            
             // Process layout changes (enable/disable widgets)
             // We should preserve layout unless there's a structural issue
             let layout = parsed;
             
             // Remove disabled widgets from layout
             if (hasDisabledWidgets) {
-              console.log('🗑️ Removing disabled widgets:', disabledWidgetIds);
               disabledWidgetIds.forEach(widgetId => {
                 layout = removeWidgetFromLayout(layout, widgetId);
               });
@@ -74,7 +64,6 @@ export function Canvas({ widgets }) {
             
             // Add new widgets to layout if there's space
             if (hasNewWidgets) {
-              console.log('➕ Adding new widgets:', newWidgetIds);
               const newWidgets = widgets.filter(w => newWidgetIds.includes(w.id));
               
               const failedWidgets = [];
@@ -84,10 +73,8 @@ export function Canvas({ widgets }) {
                 const emptySpace = findEmptySpace(layout, rowSpan);
                 
                 if (emptySpace) {
-                  console.log(`✅ Found space for ${widget.id} at col ${emptySpace.colIndex}, row ${emptySpace.startRow}`);
                   layout = addWidgetToLayout(layout, widget.id, rowSpan, emptySpace.colIndex, emptySpace.startRow);
                 } else {
-                  console.warn(`⚠️ No space found for widget ${widget.id} (needs ${rowSpan} rows)`);
                   failedWidgets.push({
                     widgetId: widget.id,
                     widgetName: widget.name || widget.id,
@@ -108,40 +95,34 @@ export function Canvas({ widgets }) {
               }
             }
             
-            console.log('✅ Using preserved layout with updates');
             return layout;
           }
         }
         // Invalid format, clear it
         localStorage.removeItem('widgetLayout');
       } catch (e) {
-        console.error('Error parsing saved layout:', e);
         localStorage.removeItem('widgetLayout');
       }
     }
     
-    // Default layout: place widgets in first column
+    // Default layout: News (4 rows) in column 0, Gmail (2 rows) in column 2
     const layout = Array(COLUMNS).fill(null).map(() => []);
-    let currentCol = 0;
-    let currentRowInCol = 0;
     
     widgets.forEach((widget) => {
-      const rowSpan = widget.rowSpan || 1;
-      
-      // Check if widget fits in current column
-      if (currentRowInCol + rowSpan > MAX_ROWS_PER_COLUMN) {
-        // Move to next column
-        currentCol++;
-        currentRowInCol = 0;
-      }
-      
-      if (currentCol < COLUMNS) {
-        layout[currentCol].push({
+      if (widget.id === 'news-headlines') {
+        // News widget in column 0, rows 0-3 (4 rows)
+        layout[0].push({
           id: widget.id,
-          rowSpan: rowSpan,
-          startRow: currentRowInCol
+          rowSpan: 4,
+          startRow: 0
         });
-        currentRowInCol += rowSpan;
+      } else if (widget.id === 'gmail-unread') {
+        // Gmail widget in column 2, rows 0-1 (2 rows)
+        layout[2].push({
+          id: widget.id,
+          rowSpan: 2,
+          startRow: 0
+        });
       }
     });
     
@@ -335,7 +316,6 @@ export function Canvas({ widgets }) {
         
         // If the size is the same as current, no change needed
         if (nextRowSpan === currentRowSpan) {
-          console.log(`Widget ${widgetId} cannot change size (${currentRowSpan} rows)`);
           return;
         }
         
@@ -349,11 +329,8 @@ export function Canvas({ widgets }) {
         );
         
         if (!fitCheck.canFit) {
-          console.log(`Cannot resize ${widgetId}: ${fitCheck.reason}`);
           return;
         }
-        
-        console.log(`Smart resize ${widgetId}: ${currentRowSpan} → ${nextRowSpan} rows [${currentDirection}→${nextDirection}] (${availableSpace} available below)`);
         
         // Update resize direction
         setResizeDirections(prev => ({

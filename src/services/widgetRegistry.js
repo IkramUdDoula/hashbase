@@ -26,10 +26,6 @@ export function getWidgetPreferences() {
 export function isWidgetEnabled(widgetId) {
   const preferences = getWidgetPreferences();
   const enabled = preferences[widgetId] !== false;
-  console.log(`🔍 isWidgetEnabled("${widgetId}"):`, {
-    storedValue: preferences[widgetId],
-    result: enabled
-  });
   // Default to true if not explicitly set
   return enabled;
 }
@@ -82,28 +78,21 @@ export function resetWidgetPreferences() {
  */
 export function ensureWidgetsEnabled(widgetIds) {
   const preferences = getWidgetPreferences();
-  console.log('🔧 ensureWidgetsEnabled - Current preferences:', preferences);
   let updated = false;
   
   widgetIds.forEach(widgetId => {
     // Only set to true if not already explicitly set (undefined)
     if (preferences[widgetId] === undefined) {
-      console.log(`  ✅ Setting ${widgetId} to enabled (was undefined)`);
       preferences[widgetId] = true;
       updated = true;
-    } else {
-      console.log(`  ⏭️  Skipping ${widgetId} (already set to ${preferences[widgetId]})`);
     }
   });
   
   if (updated) {
-    console.log('💾 Saving updated preferences:', preferences);
     try {
       localStorage.setItem(WIDGET_PREFERENCES_KEY, JSON.stringify(preferences));
     } catch (error) {
       console.error('Error ensuring widgets enabled:', error);
     }
-  } else {
-    console.log('⏭️  No updates needed');
   }
 }

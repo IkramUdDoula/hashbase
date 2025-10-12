@@ -56,9 +56,10 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
     const gmailUrl = getGmailUrl(emailId);
     window.open(gmailUrl, '_blank');
     
+    // Refresh after 10 seconds to allow time for email to be marked as read
     setTimeout(() => {
       loadEmails();
-    }, 3000);
+    }, 10000);
   };
 
   useEffect(() => {
