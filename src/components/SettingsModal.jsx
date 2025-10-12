@@ -20,6 +20,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
   const [appsSearchQuery, setAppsSearchQuery] = useState('');
   const [secretsSearchQuery, setSecretsSearchQuery] = useState('');
   const [uploadStatus, setUploadStatus] = useState('');
+  const [noSpaceWarning, setNoSpaceWarning] = useState(null);
   const clearTimeoutRef = useRef(null);
   const modalRef = useRef(null);
 
@@ -32,6 +33,21 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
       setSecretsState(loadedSecrets);
       setWidgetPrefsState(loadedPrefs);
       setSaveStatus('');
+      
+      // Check if there's a widget that couldn't be placed
+      const noSpaceData = localStorage.getItem('hashbase_widget_no_space');
+      if (noSpaceData) {
+        try {
+          const parsed = JSON.parse(noSpaceData);
+          setNoSpaceWarning(parsed);
+          // Clear the flag
+          localStorage.removeItem('hashbase_widget_no_space');
+        } catch (e) {
+          console.error('Error parsing no space data:', e);
+        }
+      } else {
+        setNoSpaceWarning(null);
+      }
     }
   }, [isOpen]);
 
@@ -87,8 +103,10 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
   const handleSaveWidgetPrefs = () => {
     try {
       setWidgetPreferences(widgetPrefs);
-      setSaveStatus('App preferences saved! Refresh to see changes.');
-      setTimeout(() => setSaveStatus(''), 3000);
+      setSaveStatus('App preferences saved! Refreshing page...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (error) {
       setSaveStatus('Error saving preferences');
       setTimeout(() => setSaveStatus(''), 3000);
@@ -317,6 +335,25 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 Enable or disable widgets to show on your canvas. Changes will take effect after refreshing the page.
               </p>
+              
+              {/* No Space Warning */}
+              {noSpaceWarning && (
+                <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+                  <h3 className="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
+                    ⚠️ Widget Could Not Be Placed
+                  </h3>
+                  <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                    <strong>{noSpaceWarning.widgetName}</strong> requires {noSpaceWarning.rowSpan} row{noSpaceWarning.rowSpan > 1 ? 's' : ''} but no empty space was found in the layout. 
+                    Please disable some widgets or rearrange your layout to make room, then try enabling this widget again.
+                  </p>
+                  <button
+                    onClick={() => setNoSpaceWarning(null)}
+                    className="mt-2 text-xs text-yellow-700 dark:text-yellow-300 hover:underline"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
               
               {/* Search bar for apps */}
               <div className="relative mb-4">

@@ -3,6 +3,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { DraggableWidget } from './DraggableWidget';
 import { DropZone } from './DropZone';
+import { setWidgetEnabled } from '@/services/widgetRegistry';
 import {
   createLayoutConfig,
   saveLayoutConfig,
@@ -13,6 +14,9 @@ import {
   getLayoutDebugInfo,
   getAvailableSpaceBelow,
   getSmartNextRowSpan,
+  findEmptySpace,
+  removeWidgetFromLayout,
+  addWidgetToLayout,
   COLUMNS,
   MAX_ROWS_PER_COLUMN
 } from '@/services/layoutService';
@@ -39,32 +43,79 @@ export function Canvas({ widgets }) {
             const savedWidgetIds = new Set();
             parsed.forEach(col => col.forEach(w => savedWidgetIds.add(w.id)));
             
-            // Check if all saved widgets still exist
-            const allSavedIdsValid = Array.from(savedWidgetIds).every(id => currentWidgetIds.has(id));
+            // Check if there are NEW widgets not in the saved layout (newly enabled)
+            const newWidgetIds = Array.from(currentWidgetIds).filter(id => !savedWidgetIds.has(id));
+            const hasNewWidgets = newWidgetIds.length > 0;
             
-            // Check if there are NEW widgets not in the saved layout
-            const hasNewWidgets = Array.from(currentWidgetIds).some(id => !savedWidgetIds.has(id));
+            // Check if there are widgets in saved layout that are now disabled
+            const disabledWidgetIds = Array.from(savedWidgetIds).filter(id => !currentWidgetIds.has(id));
+            const hasDisabledWidgets = disabledWidgetIds.length > 0;
             
             console.log('🔍 Layout validation:', {
               currentWidgets: Array.from(currentWidgetIds),
               savedWidgets: Array.from(savedWidgetIds),
-              allSavedIdsValid,
-              hasNewWidgets
+              hasNewWidgets,
+              newWidgetIds,
+              hasDisabledWidgets,
+              disabledWidgetIds
             });
             
-            if (allSavedIdsValid && !hasNewWidgets) {
-              console.log('✅ Using saved layout');
-              return parsed;
+            // Process layout changes (enable/disable widgets)
+            // We should preserve layout unless there's a structural issue
+            let layout = parsed;
+            
+            // Remove disabled widgets from layout
+            if (hasDisabledWidgets) {
+              console.log('🗑️ Removing disabled widgets:', disabledWidgetIds);
+              disabledWidgetIds.forEach(widgetId => {
+                layout = removeWidgetFromLayout(layout, widgetId);
+              });
             }
-            // Widget IDs changed or new widgets added, clear layout
-            console.log('🔄 Widget configuration changed, resetting layout');
-            localStorage.removeItem('widgetLayout');
-            localStorage.removeItem('widgetRowSpans');
+            
+            // Add new widgets to layout if there's space
+            if (hasNewWidgets) {
+              console.log('➕ Adding new widgets:', newWidgetIds);
+              const newWidgets = widgets.filter(w => newWidgetIds.includes(w.id));
+              
+              const failedWidgets = [];
+              
+              newWidgets.forEach(widget => {
+                const rowSpan = widget.rowSpan || 1;
+                const emptySpace = findEmptySpace(layout, rowSpan);
+                
+                if (emptySpace) {
+                  console.log(`✅ Found space for ${widget.id} at col ${emptySpace.colIndex}, row ${emptySpace.startRow}`);
+                  layout = addWidgetToLayout(layout, widget.id, rowSpan, emptySpace.colIndex, emptySpace.startRow);
+                } else {
+                  console.warn(`⚠️ No space found for widget ${widget.id} (needs ${rowSpan} rows)`);
+                  failedWidgets.push({
+                    widgetId: widget.id,
+                    widgetName: widget.name || widget.id,
+                    rowSpan
+                  });
+                }
+              });
+              
+              // If any widgets couldn't be placed, store them and disable them
+              if (failedWidgets.length > 0) {
+                // Store the first failed widget for display
+                localStorage.setItem('hashbase_widget_no_space', JSON.stringify(failedWidgets[0]));
+                
+                // Auto-disable widgets that couldn't be placed
+                failedWidgets.forEach(fw => {
+                  setWidgetEnabled(fw.widgetId, false);
+                });
+              }
+            }
+            
+            console.log('✅ Using preserved layout with updates');
+            return layout;
           }
         }
         // Invalid format, clear it
         localStorage.removeItem('widgetLayout');
       } catch (e) {
+        console.error('Error parsing saved layout:', e);
         localStorage.removeItem('widgetLayout');
       }
     }

@@ -18,14 +18,12 @@ function AppContent() {
   const { addToast } = useToast();
 
   // Define all available widgets with metadata
-  // rowSpan: 1-4 (number of rows the widget occupies in a column)
-  // The widget size determines how many cards are shown (without scrolling):
-  // 1 row = 1 card, 2 rows = 3 cards, 3 rows = 5 cards, 4 rows = 7 cards
+  // rowSpan: 1 (all widgets now occupy 1 row for uniform layout)
   const allWidgets = [
     { 
       id: 'demo-widget', 
       component: DemoWidget, 
-      rowSpan: 3,
+      rowSpan: 1,
       name: 'Demo Widget',
       description: 'Comprehensive demonstration of BaseWidgetV2 features - All states, settings modal, search, and more',
       icon: TestTube
@@ -33,7 +31,7 @@ function AppContent() {
     { 
       id: 'gmail-unread', 
       component: UnreadEmailWidgetV2, 
-      rowSpan: 2,
+      rowSpan: 1,
       name: 'Gmail Unread',
       description: 'View your latest unread emails from Gmail with OAuth2 authentication',
       icon: SiGmail
@@ -41,7 +39,7 @@ function AppContent() {
     { 
       id: 'netlify-deploys', 
       component: DeploymentWidgetV2, 
-      rowSpan: 3,
+      rowSpan: 1,
       name: 'Netlify Deploys',
       description: 'Monitor your Netlify deployment status with real-time updates',
       icon: SiNetlify
@@ -49,7 +47,7 @@ function AppContent() {
     { 
       id: 'ai-chat', 
       component: AIChatWidget, 
-      rowSpan: 3,
+      rowSpan: 1,
       name: 'AI Chat',
       description: 'Chat with AI assistants (OpenAI GPT-4 & Claude)',
       icon: Sparkles
@@ -57,7 +55,7 @@ function AppContent() {
     { 
       id: 'github-commits', 
       component: GitHubCommitsWidget, 
-      rowSpan: 3,
+      rowSpan: 1,
       name: 'GitHub Commits',
       description: 'View recent commits from your GitHub repositories with advanced features',
       icon: SiGithub
@@ -65,7 +63,7 @@ function AppContent() {
     { 
       id: 'news-headlines', 
       component: NewsWidgetV2, 
-      rowSpan: 2,
+      rowSpan: 1,
       name: 'News Headlines',
       description: 'Latest news from around the world with country and topic filtering',
       icon: Newspaper
@@ -73,7 +71,7 @@ function AppContent() {
     { 
       id: 'bd24live-news', 
       component: BD24LiveWidgetV2, 
-      rowSpan: 2,
+      rowSpan: 1,
       name: 'BD24 Live',
       description: 'Latest news from BD24 Live (Bangladesh) via RSS feed - Auto-refreshes every 30 minutes',
       icon: Newspaper

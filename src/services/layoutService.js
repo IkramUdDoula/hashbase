@@ -335,4 +335,76 @@ export function getLayoutDebugInfo(config) {
   return info;
 }
 
+/**
+ * Find the first available empty space in the layout for a widget with given rowSpan
+ * @param {Array<Array<{id: string, rowSpan: number, startRow: number}>>} layout - Current layout
+ * @param {number} rowSpan - Required row span for the widget
+ * @returns {{colIndex: number, startRow: number}|null} Position or null if no space found
+ */
+export function findEmptySpace(layout, rowSpan) {
+  // Try each column
+  for (let colIndex = 0; colIndex < COLUMNS; colIndex++) {
+    const column = layout[colIndex];
+    
+    // Build a set of occupied rows in this column
+    const occupiedRows = new Set();
+    column.forEach(widget => {
+      for (let i = 0; i < widget.rowSpan; i++) {
+        occupiedRows.add(widget.startRow + i);
+      }
+    });
+    
+    // Try each possible starting row
+    for (let startRow = 0; startRow <= MAX_ROWS_PER_COLUMN - rowSpan; startRow++) {
+      // Check if all required rows are free
+      let canFit = true;
+      for (let i = 0; i < rowSpan; i++) {
+        if (occupiedRows.has(startRow + i)) {
+          canFit = false;
+          break;
+        }
+      }
+      
+      if (canFit) {
+        return { colIndex, startRow };
+      }
+    }
+  }
+  
+  return null; // No space found
+}
+
+/**
+ * Remove a widget from the layout by its ID
+ * @param {Array<Array<{id: string, rowSpan: number, startRow: number}>>} layout - Current layout
+ * @param {string} widgetId - Widget ID to remove
+ * @returns {Array<Array<{id: string, rowSpan: number, startRow: number}>>} Updated layout
+ */
+export function removeWidgetFromLayout(layout, widgetId) {
+  return layout.map(column => 
+    column.filter(widget => widget.id !== widgetId)
+  );
+}
+
+/**
+ * Add a widget to the layout at a specific position
+ * @param {Array<Array<{id: string, rowSpan: number, startRow: number}>>} layout - Current layout
+ * @param {string} widgetId - Widget ID to add
+ * @param {number} rowSpan - Widget's row span
+ * @param {number} colIndex - Column index
+ * @param {number} startRow - Starting row
+ * @returns {Array<Array<{id: string, rowSpan: number, startRow: number}>>} Updated layout
+ */
+export function addWidgetToLayout(layout, widgetId, rowSpan, colIndex, startRow) {
+  const newLayout = layout.map(col => [...col]);
+  newLayout[colIndex].push({
+    id: widgetId,
+    rowSpan,
+    startRow
+  });
+  // Sort by startRow to maintain order
+  newLayout[colIndex].sort((a, b) => a.startRow - b.startRow);
+  return newLayout;
+}
+
 export { COLUMNS, MAX_ROWS_PER_COLUMN };
