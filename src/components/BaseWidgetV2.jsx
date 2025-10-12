@@ -299,7 +299,7 @@ export function BaseWidgetV2({
   
   return (
     <div 
-      className={`w-full flex flex-col bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 rounded-xl shadow-sm ${heightClass} ${className} relative overflow-hidden`}
+      className={`w-full flex flex-col bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 rounded-xl shadow-sm ${heightClass} ${className} relative overflow-hidden transition-all duration-200 ease-in-out`}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
