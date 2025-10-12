@@ -107,7 +107,7 @@ export function CanvasVisualization() {
           variant="outline"
           size="sm"
           onClick={loadConfig}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 bg-transparent"
         >
           <RefreshCw className="h-4 w-4" />
           Refresh
@@ -239,7 +239,7 @@ export function CanvasVisualization() {
               e.stopPropagation();
               handleCopyConfig();
             }}
-            className="flex items-center gap-2 ml-4"
+            className="flex items-center gap-2 ml-4 border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 bg-transparent"
           >
             {copied ? (
               <>

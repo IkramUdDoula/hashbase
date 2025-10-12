@@ -231,14 +231,21 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
     }
   ];
 
-  // Filter and sort apps based on search query
+  // Filter and sort apps alphabetically based on search query
   const filteredApps = useMemo(() => {
-    if (!appsSearchQuery.trim()) return availableWidgets;
-    const query = appsSearchQuery.toLowerCase();
-    return availableWidgets.filter(widget => 
-      widget.name.toLowerCase().includes(query) || 
-      widget.description.toLowerCase().includes(query)
-    );
+    let apps = availableWidgets;
+    
+    // Filter by search query if provided
+    if (appsSearchQuery.trim()) {
+      const query = appsSearchQuery.toLowerCase();
+      apps = apps.filter(widget => 
+        widget.name.toLowerCase().includes(query) || 
+        widget.description.toLowerCase().includes(query)
+      );
+    }
+    
+    // Sort alphabetically by name
+    return apps.sort((a, b) => a.name.localeCompare(b.name));
   }, [availableWidgets, appsSearchQuery]);
 
   // Get all secrets (predefined + custom) and sort alphabetically
@@ -275,24 +282,28 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div ref={modalRef} className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col border-2 border-gray-200 dark:border-gray-800">
-        {/* Header */}
+        {/* Modal Header - Modal Name & Close Button */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Configuration</h2>
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="rounded-full"
+            className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+            aria-label="Close modal"
           >
             <X className="h-5 w-5" />
           </Button>
         </div>
 
-        {/* Tabs */}
+        {/* Tab Navigation */}
         <div className="px-6 pt-4 border-b border-gray-200 dark:border-gray-800">
-          <div className="flex gap-2">
+          <div className="flex gap-2" role="tablist">
             <button
               onClick={() => setActiveTab('apps')}
+              role="tab"
+              aria-selected={activeTab === 'apps'}
+              aria-controls="apps-panel"
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${
                 activeTab === 'apps'
                   ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-b-2 border-gray-900 dark:border-gray-100'
@@ -304,6 +315,9 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
             </button>
             <button
               onClick={() => setActiveTab('secrets')}
+              role="tab"
+              aria-selected={activeTab === 'secrets'}
+              aria-controls="secrets-panel"
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${
                 activeTab === 'secrets'
                   ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-b-2 border-gray-900 dark:border-gray-100'
@@ -315,6 +329,9 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
             </button>
             <button
               onClick={() => setActiveTab('canvas')}
+              role="tab"
+              aria-selected={activeTab === 'canvas'}
+              aria-controls="canvas-panel"
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${
                 activeTab === 'canvas'
                   ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-b-2 border-gray-900 dark:border-gray-100'
@@ -327,11 +344,13 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
           </div>
         </div>
 
-        {/* Content */}
+        {/* Modal Content Area */}
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
           <ScrollbarStyles />
+          {/* Apps Tab Panel */}
           {activeTab === 'apps' && (
-            <div className="space-y-4">
+            <div id="apps-panel" role="tabpanel" aria-labelledby="apps-tab" className="space-y-4">
+              {/* Tab Description */}
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 Enable or disable widgets to show on your canvas. Changes will take effect after refreshing the page.
               </p>
@@ -355,7 +374,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                 </div>
               )}
               
-              {/* Search bar for apps */}
+              {/* Searchbar */}
               <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -364,9 +383,11 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                   value={appsSearchQuery}
                   onChange={(e) => setAppsSearchQuery(e.target.value)}
                   className="pl-10 rounded-lg border-gray-300 dark:border-gray-700 bg-transparent"
+                  aria-label="Search apps"
                 />
               </div>
               
+              {/* Content Specifics - List of Apps with Toggle Controls */}
               <div className="space-y-3">
                 {filteredApps.length === 0 ? (
                   <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
@@ -380,6 +401,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                       key={widget.id}
                       className="flex items-center justify-between p-4 rounded-lg border-2 border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600 transition-colors"
                     >
+                      {/* Title & Details */}
                       <div className="flex items-center gap-3">
                         {widget.icon && <widget.icon className="h-5 w-5 text-gray-700 dark:text-gray-300" />}
                         <div>
@@ -387,8 +409,12 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                           <p className="text-xs text-gray-600 dark:text-gray-400">{widget.description}</p>
                         </div>
                       </div>
+                      {/* Parameter Type: Toggle Button */}
                       <button
                         onClick={() => handleToggleWidget(widget.id)}
+                        role="switch"
+                        aria-checked={isEnabled}
+                        aria-label={`Toggle ${widget.name}`}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                           isEnabled ? 'bg-gray-900 dark:bg-gray-100' : 'bg-gray-300 dark:bg-gray-700'
                         }`}
@@ -405,6 +431,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                 )}
               </div>
 
+              {/* Action Button Area */}
               <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-800">
                 <div>
                   {saveStatus && (
@@ -421,13 +448,15 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
             </div>
           )}
 
+          {/* Secrets Tab Panel */}
           {activeTab === 'secrets' && (
-            <div className="space-y-4">
+            <div id="secrets-panel" role="tabpanel" aria-labelledby="secrets-tab" className="space-y-4">
+              {/* Tab Description */}
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 Configure your API credentials. These are stored securely in your browser's local storage and never sent to any external server.
               </p>
               
-              {/* Search bar for secrets */}
+              {/* Searchbar */}
               <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -436,9 +465,11 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                   value={secretsSearchQuery}
                   onChange={(e) => setSecretsSearchQuery(e.target.value)}
                   className="pl-10 rounded-lg border-gray-300 dark:border-gray-700 bg-transparent"
+                  aria-label="Search secrets"
                 />
               </div>
 
+              {/* Content Specifics - List of Secrets with Input Controls */}
               <div className="space-y-4">
                 {allSecrets.length === 0 ? (
                   <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
@@ -447,10 +478,13 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                 ) : (
                   allSecrets.map((field) => (
                   <div key={field.key} className="space-y-2">
+                    {/* Title */}
                     <Label htmlFor={field.key} className="text-sm font-medium">
                       {field.label}
                     </Label>
+                    {/* Details */}
                     <p className="text-xs text-gray-600 dark:text-gray-400">{field.description}</p>
+                    {/* Parameter Type: Input Box with Action Buttons */}
                     <div className="relative">
                       <Input
                         id={field.key}
@@ -460,10 +494,12 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                         placeholder={field.placeholder}
                         className="pr-10 rounded-lg border-gray-300 dark:border-gray-700 bg-transparent"
                       />
+                      {/* Action Button: Toggle Visibility */}
                       <button
                         type="button"
                         onClick={() => toggleSecretVisibility(field.key)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                        aria-label={showSecrets[field.key] ? 'Hide secret' : 'Show secret'}
                       >
                         {showSecrets[field.key] ? (
                           <EyeOff className="h-4 w-4" />
@@ -471,11 +507,13 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                           <Eye className="h-4 w-4" />
                         )}
                       </button>
+                      {/* Action Button: Delete (for custom secrets) */}
                       {field.isCustom && (
                         <button
                           type="button"
                           onClick={() => handleDeleteSecret(field.key)}
                           className="absolute right-12 top-1/2 -translate-y-1/2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200"
+                          aria-label="Delete custom secret"
                           title="Delete custom secret"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -487,6 +525,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                 )}
               </div>
 
+              {/* Action Button Area */}
               <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-800">
                 <div>
                   {saveStatus && (
@@ -501,17 +540,19 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                 </Button>
               </div>
 
+              {/* Additional Feature: Configuration Backup & Restore */}
               <div className="mt-6 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                 <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">Configuration Backup & Restore</h3>
                 <p className="text-xs text-blue-800 dark:text-blue-200 mb-3">
                   Export your entire dashboard configuration with automatic AES-256 encryption.
                 </p>
+                {/* Action Buttons: Download & Upload */}
                 <div className="flex gap-2">
                   <Button
                     onClick={handleDownloadConfig}
                     variant="outline"
                     size="sm"
-                    className="flex items-center gap-2 flex-1"
+                    className="flex items-center gap-2 flex-1 border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 bg-transparent"
                   >
                     <Download className="h-4 w-4" />
                     Download Config
@@ -520,7 +561,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                     onClick={handleUploadConfig}
                     variant="outline"
                     size="sm"
-                    className="flex items-center gap-2 flex-1"
+                    className="flex items-center gap-2 flex-1 border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 bg-transparent"
                   >
                     <Upload className="h-4 w-4" />
                     Upload Config
@@ -541,6 +582,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                 </p>
               </div>
 
+              {/* Danger Zone: Clear All Data */}
               <div className="mt-6 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
                 <div className="flex items-start justify-between">
                   <div>
@@ -549,6 +591,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                       Clear all stored data including secrets, preferences, Gmail tokens, and widget layouts.
                     </p>
                   </div>
+                  {/* Action Button: Destructive Action */}
                   <Button
                     variant="destructive"
                     size="sm"
@@ -568,8 +611,11 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
             </div>
           )}
 
+          {/* Canvas Tab Panel */}
           {activeTab === 'canvas' && (
-            <CanvasVisualization />
+            <div id="canvas-panel" role="tabpanel" aria-labelledby="canvas-tab">
+              <CanvasVisualization />
+            </div>
           )}
         </div>
       </div>

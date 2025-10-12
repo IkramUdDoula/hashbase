@@ -477,7 +477,7 @@ export function DemoWidget({ rowSpan = 3, dragRef }) {
                 onChange={(e) => setTempSettings({ ...tempSettings, showTimestamps: e.target.checked })}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gray-300 dark:peer-focus:ring-gray-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-2 after:border-gray-300 dark:after:border-gray-700 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-900 dark:peer-checked:bg-blue-900 peer-checked:border-2 peer-checked:border-white dark:peer-checked:border-white peer-checked:after:border-white"></div>
+              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900 dark:peer-checked:bg-gray-100 peer-checked:after:bg-white dark:peer-checked:after:bg-gray-900"></div>
               <span className="ml-3 text-sm text-gray-900 dark:text-gray-100">
                 {tempSettings.showTimestamps ? 'Enabled' : 'Disabled'}
               </span>
@@ -499,7 +499,7 @@ export function DemoWidget({ rowSpan = 3, dragRef }) {
                 onChange={(e) => setTempSettings({ ...tempSettings, autoRefresh: e.target.checked })}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gray-300 dark:peer-focus:ring-gray-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-2 after:border-gray-300 dark:after:border-gray-700 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-900 dark:peer-checked:bg-blue-900 peer-checked:border-2 peer-checked:border-white dark:peer-checked:border-white peer-checked:after:border-white"></div>
+              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900 dark:peer-checked:bg-gray-100 peer-checked:after:bg-white dark:peer-checked:after:bg-gray-900"></div>
               <span className="ml-3 text-sm text-gray-900 dark:text-gray-100">
                 {tempSettings.autoRefresh ? 'Enabled' : 'Disabled'}
               </span>

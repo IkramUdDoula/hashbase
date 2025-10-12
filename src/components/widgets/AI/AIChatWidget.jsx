@@ -12,7 +12,6 @@ import {
   Bot,
   User,
   Sparkles,
-  Menu,
   History,
   Plus,
   ChevronDown,
@@ -44,12 +43,10 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showLLMSettings, setShowLLMSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [searchEnabled, setSearchEnabled] = useState(false);
   const messagesEndRef = useRef(null);
-  const menuRef = useRef(null);
   const inputRef = useRef(null);
   const { addToast } = useToast();
 
@@ -126,23 +123,6 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setShowMenu(false);
-      }
-    };
-
-    if (showMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showMenu]);
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
@@ -287,7 +267,6 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
     setCurrentConversationId(newId);
     setMessages([]);
     localStorage.removeItem(CURRENT_CONVERSATION_KEY);
-    setShowMenu(false);
     addToast('Started new conversation', 'success');
   };
 
@@ -333,48 +312,31 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
   ) : null;
 
   const customActions = (
-    <div className="relative" ref={menuRef}>
+    <div className="flex items-center gap-1">
       <Button
         variant="ghost"
         size="icon"
-        onClick={() => setShowMenu(!showMenu)}
-        title="Menu"
+        onClick={handleNewChat}
+        title="New Chat"
       >
-        <Menu className="h-4 w-4" />
+        <Plus className="h-4 w-4" />
       </Button>
-      
-      {/* Dropdown Menu */}
-      {showMenu && (
-        <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
-          <button
-            onClick={handleNewChat}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-gray-900 dark:text-gray-100"
-          >
-            <Plus className="h-4 w-4" />
-            New Chat
-          </button>
-          <button
-            onClick={() => {
-              setShowHistory(true);
-              setShowMenu(false);
-            }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-gray-900 dark:text-gray-100"
-          >
-            <History className="h-4 w-4" />
-            History
-          </button>
-          <button
-            onClick={() => {
-              setShowLLMSettings(true);
-              setShowMenu(false);
-            }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-gray-900 dark:text-gray-100"
-          >
-            <Settings className="h-4 w-4" />
-            Settings
-          </button>
-        </div>
-      )}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setShowHistory(true)}
+        title="History"
+      >
+        <History className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setShowLLMSettings(true)}
+        title="Settings"
+      >
+        <Settings className="h-4 w-4" />
+      </Button>
     </div>
   );
 
