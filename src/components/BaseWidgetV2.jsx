@@ -132,6 +132,9 @@ export function BaseWidgetV2({
   className = '',
   dragRef
 }) {
+  // State for header visibility
+  const [isHeaderVisible, setIsHeaderVisible] = useState(false);
+  
   // Calculate dynamic height based on rowSpan
   const heightMap = {
     1: 'h-[12rem]',
@@ -141,6 +144,18 @@ export function BaseWidgetV2({
   };
   
   const heightClass = heightMap[rowSpan] || heightMap[1];
+  
+  // Handle mouse movement to detect cursor near top
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mouseY = e.clientY - rect.top;
+    // Show header if cursor is within 40px of the top
+    setIsHeaderVisible(mouseY < 40);
+  };
+  
+  const handleMouseLeave = () => {
+    setIsHeaderVisible(false);
+  };
   
   // Header content with logo, app name, and widget name
   const headerContent = (
@@ -283,9 +298,19 @@ export function BaseWidgetV2({
   };
   
   return (
-    <div className={`w-full flex flex-col bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 rounded-xl shadow-sm ${heightClass} ${className}`}>
-      {/* Header Zone */}
-      <div className="px-3 pt-2 pb-1.5 flex-shrink-0 border-b border-gray-100 dark:border-gray-800">
+    <div 
+      className={`w-full flex flex-col bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 rounded-xl shadow-sm ${heightClass} ${className} relative overflow-hidden`}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* Floating Header Zone - Only visible on hover near top */}
+      <div 
+        className={`absolute top-0 left-0 right-0 z-10 px-3 pt-2 pb-1.5 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 transition-all duration-300 ease-in-out ${
+          isHeaderVisible 
+            ? 'translate-y-0 opacity-100' 
+            : '-translate-y-full opacity-0'
+        }`}
+      >
         <div className="flex items-center justify-between">
           {tooltip ? (
             <TooltipProvider>
@@ -305,7 +330,7 @@ export function BaseWidgetV2({
         </div>
       </div>
       
-      {/* Content Zone with custom scrollbar */}
+      {/* Content Zone with custom scrollbar - Full height */}
       <div className="flex-1 overflow-hidden flex flex-col px-3 py-2">
         <ScrollbarStyles />
         {renderContent()}

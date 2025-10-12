@@ -2,44 +2,47 @@
 
 A modern, highly customizable React dashboard application featuring drag-and-drop widgets for Gmail, Netlify, GitHub, AI Chat, News, and more. Built with React 18, Vite, Tailwind CSS, shadcn/ui, and react-dnd for a beautiful and interactive user experience.
 
+![Dashboard Preview](https://img.shields.io/badge/React-18.3-blue) ![Vite](https://img.shields.io/badge/Vite-5.2-646CFF) ![TailwindCSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC)
+
 ## Features
 
 ### Widget Features (All using BaseWidgetV2)
-- 📧 **Gmail Widget V2** - Display unread emails with OAuth2 authentication, dual error actions, auto-refresh
-- 🚀 **Netlify Widget V2** - Monitor deploys with status badges, color-coded cards, build time tracking
-- 🤖 **AI Chat Widget** - Chat with OpenAI (GPT-4, GPT-3.5) or Claude AI (Sonnet, Opus, Haiku) with streaming responses
-- 💻 **GitHub Commits Widget** - View commits from all repositories with settings modal, status indicators, auto-refresh
-- 📰 **News Widget V2** - Latest headlines with country/category filtering, settings modal, search
-- 🌐 **BD24 Live Widget V2** - Bangladesh news via RSS with timestamp display, 30-minute auto-refresh
-- 🧪 **Demo Widget** - Comprehensive showcase of all BaseWidgetV2 features and states
+- 📧 **Gmail Widget V2** - Display unread emails with OAuth2 authentication, dual error actions, auto-refresh, integrated search
+- 🚀 **Netlify Widget V2** - Monitor deploys with status badges, color-coded cards, build time tracking, error messages
+- 🤖 **AI Chat Widget** - Chat with OpenAI (GPT-4, GPT-3.5) or Claude AI (Sonnet, Opus, Haiku) with streaming responses and web search
+- 💻 **GitHub Commits Widget** - View commits from repositories with configurable settings, status indicators, auto-refresh (1-30 min)
+- 📰 **News Widget V2** - Latest headlines with country/category filtering (20+ countries), settings modal, integrated search
+- 🌐 **BD24 Live Widget V2** - Bangladesh news via RSS with timestamp display, 30-minute auto-refresh, caching
+- 🧪 **Demo Widget** - Comprehensive showcase of all BaseWidgetV2 features, states, and UI components
 
 ### Core Features
-- 🎯 **Advanced Drag & Drop Layout** - Powered by react-dnd with intelligent position validation
+- 🎯 **Advanced Drag & Drop Layout** - Powered by react-dnd with intelligent position validation and collision detection
 - 📐 **Smart Widget Resizing** - Resize widgets from 1-4 rows with automatic space detection and fit validation
-- 💾 **Persistent Layout System** - Custom layouts saved to localStorage and survive page refreshes
-- 🎛️ **Widget Management** - Enable/disable widgets from settings panel with search functionality
+- 💾 **Persistent Layout System** - Custom layouts saved to localStorage with automatic validation and preservation
+- 🎛️ **Widget Management** - Enable/disable widgets from settings panel with search functionality and auto-placement
 - ⚙️ **In-App Configuration** - Configure API secrets directly in the app (stored in localStorage)
-- 🔑 **Advanced Secrets Management** - Add custom secrets, search, alphabetically sorted display
-- 📥 **Config Export/Import** - Download and upload entire dashboard configuration with automatic AES-256 encryption
+- 🔑 **Advanced Secrets Management** - Add custom secrets, search functionality, alphabetically sorted display
+- 📥 **Config Export/Import** - Download and upload entire dashboard configuration with automatic AES-256-GCM encryption
 - 🔍 **Web Search Integration** - Real-time web search for AI responses using Tavily AI API
-- 🎨 **Beautiful Modern UI** - Built with Tailwind CSS and shadcn/ui components
-- 🌓 **Dark Mode Support** - Full dark mode with smooth transitions
-- 🔄 **Auto-Refresh** - Widgets auto-refresh at configurable intervals (30s - 5min)
-- 📱 **Responsive Design** - Optimized for desktop with screen size guard
-- ⚡ **Fast Development** - Vite dev server with integrated API backend
+- 🎨 **Beautiful Modern UI** - Built with Tailwind CSS and shadcn/ui components with gradient backgrounds
+- 🌓 **Dark Mode Support** - Full dark mode with smooth transitions and optimized contrast
+- 🔄 **Auto-Refresh** - Widgets auto-refresh at configurable intervals (1-30 min depending on widget)
+- 📱 **Responsive Design** - Optimized for desktop with screen size guard (minimum 1280px width)
+- ⚡ **Fast Development** - Vite dev server with integrated Express API backend
 - 🔐 **Secure Credentials** - API credentials stored in browser localStorage, never sent externally
+- 🎭 **Standardized Widget System** - BaseWidgetV2 architecture with consistent states, search, and settings modals
 
 ## Prerequisites
 
-- Node.js (v20.x or higher)
-- npm or yarn
-- Gmail API credentials from Google Cloud Console (for Gmail widget)
-- Netlify Personal Access Token (for Netlify widget)
-- OpenAI API Key (for AI Chat widget with GPT models)
-- Claude API Key (for AI Chat widget with Claude models)
-- Tavily API Key (for web search in AI Chat - optional, free tier available)
-- GitHub Personal Access Token (for GitHub widget - optional)
-- NewsAPI Key (for News widget - optional, free tier available)
+- **Node.js** (v20.x or higher recommended)
+- **npm** or yarn
+- **Gmail API credentials** from Google Cloud Console (for Gmail widget)
+- **Netlify Personal Access Token** (for Netlify widget - configure in-app)
+- **OpenAI API Key** (for AI Chat widget with GPT models - configure in-app)
+- **Claude API Key** (for AI Chat widget with Claude models - configure in-app)
+- **Tavily API Key** (for web search in AI Chat - optional, free tier: 1000 searches/month)
+- **GitHub Personal Access Token** (for GitHub widget - optional, configure in-app)
+- **NewsAPI Key** (for News widget - optional, free tier: 100 requests/day)
 
 ## Quick Start
 
@@ -81,6 +84,7 @@ cp .env.example .env
    
    **⚠️ IMPORTANT:** 
    - The key must be exactly **64 hexadecimal characters** (32 bytes)
+   - Uses **AES-256-GCM** encryption (industry standard authenticated encryption)
    - Keep this key secure and backed up
    - Without this key, you cannot decrypt exported configs
    - Use the same key on all devices where you want to import configs
@@ -291,16 +295,19 @@ Use this if you want to start fresh or are experiencing authentication issues. *
 
 ### Widget Layout System
 
-The dashboard features a powerful drag-and-drop layout system:
+The dashboard features a powerful drag-and-drop layout system with intelligent space management:
 
 - **Drag & Drop** - Click and drag any widget to move it to a new position
 - **Resize Widgets** - Click the resize icon (⇕) in the bottom-right corner to cycle through sizes (1-4 rows)
 - **Visual Feedback** - Blue ring indicates valid drop zones, red ring indicates invalid positions
 - **Smart Validation** - System prevents overlapping widgets and validates fit before allowing drops
+- **Layout Preservation** - Disabling/enabling widgets preserves existing layout positions
+- **Auto-Placement** - New widgets automatically find the first available empty space
+- **Space Warnings** - Notifies when widgets can't be placed due to insufficient space
 - **Auto-Save** - Layout automatically saves to localStorage and persists across sessions
 - **5×4 Grid** - 5 columns with up to 4 rows each (20 total positions)
 
-For detailed technical documentation, see [LAYOUT_SYSTEM.md](./LAYOUT_SYSTEM.md)
+For detailed technical documentation, see [LAYOUT_PRESERVATION_CHANGES.md](./LAYOUT_PRESERVATION_CHANGES.md)
 
 ### Gmail Widget
 - Displays your unread emails
@@ -340,21 +347,24 @@ For detailed technical documentation, see [LAYOUT_SYSTEM.md](./LAYOUT_SYSTEM.md)
 ### GitHub Widget
 - Displays recent commits from your configured GitHub repository
 - Shows commit messages, authors, timestamps, and commit SHAs
-- Author avatars displayed when available
-- Auto-refreshes every 5 minutes
+- Clean, modern card design without avatars for focused content
+- **Configurable auto-refresh** - Choose from 1, 5, 10, 15, or 30 minutes
+- **Commit status indicators** - Toggle to show/hide status badges
+- **Repository name display** - Toggle to show/hide repo name in cards
 - Click on any commit to view it on GitHub
-- Configure repository via the settings icon in the widget
+- Configure all settings via the settings modal in the widget
 - Supports any public or private repository (with proper token permissions)
 
 ### News Widget
-- Displays latest news headlines from around the world
-- **Country Selection** - Choose from 20+ countries (US, UK, Canada, India, etc.)
+- Displays latest news headlines from around the world powered by NewsAPI
+- **Country Selection** - Choose from 20+ countries (US, UK, Canada, India, Australia, etc.)
 - **Topic Filtering** - Filter by General, Business, Technology, Entertainment, Sports, Science, or Health
-- **Search** - Search through headlines by title, description, or source
-- **Settings Dialog** - Easy configuration via settings button
+- **Integrated Search** - Search through headlines by title, description, or source
+- **Settings Modal** - Easy configuration via settings button with modern UI
 - Auto-refreshes every 5 minutes
-- Click on any article to read the full story
+- Click on any article to read the full story on the source website
 - Settings persist in localStorage
+- Gradient card design with hover effects
 
 ## Project Structure
 
@@ -365,25 +375,29 @@ hashbase/
 │   │   ├── ui/                         # shadcn/ui components (button, dialog, tooltip, etc.)
 │   │   ├── widgets/
 │   │   │   ├── AI/                     # AI Chat widget (AIChatWidget.jsx + components)
-│   │   │   ├── BD24Live/               # BD24 Live news widget
-│   │   │   ├── GitHub/                 # GitHub commits widget
-│   │   │   ├── Gmail/                  # Gmail unread emails widget
-│   │   │   ├── Netlify/                # Netlify deploys widget
-│   │   │   ├── News/                   # News headlines widget
+│   │   │   ├── BD24Live/               # BD24 Live news widget (V2)
+│   │   │   ├── Demo/                   # Demo widget showcasing BaseWidgetV2
+│   │   │   ├── GitHub/                 # GitHub commits widget (V2)
+│   │   │   ├── Gmail/                  # Gmail unread emails widget (V2)
+│   │   │   ├── Netlify/                # Netlify deploys widget (V2)
+│   │   │   ├── News/                   # News headlines widget (V2)
 │   │   │   └── README.md               # Widget development guide
-│   │   ├── BaseWidget.jsx              # Base widget container with dynamic sizing
+│   │   ├── BaseWidget.jsx              # Legacy base widget container
+│   │   ├── BaseWidgetV2.jsx            # Standardized widget container with states
 │   │   ├── Canvas.jsx                  # Drag-and-drop canvas with layout management
 │   │   ├── DraggableWidget.jsx         # Draggable widget wrapper with resize
 │   │   ├── DropZone.jsx                # Drop zone component for drag-and-drop
 │   │   ├── ScreenSizeGuard.jsx         # Minimum screen size enforcement
-│   │   └── SettingsButton.jsx          # Settings panel (Apps, Secrets, Theme)
+│   │   ├── SettingsButton.jsx          # Settings panel (Apps, Secrets, Theme)
+│   │   ├── WidgetEmptyState.jsx        # Empty state component
+│   │   └── WidgetSearch.jsx            # Search component for widgets
 │   ├── services/
 │   │   ├── aiService.js                # OpenAI & Claude API integration
 │   │   ├── bd24LiveService.js          # BD24 Live RSS feed service
-│   │   ├── configService.js            # Config export/import for backup & restore
+│   │   ├── configService.js            # Config export/import with AES-256-GCM encryption
 │   │   ├── githubService.js            # GitHub API service
 │   │   ├── gmailService.js             # Gmail API service
-│   │   ├── layoutService.js            # Layout management & validation logic
+│   │   ├── layoutService.js            # Layout management, validation & space finding
 │   │   ├── netlifyService.js           # Netlify API service
 │   │   ├── newsService.js              # NewsAPI service
 │   │   ├── secretsService.js           # Secrets management (localStorage)
@@ -392,18 +406,22 @@ hashbase/
 │   │   └── ThemeContext.jsx            # Dark mode context provider
 │   ├── lib/
 │   │   ├── dateUtils.js                # Date formatting utilities
-│   │   └── utils.js                    # General utility functions
+│   │   └── utils.js                    # General utility functions (cn, etc.)
 │   ├── App.jsx                         # Main app component with widget registry
 │   ├── main.jsx                        # React entry point
 │   └── index.css                       # Global styles with Tailwind directives
 ├── vite.config.js                      # Vite config with integrated Express API server
-├── server.js                           # Standalone Express server (deprecated, use Vite)
-├── .env                                # Environment variables (not in git)
+├── server.js                           # Standalone Express server (deprecated)
+├── generate-encryption-key.js          # Utility to generate AES-256 encryption keys
+├── .env                                # Environment variables (gitignored)
 ├── .env.example                        # Example environment variables template
 ├── package.json                        # Dependencies and npm scripts
 ├── tailwind.config.js                  # Tailwind CSS configuration
 ├── postcss.config.js                   # PostCSS configuration
 ├── jsconfig.json                       # JavaScript path aliases (@/ → src/)
+├── UPGRADE_SUMMARY.md                  # BaseWidgetV2 migration summary
+├── WIDGET_UPGRADE_GUIDE.md             # Guide for upgrading to BaseWidgetV2
+├── LAYOUT_PRESERVATION_CHANGES.md      # Layout preservation system documentation
 └── README.md                           # This file
 ```
 
@@ -419,16 +437,16 @@ hashbase/
 - **React Icons** - Additional icon sets (SiGmail, SiNetlify, SiGithub)
 
 ### Backend & APIs
-- **Express 4.18** - Node.js web framework for API routes
-- **Google APIs (googleapis)** - Gmail API integration with OAuth2
+- **Express 4.18** - Node.js web framework for API routes (integrated into Vite)
+- **Google APIs (googleapis)** - Gmail API integration with OAuth2 and auto-refresh
 - **Netlify API** - Deploy monitoring and site management
-- **OpenAI API** - GPT-4 and GPT-3.5 integration
-- **Anthropic API** - Claude AI integration
-- **Tavily AI** - Web search API for AI responses
-- **NewsAPI** - News headlines from 20+ countries
-- **RSS Parser** - BD24 Live RSS feed parsing
+- **OpenAI API** - GPT-4 and GPT-3.5 integration with streaming
+- **Anthropic API** - Claude AI integration (Sonnet, Opus, Haiku)
+- **Tavily AI** - Web search API for AI responses (5 results per query)
+- **NewsAPI** - News headlines from 20+ countries and 7 categories
+- **RSS Parser** - BD24 Live RSS feed parsing with 30-minute caching
 - **Axios** - HTTP client for API requests
-- **Cheerio** - HTML parsing for web scraping (legacy Daily Star scraper)
+- **Cheerio** - HTML parsing for web scraping
 
 ### Development Tools
 - **dotenv** - Environment variable management
@@ -442,21 +460,29 @@ hashbase/
 - **Dynamic Widget Sizing** - Each widget can occupy 1-4 rows (heights: 12rem, 25rem, 38rem, 51rem)
 - **Smart Resize Algorithm** - Automatically detects available space and cycles through valid sizes
 - **Collision Detection** - Prevents widgets from overlapping using dropzone validation
+- **Layout Preservation** - Disabling widgets preserves other widget positions
+- **Intelligent Placement** - New widgets automatically placed in first available empty space
+- **Space Finding Algorithm** - Searches all columns for consecutive empty rows
+- **Auto-disable on No Space** - Widgets that can't be placed are auto-disabled with user notification
 - **Persistent State** - Layout configuration saved to localStorage with automatic validation
 
 ### Component Architecture
-- **BaseWidget** - Reusable container with dynamic height, drag handle, and header actions
-- **Canvas** - Main layout manager with drag-and-drop logic and state management
+- **BaseWidgetV2** - Standardized widget container with built-in states (loading, error, empty, positive)
+- **BaseWidget** - Legacy widget container (kept for backward compatibility)
+- **Canvas** - Main layout manager with drag-and-drop logic, state management, and layout preservation
 - **DraggableWidget** - Wrapper that adds drag functionality and resize controls
 - **DropZone** - Drop target with visual feedback (blue ring for valid, red for invalid)
-- **Widget Registry** - Centralized widget management with enable/disable preferences
+- **Widget Registry** - Centralized widget management with enable/disable preferences and auto-placement
+- **WidgetSearch** - Reusable search component for filtering widget content
+- **WidgetEmptyState** - Reusable empty state component with icon and messages
 
 ### API Integration
 - **Vite Plugin Architecture** - Express API server integrated directly into Vite dev server
 - **Proxy Pattern** - All external API calls proxied through backend to protect API keys
-- **Header-based Auth** - Credentials passed via custom headers (x-gmail-token, x-netlify-access-token, etc.)
+- **Header-based Auth** - Credentials passed via custom headers (x-gmail-token, x-netlify-access-token, x-tavily-api-key, etc.)
 - **localStorage Strategy** - User credentials stored client-side, never sent to external servers
-- **Caching Layer** - RSS feeds cached for 30 minutes to reduce external requests
+- **Caching Layer** - RSS feeds cached for 30 minutes to reduce external requests and improve performance
+- **Error Handling** - Graceful fallbacks with stale cache data when API requests fail
 
 ## Security Notes
 
@@ -612,37 +638,40 @@ See `src/components/widgets/README.md` for detailed widget development guide.
 
 ### BaseWidgetV2 - Standardized Widget Container
 
-All widgets now use **BaseWidgetV2**, a comprehensive widget container with:
+All widgets use **BaseWidgetV2**, a comprehensive widget container with:
 
 **Built-in State Management:**
-- `loading` - Loading spinner with optional message
-- `error` - Error state with icon, message, and dual action buttons
-- `empty` - Empty state with icon and messages
-- `positive` - Content state with optional search
+- `loading` - Loading spinner with optional custom message
+- `error` - Error state with icon, message, and dual action buttons (primary + secondary)
+- `empty` - Empty state with icon, primary message, and optional submessage
+- `positive` - Content state with optional integrated search
 
 **Features:**
-- Settings modal support with standardized UI
-- Integrated search functionality
-- Refresh button with loading state
-- Customizable header with logo, app name, widget name, and badges
-- Secondary error actions (e.g., "Try Again" + "Authenticate")
-- Responsive height system (1-4 rows)
-- Modern UI with dark blue toggle buttons and light white hover effects
+- **Settings Modal Support** - Standardized modal UI with WidgetModal component
+- **Integrated Search** - Built-in search bar with customizable placeholder
+- **Refresh Button** - With loading state animation
+- **Customizable Header** - Logo (drag handle), app name, widget name, and badges
+- **Secondary Error Actions** - Support for dual error buttons (e.g., "Try Again" + "Authenticate")
+- **Responsive Height System** - Dynamic heights based on rowSpan (1-4 rows)
+- **Modern UI** - Dark blue toggle buttons with white borders, light white hover effects
+- **Custom Actions** - Support for additional custom action buttons in header
 
 **Documentation:**
 - `WIDGET_UPGRADE_GUIDE.md` - Complete migration guide from BaseWidget to BaseWidgetV2
-- `BASEWIDGET_V2_*.md` - Detailed component documentation
-- `DemoWidget.jsx` - Comprehensive feature showcase
+- `UPGRADE_SUMMARY.md` - Summary of all widget upgrades and improvements
+- `DemoWidget.jsx` - Comprehensive feature showcase with all states and components
 
 ### Project Architecture Highlights
 
 - **Integrated Dev Server** - Vite plugin architecture combines frontend and backend in one process
 - **Path Aliases** - Use `@/` to import from `src/` directory (configured in `jsconfig.json`)
-- **Component Composition** - BaseWidgetV2 provides consistent UI, individual widgets focus on data
-- **Service Layer** - All API calls abstracted into service modules for reusability
-- **State Management** - React hooks + localStorage for persistence (no Redux needed)
-- **Styling** - Tailwind utility classes + shadcn/ui components for consistency
-- **Standardized Widgets** - All widgets follow BaseWidgetV2 patterns for consistency
+- **Component Composition** - BaseWidgetV2 provides consistent UI, individual widgets focus on data fetching and logic
+- **Service Layer** - All API calls abstracted into service modules for reusability and maintainability
+- **State Management** - React hooks + localStorage for persistence (no Redux/Zustand needed)
+- **Styling** - Tailwind utility classes + shadcn/ui components for consistency and accessibility
+- **Standardized Widgets** - All widgets follow BaseWidgetV2 patterns for consistent UX
+- **Layout Preservation** - Intelligent layout system preserves widget positions when toggling widgets
+- **Encryption** - AES-256-GCM encryption for config export/import with secure key management
 
 ### Building for Production
 

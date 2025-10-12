@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BaseWidget } from '../../BaseWidget';
+import { BaseWidgetV2 } from '../../BaseWidgetV2';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -332,7 +332,7 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
     </Badge>
   ) : null;
 
-  const headerActions = (
+  const customActions = (
     <div className="relative" ref={menuRef}>
       <Button
         variant="ghost"
@@ -393,43 +393,22 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
         onClose={() => setShowHistory(false)}
         onLoadConversation={handleLoadConversation}
       />
-      <BaseWidget
+      <BaseWidgetV2
         logo={Sparkles}
         appName="AI"
         widgetName="Chat"
         tooltip="Chat with AI assistants (OpenAI & Claude)"
         badge={badge}
-        headerActions={headerActions}
+        customActions={customActions}
+        showRefresh={false}
+        state={!isConfigured ? 'empty' : 'positive'}
+        emptyIcon={Bot}
+        emptyMessage="No AI provider configured"
+        emptySubmessage="Add your OpenAI or Claude API key in Settings to start chatting"
         rowSpan={rowSpan}
         dragRef={dragRef}
       >
-      {!isConfigured ? (
-        <div className="flex flex-col items-center justify-center h-full text-center p-2">
-          <Bot className="h-12 w-12 text-muted-foreground mb-2" />
-          <p className="text-sm text-muted-foreground mb-1">No AI provider configured</p>
-          <p className="text-xs text-muted-foreground mb-2">
-            Add your OpenAI or Claude API key in Settings to start chatting
-          </p>
-          <div className="space-y-2 text-xs text-left">
-            <a
-              href="https://platform.openai.com/api-keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              Get OpenAI API Key →
-            </a>
-            <a
-              href="https://console.anthropic.com/settings/keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              Get Claude API Key →
-            </a>
-          </div>
-        </div>
-      ) : (
+      {isConfigured && (
         <div className="flex flex-col h-full">
           {/* Messages */}
           <div className={`flex-1 pr-1 mb-1.5 ${messages.length > 0 ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`}>
@@ -581,7 +560,7 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
           </div>
         </div>
       )}
-      </BaseWidget>
+      </BaseWidgetV2>
     </>
   );
 }
