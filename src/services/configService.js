@@ -144,6 +144,8 @@ function getDashboardKeys() {
     // GitHub widget settings
     'github_widget_owner',
     'github_widget_repo',
+    // Crypto widget settings
+    'crypto_holdings',
   ];
 }
 
