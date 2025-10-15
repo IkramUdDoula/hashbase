@@ -7,6 +7,7 @@ import { AIChatWidget } from './components/widgets/AI/AIChatWidget';
 import { GitHubCommitsWidget } from './components/widgets/GitHub/GitHubCommitsWidget';
 import { NewsWidgetV2 } from './components/widgets/News/NewsWidgetV2';
 import { BD24LiveWidgetV2 } from './components/widgets/BD24Live/BD24LiveWidgetV2';
+import { LandingPage } from './components/LandingPage';
 import { SettingsButton } from './components/SettingsButton';
 import { Canvas } from './components/Canvas';
 import { ScreenSizeGuard } from './components/ScreenSizeGuard';
@@ -15,6 +16,14 @@ import { isWidgetEnabled, setWidgetPreferences } from './services/widgetRegistry
 
 function AppContent() {
   const { addToast } = useToast();
+  
+  // Check if we should show the landing page
+  const isProduction = import.meta.env.VITE_ENV === 'prod';
+  
+  // If production mode, show landing page
+  if (isProduction) {
+    return <LandingPage />;
+  }
 
   // Define all available widgets with metadata
   const allWidgets = [

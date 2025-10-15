@@ -16,6 +16,7 @@ A modern, highly customizable React dashboard application featuring drag-and-dro
 - 🧪 **Demo Widget** - Comprehensive showcase of all BaseWidgetV2 features, states, and UI components
 
 ### Core Features
+- 🚀 **Landing Page** - Beautiful single-page landing with punchy hero text, contact form, and dashboard preview (production mode)
 - 🎯 **Advanced Drag & Drop Layout** - Powered by react-dnd with intelligent position validation and collision detection
 - 📐 **Smart Widget Resizing** - Resize widgets from 1-4 rows with automatic space detection and fit validation
 - 💾 **Persistent Layout System** - Custom layouts saved to localStorage with automatic validation and preservation
@@ -93,6 +94,11 @@ cp .env.example .env
 3. **News API Key** (optional, for News widget)
    - Get a free key from [newsapi.org/register](https://newsapi.org/register)
    - Add `NEWS_API_KEY` to `.env`
+
+4. **Environment Mode** (optional, for landing page)
+   - Set `VITE_ENV=dev` to show the dashboard (default)
+   - Set `VITE_ENV=prod` to show the landing page
+   - The landing page features a beautiful hero section, contact form, and dashboard preview
 
 ### 3. Run the Application
 
@@ -298,6 +304,23 @@ Use this if you want to start fresh or are experiencing authentication issues. *
 
 ## Usage
 
+### Landing Page
+
+The application includes a beautiful landing page that can be enabled in production mode:
+
+**Features:**
+- **Punchy Hero Section** - Large, gradient text with compelling call-to-action
+- **Contact Form** - Popup form that redirects submissions to email (doula.ikram@gmail.com)
+- **Dashboard Preview** - Visual showcase of the dashboard with glowing effects
+- **Dark Theme** - Consistent with the dashboard's dark mode aesthetic
+- **Animated Elements** - Smooth fade-in animations and hover effects
+- **Feature Highlights** - Three key features displayed in cards
+
+**How to Enable:**
+- Set `VITE_ENV=prod` in your `.env` file to show the landing page
+- Set `VITE_ENV=dev` (default) to show the dashboard
+- Restart the dev server after changing the environment variable
+
 ### Widget Layout System
 
 The dashboard features a powerful drag-and-drop layout system with intelligent space management:
@@ -391,10 +414,13 @@ hashbase/
 │   │   ├── Canvas.jsx                  # Drag-and-drop canvas with layout management
 │   │   ├── DraggableWidget.jsx         # Draggable widget wrapper with resize
 │   │   ├── DropZone.jsx                # Drop zone component for drag-and-drop
+│   │   ├── LandingPage.jsx             # Beautiful landing page with contact form
 │   │   ├── ScreenSizeGuard.jsx         # Minimum screen size enforcement
 │   │   ├── SettingsButton.jsx          # Settings panel (Apps, Secrets, Theme)
 │   │   ├── WidgetEmptyState.jsx        # Empty state component
 │   │   └── WidgetSearch.jsx            # Search component for widgets
+│   ├── public/
+│   │   └── image.png                   # Dashboard preview image for landing page
 │   ├── services/
 │   │   ├── aiService.js                # OpenAI & Claude API integration
 │   │   ├── bd24LiveService.js          # BD24 Live RSS feed service
