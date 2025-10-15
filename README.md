@@ -113,7 +113,6 @@ Open your browser and navigate to `http://localhost:5000`
 
 **Available Routes:**
 - `/` - Main dashboard with widgets
-- `/newCanvas` - New canvas page with 5x4 grid of dropzones
 
 ### 5. Configure Widgets
 
@@ -386,7 +385,6 @@ hashbase/
 │   │   │   ├── Netlify/                # Netlify deploys widget (V2)
 │   │   │   ├── News/                   # News headlines widget (V2)
 │   │   │   └── README.md               # Widget development guide
-│   │   ├── BaseWidget.jsx              # Legacy base widget container
 │   │   ├── BaseWidgetV2.jsx            # Standardized widget container with states
 │   │   ├── Canvas.jsx                  # Drag-and-drop canvas with layout management
 │   │   ├── DraggableWidget.jsx         # Draggable widget wrapper with resize
@@ -415,7 +413,6 @@ hashbase/
 │   ├── main.jsx                        # React entry point
 │   └── index.css                       # Global styles with Tailwind directives
 ├── vite.config.js                      # Vite config with integrated Express API server
-├── server.js                           # Standalone Express server (deprecated)
 ├── generate-encryption-key.js          # Utility to generate AES-256 encryption keys
 ├── .env                                # Environment variables (gitignored)
 ├── .env.example                        # Example environment variables template
@@ -614,7 +611,6 @@ hashbase/
 npm run dev      # Start Vite dev server with integrated API (port 5000)
 npm run build    # Build for production
 npm run preview  # Preview production build
-npm run server   # [DEPRECATED] Run standalone Express server
 ```
 
 ### Adding a New Widget
