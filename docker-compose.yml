@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  hashbase:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hashbase-dashboard
+    ports:
+      - "5000:5000"
+    environment:
+      # Gmail API Credentials
+      - GMAIL_CLIENT_ID=${GMAIL_CLIENT_ID}
+      - GMAIL_CLIENT_SECRET=${GMAIL_CLIENT_SECRET}
+      - GMAIL_REDIRECT_URI=${GMAIL_REDIRECT_URI:-http://localhost:5000/oauth2callback}
+      
+      # News API
+      - NEWS_API_KEY=${NEWS_API_KEY}
+      
+      # Frontend Configuration
+      - VITE_FRONTEND_URL=${VITE_FRONTEND_URL:-http://localhost:5000}
+      
+      # Config Encryption Key
+      - VITE_CONFIG_ENCRYPTION_KEY=${VITE_CONFIG_ENCRYPTION_KEY}
+      
+      # Node Environment
+      - NODE_ENV=production
+    
+    # Mount .env file (alternative to passing individual env vars)
+    env_file:
+      - .env
+    
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits (optional - adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+networks:
+  default:
+    name: hashbase-network

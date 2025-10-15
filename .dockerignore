@@ -1,0 +1,48 @@
+# Node modules
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build output
+dist
+.vite
+
+# Environment files (should be mounted or passed as env vars)
+.env
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation (optional - include if you want smaller images)
+*.md
+!README.md
+
+# Netlify
+.netlify
+netlify
+
+# Test files
+*.test.js
+*.spec.js
+__tests__
+coverage
+
+# Misc
+.editorconfig
+.prettierrc
+.eslintrc

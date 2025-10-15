@@ -46,7 +46,55 @@ A modern, highly customizable React dashboard application featuring drag-and-dro
 
 ## Quick Start
 
-### 1. Clone and Install
+You can run Hashbase either **locally with Node.js** or **using Docker**. Choose the method that works best for you.
+
+### Option 1: Run with Docker (Recommended for Easy Setup)
+
+**Prerequisites:**
+- Docker Desktop (Windows/Mac) or Docker Engine (Linux)
+- Docker Compose
+
+**Steps:**
+```bash
+# 1. Clone the repository
+git clone <repository-url>
+cd hashbase
+
+# 2. Copy and configure environment variables
+cp .env.example .env
+# Edit .env and add your API credentials (see Configuration section)
+
+# 3. Generate encryption key
+node generate-encryption-key.js
+
+# 4. Start with Docker Compose
+docker-compose up -d
+
+# 5. Access the dashboard
+# Open http://localhost:5000 in your browser
+```
+
+**View logs:**
+```bash
+docker-compose logs -f
+```
+
+**Stop the application:**
+```bash
+docker-compose down
+```
+
+📖 **For detailed Docker setup, troubleshooting, and production deployment, see [DOCKER_SETUP.md](./DOCKER_SETUP.md)**
+
+---
+
+### Option 2: Run Locally with Node.js
+
+**Prerequisites:**
+- Node.js v20.x or higher
+- npm or yarn
+
+#### 1. Clone and Install
 
 ```bash
 git clone <repository-url>
@@ -54,7 +102,7 @@ cd hashbase
 npm install
 ```
 
-### 2. Configure Environment Variables
+#### 2. Configure Environment Variables
 
 Copy the example environment file:
 
@@ -94,7 +142,7 @@ cp .env.example .env
    - Get a free key from [newsapi.org/register](https://newsapi.org/register)
    - Add `NEWS_API_KEY` to `.env`
 
-### 3. Run the Application
+#### 3. Run the Application
 
 Start the integrated Vite dev server (includes both frontend and backend):
 
@@ -107,18 +155,18 @@ This will start:
 - Backend API server integrated into Vite
 - Hot module replacement (HMR) for instant updates
 
-### 4. Access the Dashboard
+#### 4. Access the Dashboard
 
 Open your browser and navigate to `http://localhost:5000`
 
 **Available Routes:**
 - `/` - Main dashboard with widgets
 
-### 5. Configure Widgets
-
-Most widgets can be configured directly in the app via **Settings (⚙️) > Configuration > Secrets**. Only Gmail requires `.env` file configuration.
+---
 
 ## Widget Configuration
+
+Most widgets can be configured directly in the app via **Settings (⚙️) > Configuration > Secrets**. Only Gmail requires `.env` file configuration.
 
 #### **Gmail Widget** - Configure via .env file
 
@@ -414,12 +462,16 @@ hashbase/
 │   └── index.css                       # Global styles with Tailwind directives
 ├── vite.config.js                      # Vite config with integrated Express API server
 ├── generate-encryption-key.js          # Utility to generate AES-256 encryption keys
+├── Dockerfile                          # Docker image configuration
+├── docker-compose.yml                  # Docker Compose orchestration
+├── .dockerignore                       # Docker build exclusions
 ├── .env                                # Environment variables (gitignored)
 ├── .env.example                        # Example environment variables template
 ├── package.json                        # Dependencies and npm scripts
 ├── tailwind.config.js                  # Tailwind CSS configuration
 ├── postcss.config.js                   # PostCSS configuration
 ├── jsconfig.json                       # JavaScript path aliases (@/ → src/)
+├── DOCKER_SETUP.md                     # Docker setup and deployment guide
 ├── UPGRADE_SUMMARY.md                  # BaseWidgetV2 migration summary
 ├── WIDGET_UPGRADE_GUIDE.md             # Guide for upgrading to BaseWidgetV2
 ├── LAYOUT_PRESERVATION_CHANGES.md      # Layout preservation system documentation
@@ -607,11 +659,23 @@ hashbase/
 
 ### Available Scripts
 
+**Node.js:**
 ```bash
 npm run dev      # Start Vite dev server with integrated API (port 5000)
 npm run build    # Build for production
 npm run preview  # Preview production build
 ```
+
+**Docker:**
+```bash
+docker-compose up -d          # Start containers in detached mode
+docker-compose down           # Stop and remove containers
+docker-compose logs -f        # View logs in real-time
+docker-compose restart        # Restart containers
+docker-compose up -d --build  # Rebuild and start
+```
+
+📖 **See [DOCKER_SETUP.md](./DOCKER_SETUP.md) for complete Docker documentation**
 
 ### Adding a New Widget
 
