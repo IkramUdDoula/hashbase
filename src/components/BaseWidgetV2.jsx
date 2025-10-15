@@ -304,20 +304,29 @@ export function BaseWidgetV2({
         }`}
       >
         <div className="flex items-center justify-between">
-          {tooltip ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>{headerContent}</div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{tooltip}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : (
-            headerContent
-          )}
+          <div className="flex items-center gap-2">
+            {Logo && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      ref={dragRef}
+                      className="cursor-move p-0.5 rounded hover:bg-white/50 dark:hover:bg-white/10 transition-colors"
+                    >
+                      <Logo className="h-4 w-4 text-gray-700 dark:text-gray-300" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom-start">
+                    <p>{tooltip}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden md:inline">{appName}</span>
+            <p className="hidden lg:inline">-</p>
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden lg:inline">{widgetName}</span>
+            {badge && <div className="ml-1">{badge}</div>}
+          </div>
           {renderActions()}
         </div>
       </div>

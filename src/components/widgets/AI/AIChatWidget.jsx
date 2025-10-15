@@ -307,11 +307,12 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
   };
 
   const currentProvider = providers.find(p => p.id === selectedProvider);
+  const currentModel = currentProvider?.models.find(m => m.id === selectedModel);
   const isConfigured = providers.length > 0;
 
-  const badge = messages.length > 0 ? (
+  const badge = messages.length > 0 && currentModel ? (
     <Badge variant="secondary" className="text-xs">
-      {messages.length} msgs
+      {currentModel.name}
     </Badge>
   ) : null;
 

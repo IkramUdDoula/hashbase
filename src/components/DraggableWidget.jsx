@@ -42,7 +42,6 @@ export function DraggableWidget({ widgetId, widget, rowSpan = 1, onResize }) {
             <button
               onClick={handleResizeClick}
               className="absolute bottom-2 right-2 z-10 p-1.5 rounded-lg bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 shadow-md transition-all hover:scale-110 border border-gray-200 dark:border-gray-700"
-              title="Smart resize: expands if space available, reduces if not"
             >
               <RiExpandUpDownFill className="w-4 h-4 text-gray-600 dark:text-gray-400" />
             </button>

@@ -333,7 +333,7 @@ export function LLMSettingsModal({ isOpen, onClose, onSettingsChange }) {
             <Button
               variant="outline"
               onClick={handleReset}
-              className="flex-1"
+              className="flex-1 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600"
             >
               Reset to Defaults
             </Button>
