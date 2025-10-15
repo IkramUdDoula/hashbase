@@ -142,6 +142,10 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
 
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+    // Reset textarea height
+    if (inputRef.current) {
+      inputRef.current.style.height = '42px';
+    }
     setLoading(true);
     setStreaming(true);
 
@@ -373,7 +377,7 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
       {isConfigured && (
         <div className="flex flex-col h-full">
           {/* Messages */}
-          <div className={`flex-1 pr-1 mb-1.5 ${messages.length > 0 ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`}>
+          <div className={`flex-1 pr-2 mb-2 ${messages.length > 0 ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`}>
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-4">
                 <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1">Start a conversation</h3>
@@ -404,11 +408,11 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
                     )}
                     
                     {/* Message Content */}
-                    <div className={`flex-1 min-w-0 max-w-full ${
-                      message.role === 'user'
-                        ? 'bg-gray-100 dark:bg-gray-800 rounded-lg'
-                        : 'border border-gray-300 dark:border-gray-700 rounded-lg'
-                    } px-1.5 py-1`}>
+                    <div className={`${
+                      message.role === 'user' 
+                        ? 'max-w-[85%] bg-gray-100 dark:bg-gray-800 rounded-lg' 
+                        : 'flex-1 min-w-0 max-w-full border border-gray-300 dark:border-gray-700 rounded-lg'
+                    } px-3 py-2`}>
                       {/* Search indicator for user messages */}
                       {message.role === 'user' && message.searchEnabled && (
                         <div className="flex items-center gap-0.5 text-xs text-gray-500 dark:text-gray-400 mb-0.5">
