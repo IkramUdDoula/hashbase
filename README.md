@@ -138,6 +138,8 @@ Most widgets can be configured directly in the app via **Settings (⚙️) > Con
    GMAIL_CLIENT_ID=your_client_id_here
    GMAIL_CLIENT_SECRET=your_client_secret_here
    GMAIL_REDIRECT_URI=http://localhost:5000/oauth2callback
+   VITE_FRONTEND_URL=http://localhost:5000
+   VITE_API_URL=http://localhost:5000
    ```
 6. Restart the dev server (`npm run dev`)
 7. Click the login button in the Gmail widget to authenticate

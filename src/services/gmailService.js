@@ -1,7 +1,11 @@
 // Gmail API service for fetching unread emails
 // Tokens are stored in localStorage and sent via headers
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+if (!API_BASE_URL) {
+  throw new Error('VITE_API_URL environment variable is not set');
+}
 const GMAIL_TOKEN_KEY = 'gmail_tokens';
 
 // Get Gmail token from localStorage

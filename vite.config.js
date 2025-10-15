@@ -19,7 +19,7 @@ function getOAuth2Client() {
   return new google.auth.OAuth2(
     process.env.GMAIL_CLIENT_ID,
     process.env.GMAIL_CLIENT_SECRET,
-    process.env.GMAIL_REDIRECT_URI || 'http://localhost:5000/oauth2callback'
+    process.env.GMAIL_REDIRECT_URI
   )
 }
 
@@ -71,7 +71,7 @@ function createApiServer() {
       const tokensJson = JSON.stringify(tokens)
       
       // Redirect back to the frontend app with success parameter
-      const frontendUrl = process.env.VITE_FRONTEND_URL || 'http://localhost:5000'
+      const frontendUrl = process.env.VITE_FRONTEND_URL
       res.send(`
         <html>
           <head>
@@ -90,7 +90,7 @@ function createApiServer() {
       `)
     } catch (error) {
       console.error('Error getting tokens:', error)
-      const frontendUrl = process.env.VITE_FRONTEND_URL || 'http://localhost:5000'
+      const frontendUrl = process.env.VITE_FRONTEND_URL
       const errorMessage = encodeURIComponent(error.message)
       res.status(500).send(`
         <html>
@@ -757,7 +757,8 @@ export default defineConfig({
         const apiApp = createApiServer()
         server.middlewares.use(apiApp)
         console.log('\n✅ API server integrated with Vite dev server')
-        console.log('📧 Gmail authentication available at: http://localhost:5000/api/auth/url\n')
+        const port = process.env.PORT || 5000
+        console.log(`📧 Gmail authentication available at: http://localhost:${port}/api/auth/url\n`)
       }
     }
   ],
