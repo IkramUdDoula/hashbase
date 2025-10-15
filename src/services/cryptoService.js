@@ -131,50 +131,44 @@ export async function fetchCryptoPrices(cryptoIds, currency = 'usd') {
     // Get exchange rates if currency is not USD
     let exchangeRates = { USD: 1 };
     if (currency.toLowerCase() !== 'usd') {
-      exchangeRates = await fetchExchangeRates();
     }
-    
     // Transform data to include crypto metadata and convert prices
     const enrichedData = {};
     cryptoIds.forEach(id => {
       const crypto = AVAILABLE_CRYPTOS.find(c => c.id === id);
-      if (data[id] && crypto) {
-        const usdData = data[id];
-        
-        // Convert all USD values to target currency
-        const convertedData = {
-          symbol: crypto.symbol,
-          name: crypto.name,
-          id: crypto.id,
+      if (data[id]) {
+        enrichedData[id] = {
+          ...data[id],
+          symbol: crypto?.symbol || id.toUpperCase(),
+          name: crypto?.name || 'Custom Crypto',
+          id: crypto?.id || id,
         };
 
-        // Convert price
-        if (usdData.usd !== undefined) {
-          convertedData[currency.toLowerCase()] = currency.toLowerCase() === 'usd' 
-            ? usdData.usd 
-            : convertCurrency(usdData.usd, currency, exchangeRates);
+        // Convert price if needed
+        if (enrichedData[id].usd !== undefined) {
+          enrichedData[id][currency.toLowerCase()] = currency.toLowerCase() === 'usd'
+            ? enrichedData[id].usd
+            : convertCurrency(enrichedData[id].usd, currency, exchangeRates);
         }
 
         // Convert 24h change (percentage stays the same)
-        if (usdData.usd_24h_change !== undefined) {
-          convertedData[`${currency.toLowerCase()}_24h_change`] = usdData.usd_24h_change;
+        if (enrichedData[id].usd_24h_change !== undefined) {
+          enrichedData[id][`${currency.toLowerCase()}_24h_change`] = enrichedData[id].usd_24h_change;
         }
 
         // Convert market cap
-        if (usdData.usd_market_cap !== undefined) {
-          convertedData[`${currency.toLowerCase()}_market_cap`] = currency.toLowerCase() === 'usd'
-            ? usdData.usd_market_cap
-            : convertCurrency(usdData.usd_market_cap, currency, exchangeRates);
+        if (enrichedData[id].usd_market_cap !== undefined) {
+          enrichedData[id][`${currency.toLowerCase()}_market_cap`] = currency.toLowerCase() === 'usd'
+            ? enrichedData[id].usd_market_cap
+            : convertCurrency(enrichedData[id].usd_market_cap, currency, exchangeRates);
         }
 
         // Convert 24h volume
-        if (usdData.usd_24h_vol !== undefined) {
-          convertedData[`${currency.toLowerCase()}_24h_vol`] = currency.toLowerCase() === 'usd'
-            ? usdData.usd_24h_vol
-            : convertCurrency(usdData.usd_24h_vol, currency, exchangeRates);
+        if (enrichedData[id].usd_24h_vol !== undefined) {
+          enrichedData[id][`${currency.toLowerCase()}_24h_vol`] = currency.toLowerCase() === 'usd'
+            ? enrichedData[id].usd_24h_vol
+            : convertCurrency(enrichedData[id].usd_24h_vol, currency, exchangeRates);
         }
-
-        enrichedData[id] = convertedData;
       }
     });
 

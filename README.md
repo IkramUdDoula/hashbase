@@ -113,6 +113,10 @@ This will start:
 
 Open your browser and navigate to `http://localhost:5000`
 
+**Available Routes:**
+- `/` - Main dashboard with widgets
+- `/newCanvas` - New canvas page with 5x4 grid of dropzones
+
 ### 5. Configure Widgets
 
 Most widgets can be configured directly in the app via **Settings (⚙️) > Configuration > Secrets**. Only Gmail requires `.env` file configuration.

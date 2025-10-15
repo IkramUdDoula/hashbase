@@ -28,10 +28,9 @@ import {
  * - Positive: Shows search bar and content (cards/list)
  * 
  * HEIGHT MAPPING (responsive):
- * - 1 row = h-[12rem] (192px)
- * - 2 rows = h-[25rem] (400px)
- * - 3 rows = h-[38rem] (608px)
- * - 4 rows = h-[51rem] (816px)
+ * - Widgets use h-full to fill their grid cell
+ * - Grid cells automatically scale based on rowSpan (1-4)
+ * - Height is managed by parent CSS Grid container
  * 
  * @param {Object} props
  * 
@@ -135,15 +134,8 @@ export function BaseWidgetV2({
   // State for header visibility
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
   
-  // Calculate dynamic height based on rowSpan
-  const heightMap = {
-    1: 'h-[12rem]',
-    2: 'h-[25rem]',
-    3: 'h-[38rem]',
-    4: 'h-[51rem]'
-  };
-  
-  const heightClass = heightMap[rowSpan] || heightMap[1];
+  // Use flexible height - widgets fill their grid cell
+  const heightClass = 'h-full';
   
   // Handle mouse movement to detect cursor near top
   const handleMouseMove = (e) => {

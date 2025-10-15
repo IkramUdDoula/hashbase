@@ -128,9 +128,11 @@ function AppContent() {
 
   return (
     <ScreenSizeGuard>
-      <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:bg-[#000000] dark:from-black dark:via-black dark:to-black p-4 transition-colors duration-200">
-        {/* Canvas with drag-and-drop widget rearrangement */}
-        <Canvas widgets={enabledWidgets} />
+      <div className="h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:bg-[#000000] dark:from-black dark:via-black dark:to-black p-4 transition-colors duration-200">
+        {/* Canvas with drag-and-drop widget rearrangement - fills remaining space */}
+        <div className="w-full h-full">
+          <Canvas widgets={enabledWidgets} />
+        </div>
 
         {/* Floating Settings Button */}
         <SettingsButton availableWidgets={allWidgets} />

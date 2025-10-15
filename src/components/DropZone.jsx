@@ -32,7 +32,7 @@ export function DropZone({ rowIndex, colIndex, onDrop, children, showDebug = fal
   return (
     <div
       ref={drop}
-      className={`relative transition-all duration-200 ${
+      className={`relative h-full transition-all duration-200 ${
         isActive
           ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-black'
           : ''

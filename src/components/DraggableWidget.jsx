@@ -31,7 +31,7 @@ export function DraggableWidget({ widgetId, widget, rowSpan = 1, onResize }) {
   return (
     <div
       ref={dragPreview}
-      className={`relative transition-opacity ${
+      className={`relative h-full transition-opacity ${
         isDragging ? 'opacity-50' : 'opacity-100'
       }`}
     >

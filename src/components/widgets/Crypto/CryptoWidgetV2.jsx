@@ -182,16 +182,17 @@ export function CryptoWidgetV2({ rowSpan = 2, dragRef }) {
     loadCryptoPrices();
   };
 
-  // Filter cryptos based on search
-  const filteredCryptos = Object.entries(prices).filter(([id, data]) => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      data.name.toLowerCase().includes(query) ||
-      data.symbol.toLowerCase().includes(query) ||
-      id.toLowerCase().includes(query)
-    );
-  });
+  // Filter cryptos based on search - include all cryptos with holdings, even if no price data
+  const filteredCryptos = selectedCryptos
+    .filter(cryptoId => {
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      return cryptoId.toLowerCase().includes(query);
+    })
+    .map(cryptoId => {
+      const priceData = prices[cryptoId];
+      return { id: cryptoId, data: priceData };
+    });
 
   // Badge showing number of tracked cryptos
   const badge = selectedCryptos.length > 0 ? (
@@ -273,11 +274,19 @@ export function CryptoWidgetV2({ rowSpan = 2, dragRef }) {
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredCryptos.map(([id, data]) => {
-              const price = data.usd || 0;
-              const change24h = data.usd_24h_change || 0;
-              const marketCap = data.usd_market_cap;
-              const volume24h = data.usd_24h_vol;
+            {filteredCryptos.map(({ id, data }) => {
+              console.log('🔍 [Crypto] Rendering card for:', id, {
+                data,
+                hasData: !!data,
+                hasUsd: !!(data && data.usd),
+                usdValue: data?.usd,
+                holdings: holdings[id]
+              });
+              
+              const price = data?.usd || 0;
+              const change24h = data?.usd_24h_change || 0;
+              const marketCap = data?.usd_market_cap;
+              const volume24h = data?.usd_24h_vol;
               const isPositive = change24h >= 0;
               
               // Get user's holdings for this crypto
@@ -287,67 +296,75 @@ export function CryptoWidgetV2({ rowSpan = 2, dragRef }) {
               return (
                 <div
                   key={id}
-                  className="p-3 rounded-lg bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-700 hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600 transition-all"
+                  className={`p-3 rounded-lg bg-gradient-to-br border transition-all ${
+                    data && data.usd 
+                      ? 'from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-purple-200 dark:border-purple-700 hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600' 
+                      : 'from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-gray-200 dark:border-gray-600'
+                  }`}
                 >
                   {/* Header: Name, Symbol, Price */}
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm font-bold text-purple-900 dark:text-purple-100">
-                          {data.symbol}
+                          {id.toUpperCase()}
                         </span>
-                        <span className="text-xs text-purple-700 dark:text-purple-300 truncate">
-                          {data.name}
+                        <span className="text-xs text-purple-700 dark:text-purple-300">
+                          Custom Crypto
                         </span>
                       </div>
-                      <div className="text-lg font-bold text-purple-900 dark:text-purple-100">
-                        {formatCurrency(price, 'usd')}
+                      <div className={`text-lg font-bold ${data && data.usd ? 'text-purple-900 dark:text-purple-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                        {data && data.usd ? formatCurrency(price, 'usd') : 'Invalid ID'}
                       </div>
                       {userHolding > 0 && (
                         <div className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-                          {userHolding.toFixed(8)} {data.symbol} = {formatCurrency(holdingValue, 'usd')}
+                          {userHolding.toFixed(8)} {id} = {data && data.usd ? formatCurrency(holdingValue, 'usd') : 'Check ID'}
                         </div>
                       )}
                     </div>
                     
-                    {/* 24h Change Badge */}
-                    <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${
-                      isPositive 
-                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
-                        : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                    }`}>
-                      {isPositive ? (
-                        <TrendingUp className="h-3 w-3" />
-                      ) : (
-                        <TrendingDown className="h-3 w-3" />
-                      )}
-                      {Math.abs(change24h).toFixed(2)}%
-                    </div>
+                    {/* 24h Change Badge - only show if data available */}
+                    {data && data.usd && data.usd_24h_change !== undefined && (
+                      <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${
+                        isPositive 
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+                          : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                      }`}>
+                        {isPositive ? (
+                          <TrendingUp className="h-3 w-3" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3" />
+                        )}
+                        {Math.abs(change24h).toFixed(2)}%
+                      </div>
+                    )}
                   </div>
                   
-                  {/* Market Stats */}
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    {marketCap && (
-                      <div>
-                        <span className="text-purple-600 dark:text-purple-400 font-medium">
-                          Market Cap:
-                        </span>
-                        <span className="ml-1 text-purple-900 dark:text-purple-100">
-                          {formatLargeNumber(marketCap, 'usd')}
-                        </span>
-                      </div>
-                    )}
-                    {volume24h && (
-                      <div>
-                        <span className="text-purple-600 dark:text-purple-400 font-medium">
-                          24h Vol:
-                        </span>
-                        <span className="ml-1 text-purple-900 dark:text-purple-100">
-                          {formatLargeNumber(volume24h, 'usd')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  {/* Market Stats - only show if data available */}
+                  {(data && data.usd && (data.usd_market_cap || data.usd_24h_vol)) && (
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {marketCap && (
+                        <div>
+                          <span className="text-purple-600 dark:text-purple-400 font-medium">
+                            Market Cap:
+                          </span>
+                          <span className="ml-1 text-purple-900 dark:text-purple-100">
+                            {formatLargeNumber(marketCap, 'usd')}
+                          </span>
+                        </div>
+                      )}
+                      {volume24h && (
+                        <div>
+                          <span className="text-purple-600 dark:text-purple-400 font-medium">
+                            24h Vol:
+                          </span>
+                          <span className="ml-1 text-purple-900 dark:text-purple-100">
+                            {formatLargeNumber(volume24h, 'usd')}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

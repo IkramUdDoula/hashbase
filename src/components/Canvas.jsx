@@ -390,76 +390,115 @@ export function Canvas({ widgets }) {
     return fitCheck.canFit;
   };
 
-  // Render a column with widgets and drop zones
-  const renderColumn = (column, colIndex) => {
-    const occupied = getOccupiedRows(column);
-    const rows = [];
+  // Build a map of which grid cells are occupied and by what
+  const buildGridCellMap = () => {
+    const cellMap = {}; // key: "col-row", value: { type: 'widget-start' | 'widget-occupied' | 'empty', widget?: object }
     
-    // Create drop zones for each row position
-    let rowIndex = 0;
-    while (rowIndex < MAX_ROWS_PER_COLUMN) {
-      // Check if this row is the start of a widget
-      const widget = column.find(w => w && w.startRow === rowIndex);
-      
-      if (widget) {
-        // Render widget with its rowSpan
-        rows.push(
-          <DropZone
-            key={`${colIndex}-${rowIndex}`}
-            rowIndex={rowIndex}
-            colIndex={colIndex}
-            onDrop={handleDrop}
-            validateDrop={validateDropPosition}
-          >
-            <DraggableWidget
-              widgetId={widget.id}
-              widget={getWidgetById(widget.id)}
-              rowSpan={widget.rowSpan}
-              onResize={handleResize}
-            />
-          </DropZone>
-        );
-        
-        // Skip the rows that this widget occupies
-        rowIndex += widget.rowSpan;
-      } else if (!occupied.has(rowIndex)) {
-        // Render empty drop zone - fixed height to match single row
-        rows.push(
-          <DropZone
-            key={`${colIndex}-${rowIndex}`}
-            rowIndex={rowIndex}
-            colIndex={colIndex}
-            onDrop={handleDrop}
-            validateDrop={validateDropPosition}
-          >
-            <div className="h-[12rem] border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-600 text-sm">
-              Drop widget here
-            </div>
-          </DropZone>
-        );
-        rowIndex++;
-      } else {
-        // Row is occupied but not the start of a widget, skip it
-        rowIndex++;
+    // Initialize all cells as empty
+    for (let col = 0; col < COLUMNS; col++) {
+      for (let row = 0; row < MAX_ROWS_PER_COLUMN; row++) {
+        cellMap[`${col}-${row}`] = { type: 'empty' };
       }
     }
     
-    return rows;
+    // Mark cells occupied by widgets
+    layout.forEach((column, colIndex) => {
+      column.forEach(widget => {
+        const startRow = widget.startRow;
+        const rowSpan = widget.rowSpan;
+        
+        // Mark the starting cell
+        cellMap[`${colIndex}-${startRow}`] = {
+          type: 'widget-start',
+          widget: widget
+        };
+        
+        // Mark the occupied cells (cells spanned by the widget but not the start)
+        for (let i = 1; i < rowSpan; i++) {
+          const occupiedRow = startRow + i;
+          if (occupiedRow < MAX_ROWS_PER_COLUMN) {
+            cellMap[`${colIndex}-${occupiedRow}`] = {
+              type: 'widget-occupied',
+              widget: widget
+            };
+          }
+        }
+      });
+    });
+    
+    return cellMap;
+  };
+
+  // Render all grid cells (iterating row by row for CSS Grid)
+  const renderGridCells = () => {
+    const cellMap = buildGridCellMap();
+    const cells = [];
+    
+    // Iterate row by row (CSS Grid fills row by row)
+    for (let row = 0; row < MAX_ROWS_PER_COLUMN; row++) {
+      for (let col = 0; col < COLUMNS; col++) {
+        const cellKey = `${col}-${row}`;
+        const cell = cellMap[cellKey];
+        
+        if (cell.type === 'widget-start') {
+          // Render widget with grid-row span
+          const widget = cell.widget;
+          cells.push(
+            <div
+              key={cellKey}
+              className="h-full overflow-hidden"
+              style={{ gridRow: `span ${widget.rowSpan}` }}
+            >
+              <DropZone
+                rowIndex={row}
+                colIndex={col}
+                onDrop={handleDrop}
+                validateDrop={validateDropPosition}
+              >
+                <DraggableWidget
+                  widgetId={widget.id}
+                  widget={getWidgetById(widget.id)}
+                  rowSpan={widget.rowSpan}
+                  onResize={handleResize}
+                />
+              </DropZone>
+            </div>
+          );
+        } else if (cell.type === 'empty') {
+          // Render empty drop zone
+          cells.push(
+            <div key={cellKey} className="h-full overflow-hidden">
+              <DropZone
+                rowIndex={row}
+                colIndex={col}
+                onDrop={handleDrop}
+                validateDrop={validateDropPosition}
+              >
+                <div className="w-full h-full border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-600 text-sm">
+                  Drop widget here
+                </div>
+              </DropZone>
+            </div>
+          );
+        }
+        // If cell.type === 'widget-occupied', skip rendering (already part of a widget span)
+      }
+    }
+    
+    return cells;
   };
 
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="w-full h-full">
-        {/* 5 columns layout */}
-        <div className="grid grid-cols-5 gap-4 h-full">
-          {layout.map((column, colIndex) => (
-            <div 
-              key={colIndex} 
-              className="flex flex-col gap-4"
-            >
-              {renderColumn(column, colIndex)}
-            </div>
-          ))}
+        {/* Unified grid layout with equal spacing */}
+        <div 
+          className="w-full h-full grid grid-cols-5 gap-4"
+          style={{ 
+            gridTemplateRows: 'repeat(4, minmax(0, 1fr))'
+          }}
+        >
+          {renderGridCells()}
         </div>
       </div>
     </DndProvider>
