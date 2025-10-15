@@ -1,12 +1,13 @@
 import React, { useMemo, useEffect } from 'react';
 import { SiGmail, SiNetlify, SiGithub } from 'react-icons/si';
-import { Sparkles, Newspaper } from 'lucide-react';
+import { Sparkles, Newspaper, CheckSquare } from 'lucide-react';
 import { UnreadEmailWidgetV2 } from './components/widgets/Gmail/UnreadEmailWidgetV2';
 import { DeploymentWidgetV2 } from './components/widgets/Netlify/DeploymentWidgetV2';
 import { AIChatWidget } from './components/widgets/AI/AIChatWidget';
 import { GitHubCommitsWidget } from './components/widgets/GitHub/GitHubCommitsWidget';
 import { NewsWidgetV2 } from './components/widgets/News/NewsWidgetV2';
 import { BD24LiveWidgetV2 } from './components/widgets/BD24Live/BD24LiveWidgetV2';
+import { ChecklistWidget } from './components/widgets/Checklist/ChecklistWidget';
 import { LandingPage } from './components/LandingPage';
 import { SettingsButton } from './components/SettingsButton';
 import { Canvas } from './components/Canvas';
@@ -75,6 +76,14 @@ function AppContent() {
       description: 'Latest news from BD24 Live (Bangladesh) via RSS feed - Auto-refreshes every 30 minutes',
       icon: Newspaper
     },
+    { 
+      id: 'checklist', 
+      component: ChecklistWidget, 
+      rowSpan: 2,
+      name: 'Checklist',
+      description: 'Simple checklist with automatic reordering - checked items move to bottom',
+      icon: CheckSquare
+    },
   ];
 
   // Set default widget preferences and layout
@@ -97,7 +106,8 @@ function AppContent() {
         'netlify-deploys': false,
         'ai-chat': false,
         'github-commits': false,
-        'bd24live-news': false
+        'bd24live-news': false,
+        'checklist': true
       };
       setWidgetPreferences(defaultPreferences);
     }

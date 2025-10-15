@@ -144,6 +144,9 @@ function getDashboardKeys() {
     // GitHub widget settings
     'github_widget_owner',
     'github_widget_repo',
+    // Checklist widget data
+    'checklistItems',
+    'checklistSettings',
   ];
 }
 
