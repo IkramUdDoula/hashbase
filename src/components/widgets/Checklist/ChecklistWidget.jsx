@@ -229,9 +229,9 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
         dragRef={dragRef}
       >
         {/* Content */}
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full min-h-0">
           {/* Checklist Items - Scrollable area */}
-          <div className="flex-1 overflow-y-auto space-y-2 mb-2">
+          <div className="flex-1 overflow-y-auto space-y-2 mb-2 min-h-0">
             {items.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <CheckSquare className="h-12 w-12 text-gray-300 dark:text-gray-700 mb-3" />
@@ -304,8 +304,8 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
               value={newItemText}
               onChange={(e) => setNewItemText(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Add a new task... (Press Enter)"
-              className="flex-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              placeholder="Add (Press Enter)"
+              className="flex-1 min-w-0 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             />
           </div>
         </div>
