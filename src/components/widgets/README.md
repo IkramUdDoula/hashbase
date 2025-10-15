@@ -112,12 +112,21 @@ All widgets automatically include:
 - ✅ Drag-and-drop repositioning
 - ✅ Resizable via UI controls
 
+## Available Widgets
+
+- **Gmail/** - Unread emails with OAuth2 authentication
+- **Netlify/** - Deployment status monitoring
+- **News/** - Latest news headlines with filtering
+- **BD24Live/** - Bangladesh news via RSS feed
+- **GitHub/** - Recent commits from repositories
+- **AI/** - Chat with AI assistants (GPT-4, Claude)
+- **Checklist/** - Simple task checklist with auto-sorting
+- **Timer/** - Stopwatch with laps and countdown timer
+
 ## Example Widgets to Build
 
-- **GitHub/** - PRs, issues, notifications
 - **Calendar/** - Upcoming events
 - **Weather/** - Current weather
-- **Tasks/** - To-do list
 - **RSS/** - Latest articles
 - **Twitter/** - Recent tweets
 

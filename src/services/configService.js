@@ -147,6 +147,11 @@ function getDashboardKeys() {
     // Checklist widget data
     'checklistItems',
     'checklistSettings',
+    // Timer widget data
+    'timerMode',
+    'stopwatchTime',
+    'stopwatchLaps',
+    'countdownInitial',
   ];
 }
 

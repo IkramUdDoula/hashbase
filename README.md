@@ -13,6 +13,8 @@ A modern, highly customizable React dashboard application featuring drag-and-dro
 - 💻 **GitHub Commits Widget** - View commits from repositories with configurable settings, status indicators, auto-refresh (1-30 min)
 - 📰 **News Widget V2** - Latest headlines with country/category filtering (20+ countries), settings modal, integrated search
 - 🌐 **BD24 Live Widget V2** - Bangladesh news via RSS with timestamp display, 30-minute auto-refresh, caching
+- ✅ **Checklist Widget** - Simple task checklist with automatic reordering, checked items move to bottom
+- ⏱️ **Timer Widget** - Stopwatch with lap system and countdown timer with browser notifications
 - 🧪 **Demo Widget** - Comprehensive showcase of all BaseWidgetV2 features, states, and UI components
 
 ### Core Features
@@ -257,6 +259,8 @@ In Settings > Secrets tab, you can backup and restore your entire dashboard conf
   - ✅ AI chat conversations and settings
   - ✅ News widget settings
   - ✅ GitHub widget repository configuration
+  - ✅ Checklist items and settings
+  - ✅ Timer stopwatch laps and countdown settings
   - ❌ Gmail OAuth tokens (excluded - managed by .env file)
 - File is named `hashbase-config-YYYY-MM-DD.json`
 - Safe to store in cloud storage, email, or USB drives
@@ -394,6 +398,33 @@ For detailed technical documentation, see [LAYOUT_PRESERVATION_CHANGES.md](./LAY
 - Settings persist in localStorage
 - Gradient card design with hover effects
 
+### Checklist Widget
+- Simple task checklist with automatic reordering
+- Add new tasks with Enter key
+- Check/uncheck items with visual feedback
+- Checked items automatically move to the bottom
+- Delete individual items
+- Settings to show/hide completed items and toggle auto-sort
+- Clear all completed items at once
+- All data persists in localStorage
+
+### Timer Widget
+- **Stopwatch Mode** - Precise timing with lap system
+  - Start/Pause/Reset controls
+  - Record multiple laps with individual lap times
+  - View lap history with total time and lap duration
+  - Delete individual laps
+  - Time format: HH:MM:SS.MS
+- **Countdown Timer Mode** - Configurable countdown with notifications
+  - Set custom duration (minutes and seconds)
+  - Quick presets: 1, 5, 10, 15, 30 minutes, 1 hour
+  - Visual progress bar
+  - Warning state when under 10 seconds (red display)
+  - Browser notification when countdown completes
+  - Start/Pause/Reset/Stop controls
+- Mode switcher to toggle between stopwatch and countdown
+- All settings and state persist in localStorage
+
 ## Project Structure
 
 ```
@@ -404,11 +435,13 @@ hashbase/
 │   │   ├── widgets/
 │   │   │   ├── AI/                     # AI Chat widget (AIChatWidget.jsx + components)
 │   │   │   ├── BD24Live/               # BD24 Live news widget (V2)
+│   │   │   ├── Checklist/              # Checklist widget with auto-sorting
 │   │   │   ├── Demo/                   # Demo widget showcasing BaseWidgetV2
 │   │   │   ├── GitHub/                 # GitHub commits widget (V2)
 │   │   │   ├── Gmail/                  # Gmail unread emails widget (V2)
 │   │   │   ├── Netlify/                # Netlify deploys widget (V2)
 │   │   │   ├── News/                   # News headlines widget (V2)
+│   │   │   ├── Timer/                  # Timer widget with stopwatch and countdown
 │   │   │   └── README.md               # Widget development guide
 │   │   ├── BaseWidgetV2.jsx            # Standardized widget container with states
 │   │   ├── Canvas.jsx                  # Drag-and-drop canvas with layout management
