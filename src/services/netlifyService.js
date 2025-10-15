@@ -3,7 +3,7 @@
 
 import { getSecret, SECRET_KEYS, hasSecret } from './secretsService';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Helper to get Netlify credentials headers
 function getNetlifyHeaders() {
