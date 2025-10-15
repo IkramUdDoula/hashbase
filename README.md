@@ -13,7 +13,6 @@ A modern, highly customizable React dashboard application featuring drag-and-dro
 - 💻 **GitHub Commits Widget** - View commits from repositories with configurable settings, status indicators, auto-refresh (1-30 min)
 - 📰 **News Widget V2** - Latest headlines with country/category filtering (20+ countries), settings modal, integrated search
 - 🌐 **BD24 Live Widget V2** - Bangladesh news via RSS with timestamp display, 30-minute auto-refresh, caching
-- 💰 **Crypto Widget V2** - Track cryptocurrency prices with portfolio management, real-time updates, multi-currency support (USD, BDT, EUR, etc.)
 - 🧪 **Demo Widget** - Comprehensive showcase of all BaseWidgetV2 features, states, and UI components
 
 ### Core Features
@@ -44,7 +43,6 @@ A modern, highly customizable React dashboard application featuring drag-and-dro
 - **Tavily API Key** (for web search in AI Chat - optional, free tier: 1000 searches/month)
 - **GitHub Personal Access Token** (for GitHub widget - optional, configure in-app)
 - **NewsAPI Key** (for News widget - optional, free tier: 100 requests/day)
-- **CoinGecko API Key** (for Crypto widget - optional, free tier: 50 calls/minute without key)
 
 ## Quick Start
 
@@ -224,51 +222,6 @@ Most widgets can be configured directly in the app via **Settings (⚙️) > Con
 
 **Note:** Settings are saved in your browser's localStorage and persist across sessions. The widget auto-refreshes every 5 minutes.
 
-#### **Crypto Widget** - No configuration required (optional API key)
-
-The Crypto widget works out of the box using CoinGecko's free API (no API key required, 50 calls/minute).
-
-**Optional: Add API key for higher rate limits**
-1. Go to [CoinGecko API Pricing](https://www.coingecko.com/en/api/pricing)
-2. Sign up for an API plan if you need higher rate limits
-3. Copy your API key
-4. Add the key to your `.env` file:
-   ```env
-   VITE_COINGECKO_API_KEY=your_api_key_here
-   ```
-5. Restart the dev server (`npm run dev`)
-
-**Configure the widget:**
-1. Click the settings icon (⚙️) in the Crypto widget
-2. **Enter your holdings** for each cryptocurrency:
-   - Bitcoin: `0.5` (you own 0.5 BTC)
-   - Ethereum: `2.3` (you own 2.3 ETH)
-   - Leave blank or `0` for cryptos you don't own
-3. **Add custom cryptos** (optional):
-   - Enter CoinGecko ID (e.g., "shiba-inu", "pepe")
-   - Enter amount you own
-   - Click "Add"
-4. Click **Save Changes**
-
-**How it works:**
-- Your total portfolio value = Σ(holdings × current price)
-- Example: `0.5 BTC × $95,123 = $47,561.50`
-- Portfolio updates automatically every 2 minutes
-
-**Features:**
-- Real-time price tracking with 2-minute auto-refresh
-- 24-hour price change indicators (green/red)
-- Market cap and 24h volume display
-- Individual holding values shown on each card
-- Total portfolio value calculated automatically
-- 15 popular cryptocurrencies + unlimited custom cryptos
-- Integrated search functionality
-- Holdings automatically saved to localStorage
-- Included in config exports for easy backup/sync
-- All prices displayed in USD
-
-**Note:** Your crypto holdings are saved in your browser's localStorage and automatically included when you export your config (Settings > Secrets > Download Config).
-
 #### **Apps Tab** - Enable/Disable Widgets
 
 Click the **Settings** button (⚙️) > **Configuration** > **Apps** tab to toggle widgets on or off. Use the search bar to quickly find specific widgets. Changes take effect after refreshing the page.
@@ -297,7 +250,6 @@ In Settings > Secrets tab, you can backup and restore your entire dashboard conf
   - ✅ AI chat conversations and settings
   - ✅ News widget settings
   - ✅ GitHub widget repository configuration
-  - ✅ Crypto widget holdings (your portfolio)
   - ❌ Gmail OAuth tokens (excluded - managed by .env file)
 - File is named `hashbase-config-YYYY-MM-DD.json`
 - Safe to store in cloud storage, email, or USB drives
@@ -418,22 +370,6 @@ For detailed technical documentation, see [LAYOUT_PRESERVATION_CHANGES.md](./LAY
 - Settings persist in localStorage
 - Gradient card design with hover effects
 
-### Crypto Widget
-- Track cryptocurrency prices and portfolio in real-time powered by CoinGecko API
-- **Holdings-Based Portfolio** - Enter how much of each crypto you own, not just total value
-- **Automatic Portfolio Calculation** - Total value = your holdings × current prices in USD
-- **15 Popular Cryptos** - Bitcoin, Ethereum, BNB, XRP, Cardano, Solana, and more
-- **Custom Crypto Support** - Add any crypto by CoinGecko ID (e.g., "shiba-inu", "pepe")
-- **Price Metrics** - Current price, 24h change, market cap, and 24h volume
-- **Holdings Display** - Shows individual holding values (e.g., "0.5 BTC = $47,561.73")
-- **Real-time Updates** - Portfolio updates every 2 minutes as prices change
-- **Integrated Search** - Search through your cryptocurrencies
-- **Config Export/Import** - Holdings automatically included in config backups
-- **Smart Caching** - Prices fetched in USD, exchange rates cached for 1 hour
-- Auto-refreshes every 2 minutes
-- Settings persist in localStorage and config exports
-- Beautiful gradient card design with color-coded price changes
-
 ## Project Structure
 
 ```
@@ -444,7 +380,6 @@ hashbase/
 │   │   ├── widgets/
 │   │   │   ├── AI/                     # AI Chat widget (AIChatWidget.jsx + components)
 │   │   │   ├── BD24Live/               # BD24 Live news widget (V2)
-│   │   │   ├── Crypto/                 # Crypto price tracker widget (V2)
 │   │   │   ├── Demo/                   # Demo widget showcasing BaseWidgetV2
 │   │   │   ├── GitHub/                 # GitHub commits widget (V2)
 │   │   │   ├── Gmail/                  # Gmail unread emails widget (V2)
@@ -464,7 +399,6 @@ hashbase/
 │   │   ├── aiService.js                # OpenAI & Claude API integration
 │   │   ├── bd24LiveService.js          # BD24 Live RSS feed service
 │   │   ├── configService.js            # Config export/import with AES-256-GCM encryption
-│   │   ├── cryptoService.js            # CoinGecko API service for crypto prices
 │   │   ├── githubService.js            # GitHub API service
 │   │   ├── gmailService.js             # Gmail API service
 │   │   ├── layoutService.js            # Layout management, validation & space finding
@@ -514,8 +448,6 @@ hashbase/
 - **Anthropic API** - Claude AI integration (Sonnet, Opus, Haiku)
 - **Tavily AI** - Web search API for AI responses (5 results per query)
 - **NewsAPI** - News headlines from 20+ countries and 7 categories
-- **CoinGecko API** - Cryptocurrency prices and market data (free tier: 50 calls/min)
-- **Exchange Rate API** - Currency conversion for crypto widget (free tier: 1500 requests/month)
 - **RSS Parser** - BD24 Live RSS feed parsing with 30-minute caching
 - **Axios** - HTTP client for API requests
 - **Cheerio** - HTML parsing for web scraping

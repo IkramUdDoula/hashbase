@@ -1,13 +1,12 @@
 import React, { useMemo, useEffect } from 'react';
 import { SiGmail, SiNetlify, SiGithub } from 'react-icons/si';
-import { Sparkles, Newspaper, Coins } from 'lucide-react';
+import { Sparkles, Newspaper } from 'lucide-react';
 import { UnreadEmailWidgetV2 } from './components/widgets/Gmail/UnreadEmailWidgetV2';
 import { DeploymentWidgetV2 } from './components/widgets/Netlify/DeploymentWidgetV2';
 import { AIChatWidget } from './components/widgets/AI/AIChatWidget';
 import { GitHubCommitsWidget } from './components/widgets/GitHub/GitHubCommitsWidget';
 import { NewsWidgetV2 } from './components/widgets/News/NewsWidgetV2';
 import { BD24LiveWidgetV2 } from './components/widgets/BD24Live/BD24LiveWidgetV2';
-import { CryptoWidgetV2 } from './components/widgets/Crypto/CryptoWidgetV2';
 import { SettingsButton } from './components/SettingsButton';
 import { Canvas } from './components/Canvas';
 import { ScreenSizeGuard } from './components/ScreenSizeGuard';
@@ -67,14 +66,6 @@ function AppContent() {
       description: 'Latest news from BD24 Live (Bangladesh) via RSS feed - Auto-refreshes every 30 minutes',
       icon: Newspaper
     },
-    { 
-      id: 'crypto-tracker', 
-      component: CryptoWidgetV2, 
-      rowSpan: 2,
-      name: 'Crypto Tracker',
-      description: 'Track cryptocurrency prices and portfolio value in real-time with multi-currency support',
-      icon: Coins
-    },
   ];
 
   // Set default widget preferences and layout
@@ -97,8 +88,7 @@ function AppContent() {
         'netlify-deploys': false,
         'ai-chat': false,
         'github-commits': false,
-        'bd24live-news': false,
-        'crypto-tracker': false
+        'bd24live-news': false
       };
       setWidgetPreferences(defaultPreferences);
     }

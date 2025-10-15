@@ -439,66 +439,6 @@ function createApiServer() {
     }
   })
 
-  // ===== CoinGecko API Endpoints =====
-
-  // Check if CoinGecko API is accessible
-  app.get('/api/crypto/status', async (req, res) => {
-    try {
-      const apiKey = process.env.VITE_COINGECKO_API_KEY
-      const headers = { 'Accept': 'application/json' }
-      if (apiKey) {
-        headers['x-cg-demo-api-key'] = apiKey
-      }
-      
-      const response = await fetch('https://api.coingecko.com/api/v3/ping', { headers })
-      const operational = response.ok
-      res.json({ operational })
-    } catch (error) {
-      console.error('Error checking CoinGecko API status:', error)
-      res.json({ operational: false })
-    }
-  })
-
-  // Fetch cryptocurrency prices
-  app.get('/api/crypto/prices', async (req, res) => {
-    try {
-      const { ids, currency = 'usd' } = req.query
-      
-      if (!ids) {
-        return res.status(400).json({ 
-          error: 'Missing required parameter',
-          message: 'Please provide crypto IDs'
-        })
-      }
-
-      const apiKey = process.env.VITE_COINGECKO_API_KEY
-      const headers = { 'Accept': 'application/json' }
-      if (apiKey) {
-        headers['x-cg-demo-api-key'] = apiKey
-      }
-
-      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=${currency}&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true`
-      
-      const response = await fetch(url, { headers })
-
-      if (!response.ok) {
-        if (response.status === 429) {
-          throw new Error('Rate limit exceeded. Please try again in a minute.')
-        }
-        throw new Error(`CoinGecko API error: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      res.json(data)
-    } catch (error) {
-      console.error('Error fetching crypto prices:', error)
-      res.status(500).json({ 
-        error: 'Failed to fetch crypto prices',
-        message: error.message 
-      })
-    }
-  })
-
   // ===== BD24 Live RSS Feed API Endpoints =====
 
   // Cache for BD24 Live news (to avoid excessive requests)
