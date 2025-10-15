@@ -439,6 +439,204 @@ function createApiServer() {
     }
   })
 
+  // ===== OpenAI API Proxy Endpoint =====
+
+  // Proxy OpenAI chat completions (streaming)
+  app.post('/api/openai/chat', async (req, res) => {
+    try {
+      const { messages, model, settings } = req.body
+      const apiKey = req.headers['x-openai-api-key']
+      
+      console.log('🤖 OpenAI: Request received')
+      console.log('   Model:', model)
+      console.log('   Messages count:', messages?.length)
+      console.log('   API Key present:', !!apiKey)
+      
+      if (!apiKey) {
+        console.error('❌ OpenAI: No API key provided')
+        return res.status(401).json({ 
+          error: 'OpenAI API key not configured',
+          message: 'Please add your OpenAI API key in Settings > Secrets'
+        })
+      }
+
+      console.log('🤖 OpenAI: Proxying request for model:', model)
+
+      // Make request to OpenAI API
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          stream: true,
+          temperature: settings?.temperature || 0.7,
+          max_tokens: settings?.maxTokens || 2000,
+          top_p: settings?.topP || 1,
+          frequency_penalty: settings?.frequencyPenalty || 0,
+          presence_penalty: settings?.presencePenalty || 0,
+        }),
+      })
+
+      console.log('🤖 OpenAI: Response status:', response.status)
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: { message: 'Unknown error' } }))
+        console.error('❌ OpenAI API Error:')
+        console.error('   Status:', response.status)
+        console.error('   Error:', JSON.stringify(error, null, 2))
+        return res.status(response.status).json({
+          error: error.error?.message || 'OpenAI API request failed'
+        })
+      }
+
+      console.log('✅ OpenAI: Streaming response...')
+
+      // Set headers for streaming
+      res.setHeader('Content-Type', 'text/event-stream')
+      res.setHeader('Cache-Control', 'no-cache')
+      res.setHeader('Connection', 'keep-alive')
+
+      // Stream the response using Web Streams API
+      const reader = response.body.getReader()
+      const pump = async () => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) {
+              console.log('✅ OpenAI: Stream completed')
+              res.end()
+              break
+            }
+            res.write(value)
+          }
+        } catch (error) {
+          console.error('❌ OpenAI Stream error:')
+          console.error('   Error:', error.message)
+          console.error('   Stack:', error.stack)
+          res.end()
+        }
+      }
+      pump()
+    } catch (error) {
+      console.error('❌ Error proxying OpenAI request:')
+      console.error('   Message:', error.message)
+      console.error('   Stack:', error.stack)
+      console.error('   Full error:', error)
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          error: 'Failed to process OpenAI request',
+          message: error.message 
+        })
+      }
+    }
+  })
+
+  // ===== Claude API Proxy Endpoint =====
+
+  // Proxy Claude messages (streaming)
+  app.post('/api/claude/messages', async (req, res) => {
+    try {
+      const { messages, model, settings, system } = req.body
+      const apiKey = req.headers['x-claude-api-key']
+      
+      console.log('🤖 Claude: Request received')
+      console.log('   Model:', model)
+      console.log('   Messages count:', messages?.length)
+      console.log('   API Key present:', !!apiKey)
+      console.log('   System message:', !!system)
+      
+      if (!apiKey) {
+        console.error('❌ Claude: No API key provided')
+        return res.status(401).json({ 
+          error: 'Claude API key not configured',
+          message: 'Please add your Claude API key in Settings > Secrets'
+        })
+      }
+
+      console.log('🤖 Claude: Proxying request for model:', model)
+
+      const requestBody = {
+        model,
+        messages,
+        max_tokens: settings?.maxTokens || 2000,
+        stream: true,
+        temperature: settings?.temperature || 0.7,
+        top_p: settings?.topP || 1,
+      }
+
+      if (system) {
+        requestBody.system = system
+      }
+
+      // Make request to Claude API
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      console.log('🤖 Claude: Response status:', response.status)
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: { message: 'Unknown error' } }))
+        console.error('❌ Claude API Error:')
+        console.error('   Status:', response.status)
+        console.error('   Error:', JSON.stringify(error, null, 2))
+        return res.status(response.status).json({
+          error: error.error?.message || 'Claude API request failed'
+        })
+      }
+
+      console.log('✅ Claude: Streaming response...')
+
+      // Set headers for streaming
+      res.setHeader('Content-Type', 'text/event-stream')
+      res.setHeader('Cache-Control', 'no-cache')
+      res.setHeader('Connection', 'keep-alive')
+
+      // Stream the response using Web Streams API
+      const reader = response.body.getReader()
+      const pump = async () => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) {
+              console.log('✅ Claude: Stream completed')
+              res.end()
+              break
+            }
+            res.write(value)
+          }
+        } catch (error) {
+          console.error('❌ Claude Stream error:')
+          console.error('   Error:', error.message)
+          console.error('   Stack:', error.stack)
+          res.end()
+        }
+      }
+      pump()
+    } catch (error) {
+      console.error('❌ Error proxying Claude request:')
+      console.error('   Message:', error.message)
+      console.error('   Stack:', error.stack)
+      console.error('   Full error:', error)
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          error: 'Failed to process Claude request',
+          message: error.message 
+        })
+      }
+    }
+  })
+
   // ===== BD24 Live RSS Feed API Endpoints =====
 
   // Cache for BD24 Live news (to avoid excessive requests)

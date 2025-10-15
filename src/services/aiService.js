@@ -110,27 +110,29 @@ async function sendOpenAIMessage(messages, model, onChunk) {
 
   const settings = getLLMSettings();
   
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  // Use backend proxy to avoid CORS issues
+  const response = await fetch('/api/openai/chat', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      'x-openai-api-key': apiKey,
     },
     body: JSON.stringify({
       model,
       messages,
-      stream: true,
-      temperature: settings.temperature,
-      max_tokens: settings.maxTokens,
-      top_p: settings.topP,
-      frequency_penalty: settings.frequencyPenalty,
-      presence_penalty: settings.presencePenalty,
+      settings: {
+        temperature: settings.temperature,
+        maxTokens: settings.maxTokens,
+        topP: settings.topP,
+        frequencyPenalty: settings.frequencyPenalty,
+        presencePenalty: settings.presencePenalty,
+      },
     }),
   });
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'OpenAI API request failed');
+    throw new Error(error.error || 'OpenAI API request failed');
   }
 
   const reader = response.body.getReader();
@@ -192,32 +194,28 @@ async function sendClaudeMessage(messages, model, onChunk) {
 
   const settings = getLLMSettings();
   
-  const requestBody = {
-    model,
-    messages: claudeMessages,
-    max_tokens: settings.maxTokens,
-    stream: true,
-    temperature: settings.temperature,
-    top_p: settings.topP,
-  };
-
-  if (systemMessage) {
-    requestBody.system = systemMessage;
-  }
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  // Use backend proxy to avoid CORS issues
+  const response = await fetch('/api/claude/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+      'x-claude-api-key': apiKey,
     },
-    body: JSON.stringify(requestBody),
+    body: JSON.stringify({
+      model,
+      messages: claudeMessages,
+      system: systemMessage || undefined,
+      settings: {
+        maxTokens: settings.maxTokens,
+        temperature: settings.temperature,
+        topP: settings.topP,
+      },
+    }),
   });
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'Claude API request failed');
+    throw new Error(error.error || 'Claude API request failed');
   }
 
   const reader = response.body.getReader();
