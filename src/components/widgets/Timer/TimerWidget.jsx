@@ -280,92 +280,95 @@ export function TimerWidget({ rowSpan = 2, dragRef }) {
           {/* Stopwatch Mode */}
           {mode === 'stopwatch' && (
             <div className="flex flex-col h-full min-h-0">
-              {/* Time Display */}
-              <div className="text-center mb-4">
-                <div className="text-4xl font-mono font-bold text-gray-900 dark:text-gray-100 mb-4">
-                  {formatTime(stopwatchTime)}
+              {/* Scrollable Content Area */}
+              <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
+                {/* Time Display */}
+                <div className="text-center mb-4">
+                  <div className="text-4xl font-mono font-bold text-gray-900 dark:text-gray-100 mb-4">
+                    {formatTime(stopwatchTime)}
+                  </div>
+                  
+                  {/* Controls */}
+                  <div className="flex justify-center gap-3">
+                    <button
+                      onClick={handleStopwatchStartPause}
+                      className={`p-4 rounded-lg font-medium transition-all ${
+                        stopwatchRunning
+                          ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                          : 'bg-green-500 hover:bg-green-600 text-white'
+                      }`}
+                      title={stopwatchRunning ? 'Pause' : 'Start'}
+                    >
+                      {stopwatchRunning ? (
+                        <Pause className="h-6 w-6" />
+                      ) : (
+                        <Play className="h-6 w-6" />
+                      )}
+                    </button>
+                    
+                    <button
+                      onClick={handleAddLap}
+                      disabled={stopwatchTime === 0}
+                      className="p-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Lap"
+                    >
+                      <Plus className="h-6 w-6" />
+                    </button>
+                    
+                    <button
+                      onClick={handleStopwatchReset}
+                      disabled={stopwatchTime === 0 && laps.length === 0}
+                      className="p-4 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Reset"
+                    >
+                      <RotateCcw className="h-6 w-6" />
+                    </button>
+                  </div>
                 </div>
                 
-                {/* Controls */}
-                <div className="flex justify-center gap-3">
-                  <button
-                    onClick={handleStopwatchStartPause}
-                    className={`p-4 rounded-lg font-medium transition-all ${
-                      stopwatchRunning
-                        ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                        : 'bg-green-500 hover:bg-green-600 text-white'
-                    }`}
-                    title={stopwatchRunning ? 'Pause' : 'Start'}
-                  >
-                    {stopwatchRunning ? (
-                      <Pause className="h-6 w-6" />
-                    ) : (
-                      <Play className="h-6 w-6" />
-                    )}
-                  </button>
-                  
-                  <button
-                    onClick={handleAddLap}
-                    disabled={stopwatchTime === 0}
-                    className="p-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Lap"
-                  >
-                    <Plus className="h-6 w-6" />
-                  </button>
-                  
-                  <button
-                    onClick={handleStopwatchReset}
-                    disabled={stopwatchTime === 0 && laps.length === 0}
-                    className="p-4 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Reset"
-                  >
-                    <RotateCcw className="h-6 w-6" />
-                  </button>
-                </div>
-              </div>
-              
-              {/* Laps List */}
-              <div className="flex-1 overflow-y-auto min-h-0">
-                {laps.length > 0 ? (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                      Laps ({laps.length})
-                    </h3>
-                    {[...laps].reverse().map((lap, index) => (
-                      <div
-                        key={lap.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">
-                            #{laps.length - index}
-                          </span>
-                          <div>
-                            <div className="text-sm font-mono font-medium text-gray-900 dark:text-gray-100">
-                              {formatTime(lap.time)}
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-500">
-                              +{formatTime(lap.lapTime)}
+                {/* Laps List */}
+                <div className="min-h-0">
+                  {laps.length > 0 ? (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Laps ({laps.length})
+                      </h3>
+                      {[...laps].reverse().map((lap, index) => (
+                        <div
+                          key={lap.id}
+                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                              #{laps.length - index}
+                            </span>
+                            <div>
+                              <div className="text-sm font-mono font-medium text-gray-900 dark:text-gray-100">
+                                {formatTime(lap.time)}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-500">
+                                +{formatTime(lap.lapTime)}
+                              </div>
                             </div>
                           </div>
+                          <button
+                            onClick={() => handleDeleteLap(lap.id)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all"
+                            title="Delete lap"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
-                        <button
-                          onClick={() => handleDeleteLap(lap.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all"
-                          title="Delete lap"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-center">
-                    <Clock className="h-12 w-12 text-gray-300 dark:text-gray-700 mb-3" />
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">No laps yet</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">Start the stopwatch and add laps</p>
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Clock className="h-12 w-12 text-gray-300 dark:text-gray-700 mb-3" />
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">No laps yet</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500">Start the stopwatch and add laps</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

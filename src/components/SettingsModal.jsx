@@ -121,15 +121,25 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
     });
   };
 
-  const handleClearAllData = () => {
+  const handleClearAllData = async () => {
     console.log('🗑️ handleClearAllData called, click count:', clearClickCount);
     
     if (clearClickCount === 0) {
-      console.log('⚠️ First click - asking for confirmation');
-      setClearClickCount(1);
-      setSaveStatus('Click again to confirm deletion');
+      console.log('⚠️ First click - downloading config and asking for confirmation');
       
-      // Reset after 3 seconds
+      // Download config first
+      try {
+        await downloadConfig();
+        console.log('✅ Config downloaded successfully');
+        setSaveStatus('Config downloaded! Click again to delete all data');
+      } catch (error) {
+        console.error('❌ Error downloading config:', error);
+        setSaveStatus('Config download failed. Click again to delete anyway');
+      }
+      
+      setClearClickCount(1);
+      
+      // Reset after 5 seconds (longer to give user time to see the download)
       if (clearTimeoutRef.current) {
         clearTimeout(clearTimeoutRef.current);
       }
@@ -137,7 +147,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
         console.log('⏱️ Confirmation timeout - resetting');
         setClearClickCount(0);
         setSaveStatus('');
-      }, 3000);
+      }, 5000);
     } else {
       console.log('✅ Second click - proceeding with deletion');
       try {
