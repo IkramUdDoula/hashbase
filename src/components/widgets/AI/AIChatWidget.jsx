@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BaseWidgetV2 } from '../../BaseWidgetV2';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+// import { Badge } from '@/components/ui/badge';
 import { 
   MessageSquare, 
   Loader2, 
