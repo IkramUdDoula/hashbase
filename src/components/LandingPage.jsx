@@ -89,7 +89,7 @@ export function LandingPage() {
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-16">
         {/* Logo/Brand */}
         <div className="flex items-center gap-3 mb-8 animate-fade-in">
-          <h2 className="text-3xl font-bold text-white">Hashbase</h2>
+          <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hashbase</h2>
         </div>
 
         {/* Hero Text */}
