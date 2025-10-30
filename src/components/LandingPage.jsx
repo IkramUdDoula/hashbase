@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, ArrowRight, Hash } from 'lucide-react';
+import { X, ArrowRight, Hash, CheckCircle2, Loader2 } from 'lucide-react';
 import { ScrollbarStyles } from '@/components/ui/scrollbar-styles';
 import dashboardImage from '../public/image.png';
+import { submitFormAsIssue, isFormSubmissionConfigured } from '@/services/landingFormService';
 
 export function LandingPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -10,21 +11,46 @@ export function LandingPage() {
     email: '',
     message: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitError('');
     
-    // Create mailto link with form data
-    const subject = encodeURIComponent(`Hashbase Interest - ${formData.name}`);
-    const body = encodeURIComponent(
-      `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
-    );
-    
-    window.location.href = `mailto:doula.ikram@gmail.com?subject=${subject}&body=${body}`;
-    
-    // Close form and reset
-    setIsFormOpen(false);
-    setFormData({ name: '', email: '', message: '' });
+    try {
+      // Check if GitHub submission is configured
+      if (isFormSubmissionConfigured()) {
+        // Submit as GitHub issue
+        await submitFormAsIssue(formData);
+        setSubmitSuccess(true);
+        
+        // Reset form after 3 seconds
+        setTimeout(() => {
+          setIsFormOpen(false);
+          setSubmitSuccess(false);
+          setFormData({ name: '', email: '', message: '' });
+        }, 3000);
+      } else {
+        // Fallback to mailto if not configured
+        const subject = encodeURIComponent(`Hashbase Interest - ${formData.name}`);
+        const body = encodeURIComponent(
+          `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
+        );
+        window.location.href = `mailto:doula.ikram@gmail.com?subject=${subject}&body=${body}`;
+        
+        // Close form and reset
+        setIsFormOpen(false);
+        setFormData({ name: '', email: '', message: '' });
+      }
+    } catch (error) {
+      console.error('Form submission error:', error);
+      setSubmitError(error.message || 'Failed to submit. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -63,7 +89,6 @@ export function LandingPage() {
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-16">
         {/* Logo/Brand */}
         <div className="flex items-center gap-3 mb-8 animate-fade-in">
-          <Hash className="w-10 h-10 text-blue-400" />
           <h2 className="text-3xl font-bold text-white">Hashbase</h2>
         </div>
 
@@ -151,8 +176,25 @@ export function LandingPage() {
               <p className="text-slate-400">Join the waitlist and be the first to experience Hashbase</p>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Success Message */}
+            {submitSuccess ? (
+              <div className="text-center py-8">
+                <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                <h3 className="text-2xl font-bold text-white mb-2">Thank You!</h3>
+                <p className="text-slate-400">Your request has been submitted successfully.</p>
+                <p className="text-slate-500 text-sm mt-2">We'll be in touch soon!</p>
+              </div>
+            ) : (
+              <>
+                {/* Error Message */}
+                {submitError && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
+                    {submitError}
+                  </div>
+                )}
+
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-2">
                   Name
@@ -202,11 +244,21 @@ export function LandingPage() {
 
               <button
                 type="submit"
-                className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg hover:from-blue-500 hover:to-purple-500 transition-all hover:scale-105 shadow-lg hover:shadow-blue-500/50"
+                disabled={isSubmitting}
+                className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg hover:from-blue-500 hover:to-purple-500 transition-all hover:scale-105 shadow-lg hover:shadow-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 inline-flex items-center justify-center gap-2"
               >
-                Submit Request
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Request'
+                )}
               </button>
             </form>
+              </>
+            )}
           </div>
         </div>
       )}

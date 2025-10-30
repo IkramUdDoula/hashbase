@@ -4,7 +4,7 @@ import { Sparkles, Newspaper, CheckSquare, Timer } from 'lucide-react';
 import { UnreadEmailWidgetV2 } from './components/widgets/Gmail/UnreadEmailWidgetV2';
 import { DeploymentWidgetV2 } from './components/widgets/Netlify/DeploymentWidgetV2';
 import { AIChatWidget } from './components/widgets/AI/AIChatWidget';
-import { GitHubCommitsWidget } from './components/widgets/GitHub/GitHubCommitsWidget';
+import { GitHubCommitsWidget, GitHubIssuesWidget } from './components/widgets/GitHub';
 import { NewsWidgetV2 } from './components/widgets/News/NewsWidgetV2';
 import { BD24LiveWidgetV2 } from './components/widgets/BD24Live/BD24LiveWidgetV2';
 import { ChecklistWidget } from './components/widgets/Checklist/ChecklistWidget';
@@ -62,6 +62,14 @@ function AppContent() {
       icon: SiGithub
     },
     { 
+      id: 'github-issues', 
+      component: GitHubIssuesWidget, 
+      rowSpan: 3,
+      name: 'GitHub Issues',
+      description: 'View and create issues from your GitHub repositories with realtime updates',
+      icon: SiGithub
+    },
+    { 
       id: 'news-headlines', 
       component: NewsWidgetV2, 
       rowSpan: 4,
@@ -115,6 +123,7 @@ function AppContent() {
         'netlify-deploys': false,
         'ai-chat': false,
         'github-commits': false,
+        'github-issues': false,
         'bd24live-news': false,
         'checklist': true,
         'timer': true
