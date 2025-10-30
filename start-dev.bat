@@ -16,6 +16,9 @@ if not exist "node_modules" (
 echo Starting development server with 'npm run dev'...
 call npm run dev
 
+:: Open the browser to the development server
+start http://localhost:5000/
+
 :: Keep the window open to see the output
 if %ERRORLEVEL% NEQ 0 (
     echo.
