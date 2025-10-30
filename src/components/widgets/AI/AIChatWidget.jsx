@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BaseWidgetV2 } from '../../BaseWidgetV2';
 import { Button } from '@/components/ui/button';
-// import { Badge } from '@/components/ui/badge';
 import { 
   MessageSquare, 
   Loader2, 
@@ -310,11 +309,6 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
   const currentModel = currentProvider?.models.find(m => m.id === selectedModel);
   const isConfigured = providers.length > 0;
 
-  const badge = messages.length > 0 && currentModel ? (
-    <Badge variant="secondary" className="text-xs">
-      {currentModel.name}
-    </Badge>
-  ) : null;
 
   const customActions = (
     <div className="flex items-center gap-1">
@@ -365,7 +359,6 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
         appName="AI"
         widgetName="Chat"
         tooltip="Chat with AI assistants (OpenAI & Claude)"
-        badge={badge}
         customActions={customActions}
         showRefresh={false}
         state={!isConfigured ? 'empty' : 'positive'}
