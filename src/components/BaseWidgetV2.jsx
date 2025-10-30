@@ -178,6 +178,7 @@ export function BaseWidgetV2({
           size="icon"
           onClick={onSettingsClick}
           title="Settings"
+          className="hover:bg-white/20"
         >
           <Settings className="h-4 w-4" />
         </Button>
@@ -190,6 +191,7 @@ export function BaseWidgetV2({
           onClick={onRefresh}
           disabled={refreshing}
           title="Refresh"
+          className="hover:bg-white/20"
         >
           <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
         </Button>

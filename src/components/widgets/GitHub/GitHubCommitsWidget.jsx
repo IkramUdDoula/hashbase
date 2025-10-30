@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { BaseWidgetV2 } from '../../BaseWidgetV2';
-import { Badge } from '@/components/ui/badge';
 import { 
   GitCommit, 
   AlertCircle,
@@ -164,11 +163,6 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
     );
   });
   
-  // Badge showing commit count
-  const badge = filteredCommits.length > 0 ? (
-    <Badge variant="secondary">{filteredCommits.length}</Badge>
-  ) : null;
-  
   return (
     <>
       <BaseWidgetV2
@@ -177,7 +171,6 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
         appName="GitHub"
         widgetName="Commits"
         tooltip="Recent commits from your GitHub repositories"
-        badge={badge}
         
         // Action Buttons
         showSettings={true}
