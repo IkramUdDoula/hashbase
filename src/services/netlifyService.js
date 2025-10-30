@@ -35,9 +35,40 @@ export async function checkNetlifyStatus() {
   }
 }
 
-export async function fetchNetlifyDeploys() {
+/**
+ * Fetch all Netlify sites
+ * @returns {Promise<Array>} Array of site objects
+ */
+export async function fetchNetlifySites() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/netlify/deploys`, {
+    const response = await fetch(`${API_BASE_URL}/api/netlify/sites`, {
+      headers: getNetlifyHeaders()
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch sites: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    return data.sites || [];
+  } catch (error) {
+    console.error('Error fetching Netlify sites:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch deploys from selected sites or all sites
+ * @param {Array<string>} siteIds - Array of site IDs to filter by (empty = all sites)
+ * @returns {Promise<Array>} Array of deploy objects
+ */
+export async function fetchNetlifyDeploys(siteIds = []) {
+  try {
+    const url = siteIds.length > 0 
+      ? `${API_BASE_URL}/api/netlify/deploys?siteIds=${siteIds.join(',')}`
+      : `${API_BASE_URL}/api/netlify/deploys`;
+    
+    const response = await fetch(url, {
       headers: getNetlifyHeaders()
     });
     
@@ -59,4 +90,37 @@ export function getNetlifyDeployUrl(deployId, siteId) {
 
 export function getNetlifySiteUrl(siteId) {
   return `https://app.netlify.com/sites/${siteId}`;
+}
+
+/**
+ * Get stored site selection preferences
+ * @returns {Object} Object with selectedSites array and selectAll boolean
+ */
+export function getSiteSelectionPreferences() {
+  try {
+    const stored = localStorage.getItem('netlify_site_selection');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error reading site selection preferences:', error);
+  }
+  return { selectedSites: [], selectAll: true };
+}
+
+/**
+ * Save site selection preferences
+ * @param {Array<string>} selectedSites - Array of selected site IDs
+ * @param {boolean} selectAll - Whether to select all sites
+ */
+export function saveSiteSelectionPreferences(selectedSites, selectAll) {
+  try {
+    localStorage.setItem('netlify_site_selection', JSON.stringify({
+      selectedSites,
+      selectAll
+    }));
+  } catch (error) {
+    console.error('Error saving site selection preferences:', error);
+    throw error;
+  }
 }

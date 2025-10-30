@@ -11,7 +11,13 @@ import {
   Settings as SettingsIcon
 } from 'lucide-react';
 import { SiGithub } from 'react-icons/si';
-import { fetchAllUserCommits, isGitHubConfigured } from '@/services/githubService';
+import { 
+  fetchAllUserCommits, 
+  fetchUserRepositories,
+  isGitHubConfigured,
+  getCommitRepoSelectionPreferences,
+  saveCommitRepoSelectionPreferences
+} from '@/services/githubService';
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { WidgetModal, WidgetModalFooter } from '@/components/ui/widget-modal';
 
@@ -29,6 +35,7 @@ import { WidgetModal, WidgetModalFooter } from '@/components/ui/widget-modal';
 export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
   // Widget state management
   const [commits, setCommits] = useState([]);
+  const [repositories, setRepositories] = useState([]);
   const [currentState, setCurrentState] = useState('loading');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -38,15 +45,44 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
   
   // Settings state
   const [settings, setSettings] = useState({
+    selectedRepos: [],
+    selectAll: true,
     maxCommits: 20,
     autoRefresh: true,
     refreshInterval: 5, // minutes
     showStatus: true,
     showRepoName: true,
   });
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   
   // Temporary settings for modal
   const [tempSettings, setTempSettings] = useState(settings);
+  
+  // Load repositories on mount
+  useEffect(() => {
+    loadRepositories();
+    
+    // Load saved preferences
+    const prefs = getCommitRepoSelectionPreferences();
+    setSettings(prev => ({
+      ...prev,
+      selectedRepos: prefs.selectedRepos,
+      selectAll: prefs.selectAll
+    }));
+    setPreferencesLoaded(true);
+  }, []);
+  
+  // Load repositories
+  const loadRepositories = async () => {
+    try {
+      if (!isGitHubConfigured()) return;
+      
+      const repos = await fetchUserRepositories();
+      setRepositories(repos);
+    } catch (err) {
+      console.warn('Failed to load repositories:', err);
+    }
+  };
   
   // Load commits from GitHub
   const loadCommits = async () => {
@@ -60,7 +96,8 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
         return;
       }
 
-      const commitData = await fetchAllUserCommits(settings.maxCommits);
+      const reposToFetch = settings.selectAll ? [] : settings.selectedRepos;
+      const commitData = await fetchAllUserCommits(reposToFetch, settings.maxCommits);
       
       if (commitData.length === 0) {
         setCommits([]);
@@ -77,10 +114,12 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
     }
   };
   
-  // Initial load
+  // Initial load - only after preferences are loaded
   useEffect(() => {
-    loadCommits();
-  }, [settings.maxCommits]);
+    if (preferencesLoaded) {
+      loadCommits();
+    }
+  }, [preferencesLoaded, settings.selectedRepos, settings.selectAll, settings.maxCommits]);
   
   // Auto-refresh if enabled
   useEffect(() => {
@@ -108,6 +147,7 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
   
   const handleSettingsSave = () => {
     setSettings(tempSettings);
+    saveCommitRepoSelectionPreferences(tempSettings.selectedRepos, tempSettings.selectAll);
     setSettingsOpen(false);
   };
   
@@ -126,6 +166,29 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
   
   const handleCommitClick = (commit) => {
     window.open(commit.url, '_blank');
+  };
+  
+  const handleRepoToggle = (repoFullName) => {
+    setTempSettings(prev => {
+      const isSelected = prev.selectedRepos.includes(repoFullName);
+      const newSelectedRepos = isSelected
+        ? prev.selectedRepos.filter(r => r !== repoFullName)
+        : [...prev.selectedRepos, repoFullName];
+      
+      return {
+        ...prev,
+        selectedRepos: newSelectedRepos,
+        selectAll: false
+      };
+    });
+  };
+  
+  const handleSelectAllToggle = () => {
+    setTempSettings(prev => ({
+      ...prev,
+      selectAll: !prev.selectAll,
+      selectedRepos: []
+    }));
   };
   
   // Get commit message (first line only)
@@ -277,6 +340,67 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
         }
       >
         <div className="space-y-4">
+          {/* Repository Selection */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Repository Selection
+            </label>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Choose which repositories to fetch commits from
+            </p>
+            
+            {/* Select All Toggle */}
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={tempSettings.selectAll}
+                onChange={handleSelectAllToggle}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900 dark:peer-checked:bg-gray-100 peer-checked:after:bg-white dark:peer-checked:after:bg-gray-900"></div>
+              <span className="ml-3 text-sm text-gray-900 dark:text-gray-100">
+                All Repositories
+              </span>
+            </label>
+            
+            {/* Repository List */}
+            {!tempSettings.selectAll && (
+              <div className="mt-3 max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-700 rounded-lg">
+                {repositories.length === 0 ? (
+                  <div className="p-3 text-sm text-gray-600 dark:text-gray-400 text-center">
+                    Loading repositories...
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {repositories.map((repo) => (
+                      <label
+                        key={repo.id}
+                        className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={tempSettings.selectedRepos.includes(repo.fullName)}
+                          onChange={() => handleRepoToggle(repo.fullName)}
+                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 focus:ring-gray-400 dark:focus:ring-gray-600"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                            {repo.fullName}
+                          </p>
+                          {repo.description && (
+                            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                              {repo.description}
+                            </p>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
           {/* Max Commits */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -396,6 +520,8 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
             <button
               onClick={() => {
                 setTempSettings({
+                  selectedRepos: [],
+                  selectAll: true,
                   maxCommits: 20,
                   autoRefresh: true,
                   refreshInterval: 5,

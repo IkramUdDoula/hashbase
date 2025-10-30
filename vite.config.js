@@ -351,8 +351,8 @@ function createApiServer() {
     }
   })
 
-  // Fetch all deploys from all sites
-  app.get('/api/netlify/deploys', async (req, res) => {
+  // Fetch all Netlify sites
+  app.get('/api/netlify/sites', async (req, res) => {
     try {
       const accessToken = req.headers['x-netlify-access-token']
       
@@ -375,6 +375,57 @@ function createApiServer() {
       }
 
       const sites = await sitesResponse.json()
+      
+      // Return simplified site info
+      const simplifiedSites = sites.map(site => ({
+        id: site.id,
+        name: site.name,
+        url: site.url,
+        customDomain: site.custom_domain,
+        createdAt: site.created_at,
+      }))
+      
+      res.json({ sites: simplifiedSites })
+    } catch (error) {
+      console.error('Error fetching Netlify sites:', error)
+      res.status(500).json({ 
+        error: 'Failed to fetch sites',
+        message: error.message 
+      })
+    }
+  })
+
+  // Fetch all deploys from all sites or selected sites
+  app.get('/api/netlify/deploys', async (req, res) => {
+    try {
+      const accessToken = req.headers['x-netlify-access-token']
+      const siteIdsParam = req.query.siteIds
+      
+      if (!accessToken) {
+        return res.status(401).json({ 
+          error: 'Not configured',
+          message: 'Please add your Netlify access token in Settings > Secrets'
+        })
+      }
+
+      // Fetch all sites
+      const sitesResponse = await fetch('https://api.netlify.com/api/v1/sites', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!sitesResponse.ok) {
+        throw new Error(`Failed to fetch sites: ${sitesResponse.statusText}`)
+      }
+
+      let sites = await sitesResponse.json()
+      
+      // Filter sites if siteIds provided
+      if (siteIdsParam) {
+        const selectedSiteIds = siteIdsParam.split(',')
+        sites = sites.filter(site => selectedSiteIds.includes(site.id))
+      }
       
       // Fetch latest deploys for each site
       const deployPromises = sites.map(async (site) => {
@@ -429,7 +480,10 @@ function createApiServer() {
       // Sort by creation date (most recent first)
       validDeploys.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       
-      res.json({ deploys: validDeploys })
+      res.json({ 
+        deploys: validDeploys,
+        filteredSites: siteIdsParam ? siteIdsParam.split(',').length : sites.length
+      })
     } catch (error) {
       console.error('Error fetching Netlify deploys:', error)
       res.status(500).json({ 

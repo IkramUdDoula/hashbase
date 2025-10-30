@@ -6,11 +6,10 @@ const MAX_REPOS = 10; // Limit number of repos to fetch from
 const COMMITS_PER_REPO = 3; // Commits to fetch per repo
 
 /**
- * Fetch commits from all user repositories
- * @param {number} maxCommits - Maximum total commits to return (default: 20)
- * @returns {Promise<Array>} Array of commit objects with repo info and status
+ * Fetch all repositories for the authenticated user
+ * @returns {Promise<Array>} Array of repository objects
  */
-export async function fetchAllUserCommits(maxCommits = 20) {
+export async function fetchUserRepositories() {
   const token = getSecret(SECRET_KEYS.GITHUB_TOKEN);
   
   if (!token) {
@@ -23,20 +22,77 @@ export async function fetchAllUserCommits(maxCommits = 20) {
   };
 
   try {
-    // Get authenticated user's repositories
-    const reposResponse = await fetch(
-      `${GITHUB_API_BASE}/user/repos?sort=pushed&per_page=${MAX_REPOS}&affiliation=owner`,
+    const response = await fetch(
+      `${GITHUB_API_BASE}/user/repos?sort=updated&per_page=100&affiliation=owner,collaborator,organization_member`,
       { headers }
     );
 
-    if (!reposResponse.ok) {
-      if (reposResponse.status === 401) {
+    if (!response.ok) {
+      if (response.status === 401) {
         throw new Error('Invalid GitHub token. Please check your credentials.');
       }
-      throw new Error(`GitHub API error: ${reposResponse.status}`);
+      throw new Error(`GitHub API error: ${response.status}`);
     }
 
-    const repos = await reposResponse.json();
+    const repos = await response.json();
+    
+    return repos.map(repo => ({
+      id: repo.id,
+      name: repo.name,
+      fullName: repo.full_name,
+      owner: repo.owner.login,
+      private: repo.private,
+      description: repo.description,
+      url: repo.html_url
+    }));
+  } catch (error) {
+    if (error.message.includes('fetch')) {
+      throw new Error('Network error. Please check your connection.');
+    }
+    throw error;
+  }
+}
+
+/**
+ * Fetch commits from selected repositories or all repositories
+ * @param {Array<string>} repoFullNames - Array of repo full names (e.g., ['owner/repo'])
+ * @param {number} maxCommits - Maximum total commits to return (default: 20)
+ * @returns {Promise<Array>} Array of commit objects with repo info and status
+ */
+export async function fetchAllUserCommits(repoFullNames = [], maxCommits = 20) {
+  const token = getSecret(SECRET_KEYS.GITHUB_TOKEN);
+  
+  if (!token) {
+    throw new Error('GitHub token not configured. Please add it in Settings.');
+  }
+
+  const headers = {
+    'Accept': 'application/vnd.github.v3+json',
+    'Authorization': `Bearer ${token}`
+  };
+
+  try {
+    let repos;
+    
+    // If no specific repos selected, fetch all user repos
+    if (repoFullNames.length === 0) {
+      const allRepos = await fetchUserRepositories();
+      repos = allRepos.slice(0, MAX_REPOS).map(r => ({
+        name: r.name,
+        owner: { login: r.owner },
+        full_name: r.fullName
+      }));
+    } else {
+      // Use selected repos
+      repos = repoFullNames.map(fullName => {
+        const [owner, name] = fullName.split('/');
+        return {
+          name,
+          owner: { login: owner },
+          full_name: fullName
+        };
+      });
+    }
     
     // Fetch commits from each repository
     const allCommits = [];
@@ -203,4 +259,37 @@ export function setConfiguredRepo(owner, repo) {
 export function isGitHubConfigured() {
   const token = getSecret(SECRET_KEYS.GITHUB_TOKEN);
   return !!token;
+}
+
+/**
+ * Get stored repository selection preferences for commits
+ * @returns {Object} Object with selectedRepos array and selectAll boolean
+ */
+export function getCommitRepoSelectionPreferences() {
+  try {
+    const stored = localStorage.getItem('github_commits_repo_selection');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error reading commit repo selection preferences:', error);
+  }
+  return { selectedRepos: [], selectAll: true };
+}
+
+/**
+ * Save repository selection preferences for commits
+ * @param {Array<string>} selectedRepos - Array of selected repo full names
+ * @param {boolean} selectAll - Whether to select all repos
+ */
+export function saveCommitRepoSelectionPreferences(selectedRepos, selectAll) {
+  try {
+    localStorage.setItem('github_commits_repo_selection', JSON.stringify({
+      selectedRepos,
+      selectAll
+    }));
+  } catch (error) {
+    console.error('Error saving commit repo selection preferences:', error);
+    throw error;
+  }
 }

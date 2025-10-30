@@ -57,6 +57,7 @@ export function GitHubIssuesWidget({ rowSpan = 3, dragRef }) {
     autoRefresh: true,
     refreshInterval: 5, // minutes
   });
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   
   // Temporary settings for modal
   const [tempSettings, setTempSettings] = useState(settings);
@@ -80,6 +81,7 @@ export function GitHubIssuesWidget({ rowSpan = 3, dragRef }) {
       selectedRepos: prefs.selectedRepos,
       selectAll: prefs.selectAll
     }));
+    setPreferencesLoaded(true);
   }, []);
   
   // Load repositories
@@ -124,10 +126,12 @@ export function GitHubIssuesWidget({ rowSpan = 3, dragRef }) {
     }
   };
   
-  // Initial load
+  // Initial load - only after preferences are loaded
   useEffect(() => {
-    loadIssues();
-  }, [settings.selectedRepos, settings.selectAll, settings.issueState, settings.maxIssues]);
+    if (preferencesLoaded) {
+      loadIssues();
+    }
+  }, [preferencesLoaded, settings.selectedRepos, settings.selectAll, settings.issueState, settings.maxIssues]);
   
   // Auto-refresh if enabled
   useEffect(() => {

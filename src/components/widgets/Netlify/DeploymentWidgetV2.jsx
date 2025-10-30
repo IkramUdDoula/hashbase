@@ -13,7 +13,14 @@ import {
   Loader2
 } from 'lucide-react';
 import { SiNetlify } from 'react-icons/si';
-import { fetchNetlifyDeploys, checkNetlifyStatus, getNetlifyDeployUrl } from '@/services/netlifyService';
+import { 
+  fetchNetlifyDeploys, 
+  fetchNetlifySites,
+  checkNetlifyStatus, 
+  getNetlifyDeployUrl,
+  getSiteSelectionPreferences,
+  saveSiteSelectionPreferences
+} from '@/services/netlifyService';
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { WidgetModal, WidgetModalFooter } from '@/components/ui/widget-modal';
 
@@ -30,6 +37,7 @@ import { WidgetModal, WidgetModalFooter } from '@/components/ui/widget-modal';
 export function DeploymentWidgetV2({ rowSpan = 3, dragRef }) {
   // Widget state management
   const [deploys, setDeploys] = useState([]);
+  const [sites, setSites] = useState([]);
   const [currentState, setCurrentState] = useState('loading');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -40,15 +48,44 @@ export function DeploymentWidgetV2({ rowSpan = 3, dragRef }) {
   
   // Settings state
   const [settings, setSettings] = useState({
+    selectedSites: [],
+    selectAll: true,
     maxDeploys: 20,
     autoRefresh: true,
     refreshInterval: 1, // minutes
     showBuildTime: true,
     showBranch: true,
   });
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   
   // Temporary settings for modal
   const [tempSettings, setTempSettings] = useState(settings);
+  
+  // Load sites on mount
+  useEffect(() => {
+    loadSites();
+    
+    // Load saved preferences
+    const prefs = getSiteSelectionPreferences();
+    setSettings(prev => ({
+      ...prev,
+      selectedSites: prefs.selectedSites,
+      selectAll: prefs.selectAll
+    }));
+    setPreferencesLoaded(true);
+  }, []);
+  
+  // Load sites
+  const loadSites = async () => {
+    try {
+      if (!await checkNetlifyStatus()) return;
+      
+      const netlifySites = await fetchNetlifySites();
+      setSites(netlifySites);
+    } catch (err) {
+      console.warn('Failed to load sites:', err);
+    }
+  };
   
   // Load deployments from Netlify
   const loadDeploys = async () => {
@@ -64,7 +101,8 @@ export function DeploymentWidgetV2({ rowSpan = 3, dragRef }) {
         return;
       }
       
-      const netlifyDeploys = await fetchNetlifyDeploys();
+      const sitesToFetch = settings.selectAll ? [] : settings.selectedSites;
+      const netlifyDeploys = await fetchNetlifyDeploys(sitesToFetch);
       
       // Limit to max deploys from settings
       const limitedDeploys = netlifyDeploys.slice(0, settings.maxDeploys);
@@ -84,10 +122,12 @@ export function DeploymentWidgetV2({ rowSpan = 3, dragRef }) {
     }
   };
 
-  // Initial load
+  // Initial load - only after preferences are loaded
   useEffect(() => {
-    loadDeploys();
-  }, [settings.maxDeploys]);
+    if (preferencesLoaded) {
+      loadDeploys();
+    }
+  }, [preferencesLoaded, settings.selectedSites, settings.selectAll, settings.maxDeploys]);
 
   // Auto-refresh based on settings
   useEffect(() => {
@@ -137,6 +177,7 @@ export function DeploymentWidgetV2({ rowSpan = 3, dragRef }) {
   
   const handleSettingsSave = () => {
     setSettings(tempSettings);
+    saveSiteSelectionPreferences(tempSettings.selectedSites, tempSettings.selectAll);
     setSettingsOpen(false);
   };
   
@@ -148,6 +189,29 @@ export function DeploymentWidgetV2({ rowSpan = 3, dragRef }) {
   const handleDeployClick = (deploy) => {
     const deployUrl = getNetlifyDeployUrl(deploy.id, deploy.siteId);
     window.open(deployUrl, '_blank');
+  };
+  
+  const handleSiteToggle = (siteId) => {
+    setTempSettings(prev => {
+      const isSelected = prev.selectedSites.includes(siteId);
+      const newSelectedSites = isSelected
+        ? prev.selectedSites.filter(s => s !== siteId)
+        : [...prev.selectedSites, siteId];
+      
+      return {
+        ...prev,
+        selectedSites: newSelectedSites,
+        selectAll: false
+      };
+    });
+  };
+  
+  const handleSelectAllToggle = () => {
+    setTempSettings(prev => ({
+      ...prev,
+      selectAll: !prev.selectAll,
+      selectedSites: []
+    }));
   };
 
   // Format build time
@@ -335,27 +399,88 @@ export function DeploymentWidgetV2({ rowSpan = 3, dragRef }) {
         />
       }
     >
-      <div className="space-y-4">
-        {/* Max Deploys */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
-            Maximum Deployments
-          </label>
-          <p className="text-xs text-gray-600 dark:text-gray-400">
-            Number of deployments to fetch and display
-          </p>
-          <input
-            type="number"
-            min="5"
-            max="50"
-            value={tempSettings.maxDeploys}
-            onChange={(e) => setTempSettings({ ...tempSettings, maxDeploys: parseInt(e.target.value) || 20 })}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
-        </div>
-        
-        {/* Auto Refresh Toggle */}
-        <div className="space-y-2">
+        <div className="space-y-4">
+          {/* Site Selection */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Site Selection
+            </label>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Choose which sites to fetch deployments from
+            </p>
+            
+            {/* Select All Toggle */}
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={tempSettings.selectAll}
+                onChange={handleSelectAllToggle}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900 dark:peer-checked:bg-gray-100 peer-checked:after:bg-white dark:peer-checked:after:bg-gray-900"></div>
+              <span className="ml-3 text-sm text-gray-900 dark:text-gray-100">
+                All Sites
+              </span>
+            </label>
+            
+            {/* Site List */}
+            {!tempSettings.selectAll && (
+              <div className="mt-3 max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-700 rounded-lg">
+                {sites.length === 0 ? (
+                  <div className="p-3 text-sm text-gray-600 dark:text-gray-400 text-center">
+                    Loading sites...
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {sites.map((site) => (
+                      <label
+                        key={site.id}
+                        className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={tempSettings.selectedSites.includes(site.id)}
+                          onChange={() => handleSiteToggle(site.id)}
+                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 focus:ring-gray-400 dark:focus:ring-gray-600"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                            {site.name}
+                          </p>
+                          {site.url && (
+                            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                              {site.url}
+                            </p>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* Max Deploys */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Maximum Deployments
+            </label>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Number of deployments to fetch and display
+            </p>
+            <input
+              type="number"
+              min="5"
+              max="50"
+              value={tempSettings.maxDeploys}
+              onChange={(e) => setTempSettings({ ...tempSettings, maxDeploys: parseInt(e.target.value) || 20 })}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+          
+          {/* Auto Refresh Toggle */}
+          <div className="space-y-2">
           <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
             Auto Refresh
           </label>
@@ -411,6 +536,8 @@ export function DeploymentWidgetV2({ rowSpan = 3, dragRef }) {
           <button
             onClick={() => {
               setTempSettings({
+                selectedSites: [],
+                selectAll: true,
                 maxDeploys: 20,
                 autoRefresh: true,
                 refreshInterval: 1,
