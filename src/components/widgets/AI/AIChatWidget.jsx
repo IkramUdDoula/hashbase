@@ -315,6 +315,7 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
       <Button
         variant="ghost"
         size="icon"
+        className="hover:bg-white/20"
         onClick={handleNewChat}
         title="New Chat"
       >
@@ -323,6 +324,7 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
       <Button
         variant="ghost"
         size="icon"
+        className="hover:bg-white/20"
         onClick={() => setShowHistory(true)}
         title="History"
       >
@@ -331,6 +333,7 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
       <Button
         variant="ghost"
         size="icon"
+        className="hover:bg-white/20"
         onClick={() => setShowLLMSettings(true)}
         title="Settings"
       >
