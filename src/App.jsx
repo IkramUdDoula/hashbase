@@ -40,7 +40,7 @@ function AppContent() {
     { 
       id: 'netlify-deploys', 
       component: DeploymentWidgetV2, 
-      rowSpan: 1,
+      rowSpan: 2,
       name: 'Netlify Deploys',
       description: 'Monitor your Netlify deployment status with real-time updates',
       icon: SiNetlify
@@ -48,7 +48,7 @@ function AppContent() {
     { 
       id: 'ai-chat', 
       component: AIChatWidget, 
-      rowSpan: 1,
+      rowSpan: 2,
       name: 'AI Chat',
       description: 'Chat with AI assistants (OpenAI GPT-4 & Claude)',
       icon: Sparkles
@@ -56,7 +56,7 @@ function AppContent() {
     { 
       id: 'github-commits', 
       component: GitHubCommitsWidget, 
-      rowSpan: 1,
+      rowSpan: 2,
       name: 'GitHub Commits',
       description: 'View recent commits from your GitHub repositories with advanced features',
       icon: SiGithub
@@ -64,7 +64,7 @@ function AppContent() {
     { 
       id: 'github-issues', 
       component: GitHubIssuesWidget, 
-      rowSpan: 3,
+      rowSpan: 2,
       name: 'GitHub Issues',
       description: 'View and create issues from your GitHub repositories with realtime updates',
       icon: SiGithub
@@ -72,7 +72,7 @@ function AppContent() {
     { 
       id: 'news-headlines', 
       component: NewsWidgetV2, 
-      rowSpan: 4,
+      rowSpan: 2,
       name: 'News Headlines',
       description: 'Latest news from around the world with country and topic filtering',
       icon: Newspaper
@@ -80,7 +80,7 @@ function AppContent() {
     { 
       id: 'bd24live-news', 
       component: BD24LiveWidgetV2, 
-      rowSpan: 1,
+      rowSpan: 2,
       name: 'BD24 Live',
       description: 'Latest news from BD24 Live (Bangladesh) via RSS feed - Auto-refreshes every 30 minutes',
       icon: Newspaper

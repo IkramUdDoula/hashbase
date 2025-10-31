@@ -415,7 +415,9 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                       <div className="flex items-center gap-3">
                         {widget.icon && <widget.icon className="h-5 w-5 text-gray-700 dark:text-gray-300" />}
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-gray-100">{widget.name}</p>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">
+                            {widget.name} <span className="text-gray-500 dark:text-gray-400">({widget.rowSpan} {widget.rowSpan === 1 ? 'row' : 'rows'})</span>
+                          </p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">{widget.description}</p>
                         </div>
                       </div>
