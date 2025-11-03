@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/explorer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { WidgetModal } from '@/components/ui/widget-modal';
 import { 
   CheckSquare,
   Square,
@@ -57,6 +58,7 @@ export function ChecklistExplorerV2({
   const [expandedSubtasks, setExpandedSubtasks] = useState(true);
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [newNoteText, setNewNoteText] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handlePrevious = () => {
     if (hasPrevious) onItemChange(itemList[currentIndex - 1].id);
@@ -145,6 +147,25 @@ export function ChecklistExplorerV2({
     onItemUpdate({ ...item, notes: item.notes.filter(n => n.id !== noteId) });
   };
 
+  const handleDeleteItem = () => {
+    if (!item) return;
+    // Navigate to next or previous item before deleting
+    if (hasNext) {
+      onItemChange(itemList[currentIndex + 1].id);
+    } else if (hasPrevious) {
+      onItemChange(itemList[currentIndex - 1].id);
+    } else {
+      onOpenChange(false);
+    }
+    // Delete the item by filtering it out
+    const updatedList = itemList.filter(i => i.id !== item.id);
+    // Notify parent to update the list
+    if (onItemUpdate) {
+      onItemUpdate({ ...item, _deleted: true });
+    }
+    setShowDeleteConfirm(false);
+  };
+
   const getPriorityBadge = (priority) => {
     const configs = {
       high: { color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', label: 'High' },
@@ -197,13 +218,22 @@ export function ChecklistExplorerV2({
       onNext={handleNext}
       hasPrevious={hasPrevious}
       hasNext={hasNext}
-      buttons={item ? [{
-        label: item.checked ? 'Mark as Undone' : 'Mark as Done',
-        icon: item.checked ? Square : CheckSquare,
-        onClick: handleToggleComplete,
-        variant: item.checked ? 'outline' : 'default',
-        className: item.checked ? '' : 'bg-green-600 hover:bg-green-700 text-white border-green-600'
-      }] : []}
+      buttons={item ? [
+        {
+          label: item.checked ? 'Mark as Undone' : 'Mark as Done',
+          icon: item.checked ? Square : CheckSquare,
+          onClick: handleToggleComplete,
+          variant: item.checked ? 'outline' : 'default',
+          className: item.checked ? '' : 'bg-green-600 hover:bg-green-500 text-white border-green-600'
+        },
+        {
+          label: 'Delete',
+          icon: Trash2,
+          onClick: () => setShowDeleteConfirm(true),
+          variant: 'outline',
+          className: 'text-red-600 dark:text-red-400 border-red-300 dark:border-red-700 hover:border-red-600 dark:hover:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
+        }
+      ] : []}
     >
       {!item ? (
         <div className="flex flex-col items-center justify-center h-64 text-center p-4">
@@ -575,6 +605,39 @@ export function ChecklistExplorerV2({
           </ExplorerBody>
         </>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <WidgetModal
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Delete Task"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Are you sure you want to delete this task? This action cannot be undone.
+          </p>
+          {item && (
+            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{item.text}</p>
+            </div>
+          )}
+          <div className="flex gap-2 justify-end pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteConfirm(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteItem}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete Task
+            </Button>
+          </div>
+        </div>
+      </WidgetModal>
     </Explorer>
   );
 }

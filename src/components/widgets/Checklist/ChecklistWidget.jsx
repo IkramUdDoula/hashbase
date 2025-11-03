@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { 
   CheckSquare, 
   Plus,
-  Trash2,
   X
 } from 'lucide-react';
 import { WidgetModal, WidgetModalFooter } from '@/components/ui/widget-modal';
@@ -184,6 +183,12 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
   };
   
   const handleItemUpdate = (updatedItem) => {
+    // Handle deletion
+    if (updatedItem._deleted) {
+      setItems(items.filter(item => item.id !== updatedItem.id));
+      return;
+    }
+    // Handle update
     setItems(items.map(item => 
       item.id === updatedItem.id ? updatedItem : item
     ));
@@ -333,18 +338,6 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
                         )}
                       </div>
                     </div>
-                    
-                    {/* Delete Button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteItem(item.id);
-                      }}
-                      className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all"
-                      title="Delete item"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
                   </div>
                 ))}
               </div>
