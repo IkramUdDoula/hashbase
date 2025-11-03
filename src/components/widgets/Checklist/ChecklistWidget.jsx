@@ -8,6 +8,7 @@ import {
   X
 } from 'lucide-react';
 import { WidgetModal, WidgetModalFooter } from '@/components/ui/widget-modal';
+import { ChecklistExplorerV2 } from './ChecklistExplorerV2';
 
 /**
  * ChecklistWidget - A simple checklist widget with automatic reordering
@@ -26,6 +27,10 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Explorer state
+  const [explorerOpen, setExplorerOpen] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState(null);
   
   // Settings state
   const [settings, setSettings] = useState({
@@ -117,7 +122,10 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
   };
   
   // Toggle item checked state
-  const handleToggleItem = (itemId) => {
+  const handleToggleItem = (itemId, e) => {
+    // Prevent opening explorer when clicking checkbox
+    if (e) e.stopPropagation();
+    
     setItems(items.map(item => 
       item.id === itemId 
         ? { ...item, checked: !item.checked }
@@ -158,6 +166,27 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
   const handleRefresh = () => {
     // Refresh just re-sorts the items
     setItems([...items]);
+  };
+  
+  // Explorer handlers
+  const handleOpenItem = (itemId) => {
+    setSelectedItemId(itemId);
+    setExplorerOpen(true);
+  };
+  
+  const handleExplorerItemChange = (newItemId) => {
+    setSelectedItemId(newItemId);
+  };
+  
+  const handleExplorerClose = () => {
+    setExplorerOpen(false);
+    setSelectedItemId(null);
+  };
+  
+  const handleItemUpdate = (updatedItem) => {
+    setItems(items.map(item => 
+      item.id === updatedItem.id ? updatedItem : item
+    ));
   };
   
   // Filter items based on search and settings
@@ -248,15 +277,16 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
                 {filteredItems.map((item) => (
                   <div
                     key={item.id}
-                    className={`group flex items-start gap-2 p-2.5 rounded-lg border transition-all ${
+                    onClick={() => handleOpenItem(item.id)}
+                    className={`group flex items-start gap-2 p-2.5 rounded-lg border transition-all cursor-pointer ${
                       item.checked
                         ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
-                        : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700'
+                        : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm'
                     }`}
                   >
                     {/* Checkbox - positioned to align with first line */}
                     <button
-                      onClick={() => handleToggleItem(item.id)}
+                      onClick={(e) => handleToggleItem(item.id, e)}
                       className={`flex-shrink-0 w-5 h-5 mt-[2px] rounded border-2 transition-all ${
                         item.checked
                           ? 'bg-green-600 border-green-600 dark:bg-green-500 dark:border-green-500'
@@ -280,11 +310,36 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
                       }`}>
                         {item.text}
                       </p>
+                      {/* Show indicators for additional data */}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {item.subtasks && item.subtasks.length > 0 && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {item.subtasks.filter(st => st.checked).length}/{item.subtasks.length} subtasks
+                          </span>
+                        )}
+                        {item.dueDate && (
+                          <span className="text-xs text-red-600 dark:text-red-400">
+                            Due: {new Date(item.dueDate).toLocaleDateString()}
+                          </span>
+                        )}
+                        {item.priority && (
+                          <span className={`text-xs font-medium ${
+                            item.priority === 'high' ? 'text-red-600' :
+                            item.priority === 'medium' ? 'text-yellow-600' :
+                            'text-blue-600'
+                          }`}>
+                            {item.priority}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     
                     {/* Delete Button */}
                     <button
-                      onClick={() => handleDeleteItem(item.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteItem(item.id);
+                      }}
                       className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all"
                       title="Delete item"
                     >
@@ -387,6 +442,16 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
           </div>
         </div>
       </WidgetModal>
+      
+      {/* Checklist Explorer */}
+      <ChecklistExplorerV2
+        open={explorerOpen}
+        onOpenChange={handleExplorerClose}
+        itemId={selectedItemId}
+        itemList={items}
+        onItemChange={handleExplorerItemChange}
+        onItemUpdate={handleItemUpdate}
+      />
     </>
   );
 }
