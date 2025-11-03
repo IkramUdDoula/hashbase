@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Eye, EyeOff, Save, Key, AppWindow, Trash2, Search, Grid3x3, Download, Upload } from 'lucide-react';
+import { X, Eye, EyeOff, Save, Key, AppWindow, Trash2, Search, Grid3x3, Download, Upload, FolderOpen, HardDrive, RefreshCw, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,25 @@ import { getWidgetPreferences, setWidgetPreferences } from '@/services/widgetReg
 import { downloadConfig, uploadConfig, getConfigSummary } from '@/services/configService';
 import { ScrollbarStyles } from '@/components/ui/scrollbar-styles';
 import { CanvasVisualization } from './CanvasVisualization';
+import { 
+  getStorageSettings, 
+  saveStorageSettings, 
+  isFileSystemAccessSupported, 
+  requestFolderAccess, 
+  syncToFile, 
+  syncFromFile, 
+  getFolderName,
+  storeFolderHandle,
+  retrieveFolderHandle,
+  clearFolderHandle,
+  verifyFolderAccess,
+  startAutoSync,
+  stopAutoSync,
+  isAutoSyncRunning,
+  listHistoryFiles,
+  readHistoryFile,
+  importDataToLocalStorage
+} from '@/services/storageService';
 
 export function SettingsModal({ isOpen, onClose, availableWidgets }) {
   const [activeTab, setActiveTab] = useState('apps');
@@ -23,6 +42,15 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
   const [noSpaceWarning, setNoSpaceWarning] = useState(null);
   const clearTimeoutRef = useRef(null);
   const modalRef = useRef(null);
+  
+  // Storage tab state
+  const [storageSettings, setStorageSettingsState] = useState(getStorageSettings());
+  const [folderHandle, setFolderHandle] = useState(null);
+  const [syncStatus, setSyncStatus] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isAutoSyncActive, setIsAutoSyncActive] = useState(false);
+  const [historyFiles, setHistoryFiles] = useState([]);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   // Load data on mount
   useEffect(() => {
@@ -33,6 +61,42 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
       setSecretsState(loadedSecrets);
       setWidgetPrefsState(loadedPrefs);
       setSaveStatus('');
+      
+      // Load storage settings
+      const loadedStorageSettings = getStorageSettings();
+      setStorageSettingsState(loadedStorageSettings);
+      
+      // Try to retrieve folder handle from IndexedDB
+      if (loadedStorageSettings.mode === 'folder') {
+        retrieveFolderHandle().then(async handle => {
+          if (handle) {
+            setFolderHandle(handle);
+            
+            // Load history files count
+            try {
+              const files = await listHistoryFiles(handle);
+              setHistoryFiles(files);
+            } catch (error) {
+              console.error('Error loading history files:', error);
+            }
+            
+            // Start auto-sync if enabled
+            if (loadedStorageSettings.autoSync) {
+              const interval = loadedStorageSettings.syncInterval || 30;
+              startAutoSync(handle, interval, (result) => {
+                // Update last sync time in settings
+                const updatedSettings = getStorageSettings();
+                updatedSettings.lastSync = new Date().toISOString();
+                saveStorageSettings(updatedSettings);
+                setStorageSettingsState(updatedSettings);
+              });
+              setIsAutoSyncActive(true);
+            }
+          }
+        }).catch(err => {
+          console.error('Error retrieving folder handle:', err);
+        });
+      }
       
       // Check if there's a widget that couldn't be placed
       const noSpaceData = localStorage.getItem('hashbase_widget_no_space');
@@ -67,6 +131,13 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen, onClose]);
+
+  // Cleanup auto-sync on unmount
+  useEffect(() => {
+    return () => {
+      // Don't stop auto-sync on unmount - let it continue in background
+    };
+  }, []);
 
   const handleSecretChange = (key, value) => {
     setSecretsState(prev => ({
@@ -205,6 +276,319 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
       console.error('Error uploading config:', error);
       setUploadStatus(`Error: ${error.message}`);
       setTimeout(() => setUploadStatus(''), 5000);
+    }
+  };
+
+  // Storage tab handlers
+  const handleSelectFolder = async () => {
+    try {
+      setSyncStatus('Opening folder picker...');
+      
+      // Request folder picker (this shows browser's native dialog)
+      let dirHandle;
+      try {
+        dirHandle = await requestFolderAccess();
+      } catch (pickerError) {
+        // Handle folder picker errors
+        if (pickerError.name === 'AbortError' || pickerError.message.includes('cancelled')) {
+          setSyncStatus('Folder selection cancelled');
+          setTimeout(() => setSyncStatus(''), 3000);
+          return;
+        }
+        if (pickerError.message.includes('system files')) {
+          setSyncStatus('❌ Cannot access system folders. Please choose a regular folder.');
+          setTimeout(() => setSyncStatus(''), 5000);
+          return;
+        }
+        throw pickerError;
+      }
+      
+      // Request permission (browser will show native permission dialog)
+      try {
+        const permission = await dirHandle.requestPermission({ mode: 'readwrite' });
+        if (permission !== 'granted') {
+          setSyncStatus('❌ Folder access denied. Please allow access to use this feature.');
+          setTimeout(() => setSyncStatus(''), 5000);
+          return;
+        }
+      } catch (permError) {
+        setSyncStatus('❌ Permission request failed');
+        setTimeout(() => setSyncStatus(''), 3000);
+        return;
+      }
+      
+      // Store the handle
+      await storeFolderHandle(dirHandle);
+      setFolderHandle(dirHandle);
+      
+      // Load history files count
+      try {
+        const files = await listHistoryFiles(dirHandle);
+        setHistoryFiles(files);
+      } catch (error) {
+        console.error('Error loading history files:', error);
+      }
+      
+      // Update settings
+      const newSettings = {
+        ...storageSettings,
+        mode: 'folder',
+        folderName: getFolderName(dirHandle),
+        autoSync: true,
+        syncInterval: storageSettings.syncInterval || 30
+      };
+      setStorageSettingsState(newSettings);
+      saveStorageSettings(newSettings);
+      
+      // Start auto-sync
+      const interval = newSettings.syncInterval || 30;
+      startAutoSync(dirHandle, interval, (result) => {
+        const updatedSettings = getStorageSettings();
+        updatedSettings.lastSync = new Date().toISOString();
+        saveStorageSettings(updatedSettings);
+        setStorageSettingsState(updatedSettings);
+      });
+      setIsAutoSyncActive(true);
+      
+      setSyncStatus(`✅ Folder connected: ${getFolderName(dirHandle)}. Auto-sync enabled.`);
+      setTimeout(() => setSyncStatus(''), 3000);
+    } catch (error) {
+      console.error('Error selecting folder:', error);
+      setSyncStatus(`❌ Error: ${error.message}`);
+      setTimeout(() => setSyncStatus(''), 5000);
+    }
+  };
+
+  const handleSyncToFile = async () => {
+    if (!folderHandle) {
+      setSyncStatus('Please select a folder first');
+      setTimeout(() => setSyncStatus(''), 3000);
+      return;
+    }
+
+    try {
+      setIsSyncing(true);
+      setSyncStatus('Syncing to file...');
+      
+      // Verify we still have access
+      const hasAccess = await verifyFolderAccess(folderHandle);
+      if (!hasAccess) {
+        setSyncStatus('Lost folder access. Please select folder again.');
+        setFolderHandle(null);
+        await clearFolderHandle();
+        setIsSyncing(false);
+        return;
+      }
+      
+      const result = await syncToFile(folderHandle);
+      
+      if (result.success) {
+        setSyncStatus(`✅ ${result.message} (${result.itemCount} items)`);
+        
+        // Reload history files count
+        try {
+          const files = await listHistoryFiles(folderHandle);
+          setHistoryFiles(files);
+        } catch (error) {
+          console.error('Error reloading history files:', error);
+        }
+      } else {
+        setSyncStatus(`❌ ${result.message}`);
+      }
+      
+      setTimeout(() => setSyncStatus(''), 5000);
+    } catch (error) {
+      console.error('Error syncing to file:', error);
+      setSyncStatus(`Error: ${error.message}`);
+      setTimeout(() => setSyncStatus(''), 5000);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleSyncFromFile = async () => {
+    if (!folderHandle) {
+      setSyncStatus('Please select a folder first');
+      setTimeout(() => setSyncStatus(''), 3000);
+      return;
+    }
+
+    try {
+      setIsSyncing(true);
+      setSyncStatus('Syncing from file...');
+      
+      // Verify we still have access
+      const hasAccess = await verifyFolderAccess(folderHandle);
+      if (!hasAccess) {
+        setSyncStatus('Lost folder access. Please select folder again.');
+        setFolderHandle(null);
+        await clearFolderHandle();
+        setIsSyncing(false);
+        return;
+      }
+      
+      const result = await syncFromFile(folderHandle);
+      
+      if (result.success) {
+        setSyncStatus(`✅ ${result.message}. Refreshing in 2 seconds...`);
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        setSyncStatus(`❌ ${result.message}`);
+        setTimeout(() => setSyncStatus(''), 5000);
+      }
+    } catch (error) {
+      console.error('Error syncing from file:', error);
+      setSyncStatus(`Error: ${error.message}`);
+      setTimeout(() => setSyncStatus(''), 5000);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleClearFolder = async () => {
+    try {
+      // Stop auto-sync
+      stopAutoSync();
+      setIsAutoSyncActive(false);
+      
+      await clearFolderHandle();
+      setFolderHandle(null);
+      
+      const newSettings = {
+        ...storageSettings,
+        mode: 'browser',
+        folderName: null,
+        autoSync: false
+      };
+      setStorageSettingsState(newSettings);
+      saveStorageSettings(newSettings);
+      
+      setSyncStatus('Folder cleared. Using browser storage only.');
+      setTimeout(() => setSyncStatus(''), 3000);
+    } catch (error) {
+      console.error('Error clearing folder:', error);
+      setSyncStatus(`Error: ${error.message}`);
+      setTimeout(() => setSyncStatus(''), 5000);
+    }
+  };
+
+  const handleToggleAutoSync = () => {
+    if (!folderHandle) return;
+    
+    const newAutoSyncState = !storageSettings.autoSync;
+    const newSettings = {
+      ...storageSettings,
+      autoSync: newAutoSyncState
+    };
+    setStorageSettingsState(newSettings);
+    saveStorageSettings(newSettings);
+    
+    if (newAutoSyncState) {
+      const interval = storageSettings.syncInterval || 30;
+      startAutoSync(folderHandle, interval, (result) => {
+        const updatedSettings = getStorageSettings();
+        updatedSettings.lastSync = new Date().toISOString();
+        saveStorageSettings(updatedSettings);
+        setStorageSettingsState(updatedSettings);
+      });
+      setIsAutoSyncActive(true);
+      setSyncStatus('Auto-sync enabled');
+    } else {
+      stopAutoSync();
+      setIsAutoSyncActive(false);
+      setSyncStatus('Auto-sync disabled');
+    }
+    
+    setTimeout(() => setSyncStatus(''), 3000);
+  };
+
+  const handleChangeSyncInterval = (minutes) => {
+    const newSettings = {
+      ...storageSettings,
+      syncInterval: minutes
+    };
+    setStorageSettingsState(newSettings);
+    saveStorageSettings(newSettings);
+    
+    // Restart auto-sync with new interval if it's active
+    if (storageSettings.autoSync && folderHandle) {
+      startAutoSync(folderHandle, minutes, (result) => {
+        const updatedSettings = getStorageSettings();
+        updatedSettings.lastSync = new Date().toISOString();
+        saveStorageSettings(updatedSettings);
+        setStorageSettingsState(updatedSettings);
+      });
+    }
+    
+    const intervalText = minutes >= 1440 
+      ? `${Math.floor(minutes / 1440)} day${minutes >= 2880 ? 's' : ''}` 
+      : minutes >= 60 
+        ? `${Math.floor(minutes / 60)} hour${minutes >= 120 ? 's' : ''}` 
+        : `${minutes} minute${minutes > 1 ? 's' : ''}`;
+    
+    setSyncStatus(`Sync interval updated to ${intervalText}`);
+    setTimeout(() => setSyncStatus(''), 3000);
+  };
+
+  const handleToggleEncryption = () => {
+    const newSettings = {
+      ...storageSettings,
+      encryptData: !storageSettings.encryptData
+    };
+    setStorageSettingsState(newSettings);
+    saveStorageSettings(newSettings);
+    
+    setSyncStatus(`Encryption ${newSettings.encryptData ? 'enabled' : 'disabled'}`);
+    setTimeout(() => setSyncStatus(''), 3000);
+  };
+
+  const handleToggleHistory = () => {
+    const newSettings = {
+      ...storageSettings,
+      saveHistory: !storageSettings.saveHistory
+    };
+    setStorageSettingsState(newSettings);
+    saveStorageSettings(newSettings);
+    
+    setSyncStatus(`History saving ${newSettings.saveHistory ? 'enabled' : 'disabled'}`);
+    setTimeout(() => setSyncStatus(''), 3000);
+  };
+
+  const handleViewHistory = async () => {
+    if (!folderHandle) return;
+    
+    try {
+      const files = await listHistoryFiles(folderHandle);
+      setHistoryFiles(files);
+      setShowHistoryModal(true);
+    } catch (error) {
+      console.error('Error loading history:', error);
+      setSyncStatus(`Error loading history: ${error.message}`);
+      setTimeout(() => setSyncStatus(''), 5000);
+    }
+  };
+
+  const handleRestoreFromHistory = async (fileHandle) => {
+    try {
+      setSyncStatus('Restoring from history...');
+      const data = await readHistoryFile(fileHandle);
+      const result = importDataToLocalStorage(data);
+      
+      if (result.success) {
+        setSyncStatus(`✅ Restored ${result.imported} items. Refreshing in 2 seconds...`);
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        setSyncStatus(`❌ Failed to restore from history`);
+        setTimeout(() => setSyncStatus(''), 5000);
+      }
+    } catch (error) {
+      console.error('Error restoring from history:', error);
+      setSyncStatus(`Error: ${error.message}`);
+      setTimeout(() => setSyncStatus(''), 5000);
     }
   };
 
@@ -350,6 +734,20 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
             >
               <Grid3x3 className="h-4 w-4" />
               Canvas
+            </button>
+            <button
+              onClick={() => setActiveTab('storage')}
+              role="tab"
+              aria-selected={activeTab === 'storage'}
+              aria-controls="storage-panel"
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${
+                activeTab === 'storage'
+                  ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-b-2 border-gray-900 dark:border-gray-100'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+              }`}
+            >
+              <Database className="h-4 w-4" />
+              Storage
             </button>
           </div>
         </div>
@@ -551,11 +949,333 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                   Save Secrets
                 </Button>
               </div>
+            </div>
+          )}
 
-              {/* Additional Feature: Configuration Backup & Restore */}
-              <div className="mt-6 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">Configuration Backup & Restore</h3>
+          {/* Canvas Tab Panel */}
+          {activeTab === 'canvas' && (
+            <div id="canvas-panel" role="tabpanel" aria-labelledby="canvas-tab">
+              <CanvasVisualization />
+            </div>
+          )}
+
+          {/* Storage Tab Panel */}
+          {activeTab === 'storage' && (
+            <div id="storage-panel" role="tabpanel" aria-labelledby="storage-tab" className="space-y-4">
+              {/* Tab Description */}
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Manage how your data is stored. Choose between browser-only storage or sync with a local folder.
+              </p>
+
+              {/* File System API Support Check */}
+              {!isFileSystemAccessSupported() && (
+                <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+                  <h3 className="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
+                    ⚠️ Limited Browser Support
+                  </h3>
+                  <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                    Your browser doesn't support the File System Access API. Local folder sync is not available. 
+                    Please use Chrome, Edge, or another Chromium-based browser for this feature.
+                  </p>
+                </div>
+              )}
+
+              {/* Important Notes */}
+              {isFileSystemAccessSupported() && !folderHandle && (
+                <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                  <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                    📌 Important Notes
+                  </h3>
+                  <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1 ml-4 list-disc">
+                    <li>Choose a <strong>regular folder</strong> (not system folders like Desktop, Documents root, or C:\)</li>
+                    <li>Create a dedicated folder like <code className="bg-blue-100 dark:bg-blue-950 px-1 rounded">hashbase-sync</code> for best results</li>
+                    <li>Browser will ask for permission - you must click "Allow" twice (folder picker + permission)</li>
+                    <li>Avoid folders with special permissions or system files</li>
+                  </ul>
+                </div>
+              )}
+
+              {/* Local Folder Sync Section */}
+              <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-2">
+                  <FolderOpen className="h-4 w-4" />
+                  Local Folder Sync
+                </h3>
                 <p className="text-xs text-blue-800 dark:text-blue-200 mb-3">
+                  Sync all your dashboard data to a local folder as a single JSON file. This allows you to backup, 
+                  version control, or share your configuration across devices.
+                </p>
+
+                {/* Folder Selection */}
+                <div className="space-y-3">
+                  {folderHandle ? (
+                    <div className="p-3 rounded-lg bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <HardDrive className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              {getFolderName(folderHandle)}
+                            </p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                              File: hashbase-data.json
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          onClick={handleClearFolder}
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 dark:text-red-400"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={handleSelectFolder}
+                      variant="outline"
+                      className="w-full border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 bg-transparent"
+                      disabled={!isFileSystemAccessSupported()}
+                    >
+                      <FolderOpen className="h-4 w-4 mr-2" />
+                      Select Folder
+                    </Button>
+                  )}
+
+                  {/* Auto-Sync Controls */}
+                  {folderHandle && (
+                    <div className="space-y-3">
+                      {/* Auto-Sync Toggle */}
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700">
+                        <div className="flex items-center gap-2">
+                          <RefreshCw className={`h-4 w-4 ${isAutoSyncActive ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`} />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              Auto-Sync
+                            </p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                              Automatically save changes every {storageSettings.syncInterval >= 1440 
+                                ? `${Math.floor(storageSettings.syncInterval / 1440)} day${storageSettings.syncInterval >= 2880 ? 's' : ''}` 
+                                : storageSettings.syncInterval >= 60 
+                                  ? `${Math.floor(storageSettings.syncInterval / 60)} hour${storageSettings.syncInterval >= 120 ? 's' : ''}` 
+                                  : `${storageSettings.syncInterval || 30} minute${storageSettings.syncInterval > 1 ? 's' : ''}`
+                              }
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleToggleAutoSync}
+                          role="switch"
+                          aria-checked={storageSettings.autoSync}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            storageSettings.autoSync ? 'bg-gray-900 dark:bg-gray-100' : 'bg-gray-300 dark:bg-gray-700'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
+                              storageSettings.autoSync ? 'bg-white dark:bg-gray-900 translate-x-6' : 'bg-white translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      {/* Sync Interval Selector */}
+                      {storageSettings.autoSync && (
+                        <div className="p-3 rounded-lg bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700">
+                          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                            Sync Interval
+                          </Label>
+                          <div className="grid grid-cols-5 gap-2">
+                            {[
+                              { value: 1, label: '1m' },
+                              { value: 5, label: '5m' },
+                              { value: 10, label: '10m' },
+                              { value: 15, label: '15m' },
+                              { value: 30, label: '30m' },
+                              { value: 60, label: '1h' },
+                              { value: 360, label: '6h' },
+                              { value: 1440, label: '1d' },
+                              { value: 10080, label: '7d' },
+                              { value: 43200, label: '30d' }
+                            ].map(({ value, label }) => (
+                              <button
+                                key={value}
+                                onClick={() => handleChangeSyncInterval(value)}
+                                className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors border ${
+                                  storageSettings.syncInterval === value
+                                    ? 'bg-blue-100 dark:bg-blue-900 border-blue-500 text-blue-900 dark:text-blue-50 hover:bg-blue-200 dark:hover:bg-blue-950/20'
+                                    : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-gray-300 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-600'
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Manual Sync Buttons */}
+                  {folderHandle && (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleSyncToFile}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 bg-transparent"
+                        disabled={isSyncing}
+                      >
+                        {isSyncing ? (
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-2" />
+                        )}
+                        Save to File
+                      </Button>
+                      <Button
+                        onClick={handleSyncFromFile}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 bg-transparent"
+                        disabled={isSyncing}
+                      >
+                        {isSyncing ? (
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4 mr-2" />
+                        )}
+                        Load from File
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Sync Status */}
+                  {syncStatus && (
+                    <p className={`text-xs ${
+                      syncStatus.includes('Error') || syncStatus.includes('❌') 
+                        ? 'text-red-600 dark:text-red-400' 
+                        : 'text-green-600 dark:text-green-400'
+                    }`}>
+                      {syncStatus}
+                    </p>
+                  )}
+                </div>
+
+                {/* Encryption & History Settings */}
+                {folderHandle && (
+                  <div className="space-y-2 mt-3 pt-3 border-t border-blue-200 dark:border-blue-800">
+                    {/* Encryption Toggle */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Key className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                        <span className="text-xs text-blue-700 dark:text-blue-300">
+                          Encrypt files (AES-256-GCM)
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleToggleEncryption}
+                        role="switch"
+                        aria-checked={storageSettings.encryptData !== false}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          storageSettings.encryptData !== false ? 'bg-gray-900 dark:bg-gray-100' : 'bg-gray-300 dark:bg-gray-700'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
+                            storageSettings.encryptData !== false ? 'bg-white dark:bg-gray-900 translate-x-6' : 'bg-white translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* History Toggle */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Download className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                        <span className="text-xs text-blue-700 dark:text-blue-300">
+                          Save version history
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleToggleHistory}
+                        role="switch"
+                        aria-checked={storageSettings.saveHistory !== false}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          storageSettings.saveHistory !== false ? 'bg-gray-900 dark:bg-gray-100' : 'bg-gray-300 dark:bg-gray-700'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
+                            storageSettings.saveHistory !== false ? 'bg-white dark:bg-gray-900 translate-x-6' : 'bg-white translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Maximum History Setting */}
+                    {storageSettings.saveHistory !== false && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                            Maximum History Versions
+                          </Label>
+                          <Input
+                            min="1"
+                            max="1000"
+                            value={storageSettings.maxHistoryVersions || 50}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value) || 50;
+                              const newSettings = {
+                                ...storageSettings,
+                                maxHistoryVersions: value
+                              };
+                              setStorageSettingsState(newSettings);
+                              saveStorageSettings(newSettings);
+                            }}
+                            className="w-20 h-7 text-xs border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-800"
+                          />
+                        </div>
+                        <p className="text-xs text-blue-600 dark:text-blue-400">
+                          Est. size: {((storageSettings.maxHistoryVersions || 50) * 7.5).toFixed(0)} KB
+                          {((storageSettings.maxHistoryVersions || 50) * 7.5 / 1024 >= 1) && 
+                            ` (~${((storageSettings.maxHistoryVersions || 50) * 7.5 / 1024).toFixed(1)} MB)`
+                          }
+                        </p>
+                      </div>
+                    )}
+
+                    {/* View History Button */}
+                    {storageSettings.saveHistory !== false && (
+                      <Button
+                        onClick={handleViewHistory}
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                      >
+                        View History ({historyFiles.length} versions)
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {/* Info Note */}
+                {storageSettings.lastSync && (
+                  <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800">
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      Last sync: {new Date(storageSettings.lastSync).toLocaleString()}
+                      {storageSettings.syncDirection && ` (${storageSettings.syncDirection})`}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Configuration Backup & Restore */}
+              <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+                <h3 className="text-sm font-semibold text-purple-900 dark:text-purple-100 mb-2">Configuration Backup & Restore</h3>
+                <p className="text-xs text-purple-800 dark:text-purple-200 mb-3">
                   Export your entire dashboard configuration with automatic AES-256 encryption.
                 </p>
                 {/* Action Buttons: Download & Upload */}
@@ -564,7 +1284,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                     onClick={handleDownloadConfig}
                     variant="outline"
                     size="sm"
-                    className="flex items-center gap-2 flex-1 border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 bg-transparent"
+                    className="flex items-center gap-2 flex-1 border-purple-500 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 bg-transparent"
                   >
                     <Download className="h-4 w-4" />
                     Download Config
@@ -573,7 +1293,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                     onClick={handleUploadConfig}
                     variant="outline"
                     size="sm"
-                    className="flex items-center gap-2 flex-1 border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 bg-transparent"
+                    className="flex items-center gap-2 flex-1 border-purple-500 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 bg-transparent"
                   >
                     <Upload className="h-4 w-4" />
                     Upload Config
@@ -588,14 +1308,14 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                 )}
               </div>
 
-              <div className="mt-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
+              <div className="p-4 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
                 <p className="text-xs text-gray-900 dark:text-gray-100">
-                  <strong>Note:</strong> Your secrets are stored locally in your browser. Use the backup feature above to transfer settings between devices or browsers.
+                  <strong>Note:</strong> Your data is stored locally in your browser. Use the folder sync or backup features above to transfer settings between devices or browsers.
                 </p>
               </div>
 
               {/* Danger Zone: Clear All Data */}
-              <div className="mt-6 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+              <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-sm font-semibold text-red-900 dark:text-red-100 mb-1">Danger Zone</h3>
@@ -620,13 +1340,68 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                   </Button>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Canvas Tab Panel */}
-          {activeTab === 'canvas' && (
-            <div id="canvas-panel" role="tabpanel" aria-labelledby="canvas-tab">
-              <CanvasVisualization />
+              {/* History Modal */}
+              {showHistoryModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                  <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border-2 border-gray-200 dark:border-gray-800">
+                    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Version History</h3>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowHistoryModal(false)}
+                        className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                      >
+                        <X className="h-5 w-5" />
+                      </Button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                      {historyFiles.length === 0 ? (
+                        <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
+                          No history files found
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {historyFiles.map((file, index) => (
+                            <div
+                              key={file.name}
+                              className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors"
+                            >
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    {file.lastModified.toLocaleString()}
+                                  </p>
+                                  {index === 0 && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">
+                                      Current
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                  {(file.size / 1024).toFixed(2)} KB
+                                </p>
+                              </div>
+                              <Button
+                                onClick={() => {
+                                  setShowHistoryModal(false);
+                                  handleRestoreFromHistory(file.handle);
+                                }}
+                                variant="outline"
+                                size="sm"
+                                className="border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                              >
+                                Restore
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
