@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
  * - Close button
  * - Dynamic content body
  * - Backdrop overlay
+ * - Custom footer buttons
  * 
  * @param {Object} props
  * @param {boolean} props.open - Controls visibility
@@ -25,6 +26,7 @@ import { Button } from "@/components/ui/button"
  * @param {function} props.onNext - Next item handler
  * @param {boolean} props.hasPrevious - Whether previous item exists
  * @param {boolean} props.hasNext - Whether next item exists
+ * @param {Array} props.buttons - Optional array of button configs for footer
  * @param {React.ReactNode} props.children - Explorer body content
  * @param {string} props.className - Additional CSS classes
  */
@@ -37,6 +39,7 @@ const Explorer = ({
   onNext,
   hasPrevious = false,
   hasNext = false,
+  buttons = [],
   children,
   className 
 }) => {
@@ -117,10 +120,36 @@ const Explorer = ({
           </Button>
         </div>
         
-        {/* Body - Dynamic Content Zone - Scrollable */}
-        <div className="flex-1 overflow-y-auto min-h-0">
+        {/* Body - Dynamic Content Zone - Scrollable with custom scrollbar */}
+        <div className="flex-1 overflow-y-auto min-h-0 explorer-scrollbar">
           {children}
         </div>
+        
+        {/* Auto-render footer if buttons are provided */}
+        {buttons && buttons.length > 0 && (
+          <div className="flex-shrink-0 px-4 py-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+            <div className="flex gap-2">
+              {buttons.map((button, index) => {
+                const Icon = button.icon;
+                return (
+                  <Button
+                    key={index}
+                    onClick={button.onClick}
+                    variant={button.variant || "outline"}
+                    size={button.size || "sm"}
+                    className={cn(
+                      "flex-1 bg-transparent border-white/30 hover:bg-white/10 hover:border-white dark:border-white/30 dark:hover:bg-white/10 dark:hover:border-white",
+                      button.className
+                    )}
+                  >
+                    {Icon && <Icon className="h-4 w-4 mr-2" />}
+                    {button.label}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </>
   )

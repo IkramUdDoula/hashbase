@@ -60,3 +60,44 @@
     @apply bg-background;
   }
 }
+
+/* Custom scrollbar for Explorer */
+.explorer-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(156 163 175) rgb(229 231 235);
+}
+
+.explorer-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.explorer-scrollbar::-webkit-scrollbar-track {
+  background: rgb(229 231 235);
+  border-radius: 4px;
+}
+
+.explorer-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(156 163 175);
+  border-radius: 4px;
+}
+
+.explorer-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(107 114 128);
+}
+
+/* Dark mode scrollbar */
+.dark .explorer-scrollbar {
+  scrollbar-color: rgb(75 85 99) rgb(31 41 55);
+}
+
+.dark .explorer-scrollbar::-webkit-scrollbar-track {
+  background: rgb(31 41 55);
+}
+
+.dark .explorer-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(75 85 99);
+}
+
+.dark .explorer-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(107 114 128);
+}

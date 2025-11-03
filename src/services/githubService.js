@@ -54,7 +54,32 @@ export async function fetchUserRepositories() {
 }
 
 /**
+ * Fetch all branches for a repository
+ * @param {string} owner - Repository owner
+ * @param {string} repo - Repository name
+ * @param {Object} headers - Request headers
+ * @returns {Promise<Array>} Array of branch objects
+ */
+async function fetchRepoBranches(owner, repo, headers) {
+  try {
+    const response = await fetch(
+      `${GITHUB_API_BASE}/repos/${owner}/${repo}/branches?per_page=100`,
+      { headers }
+    );
+    
+    if (response.ok) {
+      return await response.json();
+    }
+    return [];
+  } catch (err) {
+    console.warn(`Failed to fetch branches for ${owner}/${repo}:`, err);
+    return [];
+  }
+}
+
+/**
  * Fetch commits from selected repositories or all repositories
+ * Now fetches commits from ALL branches of each repository
  * @param {Array<string>} repoFullNames - Array of repo full names (e.g., ['owner/repo'])
  * @param {number} maxCommits - Maximum total commits to return (default: 20)
  * @returns {Promise<Array>} Array of commit objects with repo info and status
@@ -94,57 +119,75 @@ export async function fetchAllUserCommits(repoFullNames = [], maxCommits = 20) {
       });
     }
     
-    // Fetch commits from each repository
+    // Fetch commits from each repository (all branches)
     const allCommits = [];
+    const seenCommitShas = new Set(); // To deduplicate commits across branches
     
     for (const repo of repos) {
       if (allCommits.length >= maxCommits) break;
       
       try {
-        const commitsResponse = await fetch(
-          `${GITHUB_API_BASE}/repos/${repo.owner.login}/${repo.name}/commits?per_page=${COMMITS_PER_REPO}`,
-          { headers }
-        );
-
-        if (commitsResponse.ok) {
-          const commits = await commitsResponse.json();
+        // Fetch all branches for this repository
+        const branches = await fetchRepoBranches(repo.owner.login, repo.name, headers);
+        
+        // Fetch commits from each branch
+        for (const branch of branches) {
+          if (allCommits.length >= maxCommits) break;
           
-          for (const commit of commits) {
-            if (allCommits.length >= maxCommits) break;
-            
-            // Fetch commit status
-            let status = null;
-            try {
-              const statusResponse = await fetch(
-                `${GITHUB_API_BASE}/repos/${repo.owner.login}/${repo.name}/commits/${commit.sha}/status`,
-                { headers }
-              );
+          try {
+            const commitsResponse = await fetch(
+              `${GITHUB_API_BASE}/repos/${repo.owner.login}/${repo.name}/commits?sha=${branch.name}&per_page=${COMMITS_PER_REPO}`,
+              { headers }
+            );
+
+            if (commitsResponse.ok) {
+              const commits = await commitsResponse.json();
               
-              if (statusResponse.ok) {
-                const statusData = await statusResponse.json();
-                status = statusData.state; // success, failure, pending, or error
+              for (const commit of commits) {
+                if (allCommits.length >= maxCommits) break;
+                
+                // Skip if we've already seen this commit (it's in multiple branches)
+                if (seenCommitShas.has(commit.sha)) continue;
+                seenCommitShas.add(commit.sha);
+                
+                // Fetch commit status (optional, can be slow)
+                let status = null;
+                try {
+                  const statusResponse = await fetch(
+                    `${GITHUB_API_BASE}/repos/${repo.owner.login}/${repo.name}/commits/${commit.sha}/status`,
+                    { headers }
+                  );
+                  
+                  if (statusResponse.ok) {
+                    const statusData = await statusResponse.json();
+                    status = statusData.state; // success, failure, pending, or error
+                  }
+                } catch (err) {
+                  console.warn('Failed to fetch commit status:', err);
+                }
+                
+                allCommits.push({
+                  sha: commit.sha,
+                  message: commit.commit.message,
+                  author: {
+                    name: commit.commit.author.name,
+                    email: commit.commit.author.email,
+                    username: commit.author?.login || commit.commit.author.name
+                  },
+                  date: commit.commit.author.date,
+                  url: commit.html_url,
+                  repo: {
+                    name: repo.name,
+                    owner: repo.owner.login,
+                    fullName: repo.full_name
+                  },
+                  branch: branch.name,
+                  status: status
+                });
               }
-            } catch (err) {
-              console.warn('Failed to fetch commit status:', err);
             }
-            
-            allCommits.push({
-              sha: commit.sha,
-              message: commit.commit.message,
-              author: {
-                name: commit.commit.author.name,
-                email: commit.commit.author.email,
-                username: commit.author?.login || commit.commit.author.name
-              },
-              date: commit.commit.author.date,
-              url: commit.html_url,
-              repo: {
-                name: repo.name,
-                owner: repo.owner.login,
-                fullName: repo.full_name
-              },
-              status: status
-            });
+          } catch (err) {
+            console.warn(`Failed to fetch commits for ${repo.name} branch ${branch.name}:`, err);
           }
         }
       } catch (err) {
@@ -259,6 +302,55 @@ export function setConfiguredRepo(owner, repo) {
 export function isGitHubConfigured() {
   const token = getSecret(SECRET_KEYS.GITHUB_TOKEN);
   return !!token;
+}
+
+/**
+ * Fetch detailed commit information including stats and files
+ * @param {string} owner - Repository owner
+ * @param {string} repo - Repository name
+ * @param {string} sha - Commit SHA
+ * @returns {Promise<Object>} Detailed commit object with stats and files
+ */
+export async function fetchCommitDetails(owner, repo, sha) {
+  const token = getSecret(SECRET_KEYS.GITHUB_TOKEN);
+  
+  if (!token) {
+    throw new Error('GitHub token not configured. Please add it in Settings.');
+  }
+
+  const headers = {
+    'Accept': 'application/vnd.github.v3+json',
+    'Authorization': `Bearer ${token}`
+  };
+
+  try {
+    const response = await fetch(
+      `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits/${sha}`,
+      { headers }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch commit details: ${response.status}`);
+    }
+
+    const commit = await response.json();
+    
+    return {
+      sha: commit.sha,
+      stats: commit.stats || null, // { total, additions, deletions }
+      files: commit.files ? commit.files.map(file => ({
+        filename: file.filename,
+        status: file.status, // added, removed, modified, renamed
+        additions: file.additions,
+        deletions: file.deletions,
+        changes: file.changes,
+        patch: file.patch
+      })) : []
+    };
+  } catch (error) {
+    console.error('Error fetching commit details:', error);
+    throw error;
+  }
 }
 
 /**

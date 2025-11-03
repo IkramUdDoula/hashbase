@@ -20,6 +20,7 @@ import {
 } from '@/services/githubService';
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { WidgetModal, WidgetModalFooter } from '@/components/ui/widget-modal';
+import { GitHubCommitsExplorer } from './GitHubCommitsExplorer';
 
 /**
  * GitHubCommitsWidget - Improved GitHub commits widget using BaseWidgetV2
@@ -42,6 +43,8 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [errorActionLoading, setErrorActionLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [explorerOpen, setExplorerOpen] = useState(false);
+  const [selectedCommitSha, setSelectedCommitSha] = useState(null);
   
   // Settings state
   const [settings, setSettings] = useState({
@@ -165,7 +168,17 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
   };
   
   const handleCommitClick = (commit) => {
-    window.open(commit.url, '_blank');
+    setSelectedCommitSha(commit.sha);
+    setExplorerOpen(true);
+  };
+  
+  const handleExplorerCommitChange = (newCommitSha) => {
+    setSelectedCommitSha(newCommitSha);
+  };
+  
+  const handleExplorerClose = () => {
+    setExplorerOpen(false);
+    setSelectedCommitSha(null);
   };
   
   const handleRepoToggle = (repoFullName) => {
@@ -310,14 +323,11 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
                 </p>
 
                 {/* Commit SHA and Status */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <code className="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-200 dark:bg-gray-800 px-2 py-0.5 rounded">
-                      {commit.sha.substring(0, 7)}
-                    </code>
-                    {getStatusIcon(commit.status)}
-                  </div>
-                  <ExternalLink className="h-4 w-4 text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="flex items-center gap-2">
+                  <code className="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-200 dark:bg-gray-800 px-2 py-0.5 rounded">
+                    {commit.sha.substring(0, 7)}
+                  </code>
+                  {getStatusIcon(commit.status)}
                 </div>
               </div>
             ))}
@@ -536,6 +546,15 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
           </div>
         </div>
       </WidgetModal>
+      
+      {/* GitHub Commits Explorer */}
+      <GitHubCommitsExplorer
+        open={explorerOpen}
+        onOpenChange={handleExplorerClose}
+        commitSha={selectedCommitSha}
+        commitList={filteredCommits}
+        onCommitChange={handleExplorerCommitChange}
+      />
     </>
   );
 }

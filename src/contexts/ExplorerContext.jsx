@@ -25,6 +25,8 @@ export function ExplorerProvider({ children }) {
    * @param {string} config.itemId - ID of the item to display
    * @param {Array} config.itemList - List of all items for navigation
    * @param {Object} config.metadata - Additional metadata
+   * @param {Array} config.buttons - Optional array of button configurations for footer
+   *   Each button: { label, icon, onClick, variant, className }
    */
   const openExplorer = (config) => {
     setActiveExplorer(config);
@@ -101,12 +103,13 @@ export function useWidgetExplorer(explorerType) {
 
   const isThisExplorerOpen = activeExplorer?.type === explorerType;
 
-  const open = (itemId, itemList = [], metadata = {}) => {
+  const open = (itemId, itemList = [], metadata = {}, buttons = []) => {
     openExplorer({
       type: explorerType,
       itemId,
       itemList,
-      metadata
+      metadata,
+      buttons
     });
   };
 
@@ -129,6 +132,7 @@ export function useWidgetExplorer(explorerType) {
     isOpen: isThisExplorerOpen,
     currentItemId: isThisExplorerOpen ? activeExplorer.itemId : null,
     itemList: isThisExplorerOpen ? activeExplorer.itemList : [],
-    metadata: isThisExplorerOpen ? activeExplorer.metadata : {}
+    metadata: isThisExplorerOpen ? activeExplorer.metadata : {},
+    buttons: isThisExplorerOpen ? activeExplorer.buttons : []
   };
 }
