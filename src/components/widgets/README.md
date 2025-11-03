@@ -119,7 +119,7 @@ All widgets automatically include:
 - **News/** - Latest news headlines with filtering
 - **BD24Live/** - Bangladesh news via RSS feed
 - **GitHub/** - Recent commits from repositories
-- **AI/** - Chat with AI assistants (GPT-4, Claude)
+- **AI/** - Chat with AI assistants (GPT-4)
 - **Checklist/** - Simple task checklist with auto-sorting
 - **Timer/** - Stopwatch with laps and countdown timer
 

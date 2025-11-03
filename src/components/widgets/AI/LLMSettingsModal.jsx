@@ -197,7 +197,7 @@ export function LLMSettingsModal({ isOpen, onClose, onSettingsChange }) {
           {providers.length === 0 && (
             <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 mb-4">
               <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                No AI providers configured. Add your OpenAI or Claude API key in the main Settings.
+                No AI providers configured. Add your OpenAI API key in the main Settings.
               </p>
             </div>
           )}

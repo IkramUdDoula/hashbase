@@ -361,13 +361,13 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
         logo={Sparkles}
         appName="AI"
         widgetName="Chat"
-        tooltip="Chat with AI assistants (OpenAI & Claude)"
+        tooltip="Chat with AI assistants (OpenAI)"
         customActions={customActions}
         showRefresh={false}
         state={!isConfigured ? 'empty' : 'positive'}
         emptyIcon={Bot}
         emptyMessage="No AI provider configured"
-        emptySubmessage="Add your OpenAI or Claude API key in Settings to start chatting"
+        emptySubmessage="Add your OpenAI API key in Settings to start chatting"
         rowSpan={rowSpan}
         dragRef={dragRef}
       >

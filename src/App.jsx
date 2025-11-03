@@ -50,7 +50,7 @@ function AppContent() {
       component: AIChatWidget, 
       rowSpan: 2,
       name: 'AI Chat',
-      description: 'Chat with AI assistants (OpenAI GPT-4 & Claude)',
+      description: 'Chat with AI assistants (OpenAI GPT-4)',
       icon: Sparkles
     },
     { 
