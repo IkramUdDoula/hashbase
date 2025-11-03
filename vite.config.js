@@ -493,6 +493,98 @@ function createApiServer() {
     }
   })
 
+  // Fetch detailed deploy information
+  app.get('/api/netlify/deploy/:deployId', async (req, res) => {
+    try {
+      const accessToken = req.headers['x-netlify-access-token']
+      const { deployId } = req.params
+      
+      if (!accessToken) {
+        return res.status(401).json({ 
+          error: 'Not configured',
+          message: 'Please add your Netlify access token in Settings > Secrets'
+        })
+      }
+
+      // Fetch deploy details
+      const deployResponse = await fetch(
+        `https://api.netlify.com/api/v1/deploys/${deployId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        }
+      )
+
+      if (!deployResponse.ok) {
+        throw new Error(`Failed to fetch deploy: ${deployResponse.statusText}`)
+      }
+
+      const deploy = await deployResponse.json()
+      
+      // Format the response with all available details
+      const details = {
+        id: deploy.id,
+        siteId: deploy.site_id,
+        siteName: deploy.name,
+        state: deploy.state,
+        context: deploy.context,
+        branch: deploy.branch,
+        commitRef: deploy.commit_ref,
+        commitUrl: deploy.commit_url,
+        title: deploy.title,
+        
+        // Timestamps
+        createdAt: deploy.created_at,
+        updatedAt: deploy.updated_at,
+        publishedAt: deploy.published_at,
+        
+        // URLs
+        deployUrl: deploy.deploy_ssl_url || deploy.deploy_url,
+        adminUrl: deploy.admin_url,
+        screenshotUrl: deploy.screenshot_url,
+        
+        // Build info
+        buildTime: deploy.deploy_time,
+        errorMessage: deploy.error_message,
+        
+        // Summary
+        summary: deploy.summary || {},
+        
+        // Framework
+        framework: deploy.framework,
+        
+        // User info
+        deployedBy: deploy.published_deploy ? {
+          name: deploy.published_deploy.name,
+          email: deploy.published_deploy.email
+        } : null,
+        
+        // File changes
+        filesChanged: deploy.summary?.status === 'ready' ? {
+          newFiles: deploy.summary?.messages?.filter(m => m.type === 'new').length || 0,
+          updatedFiles: deploy.summary?.messages?.filter(m => m.type === 'changed').length || 0,
+          deletedFiles: deploy.summary?.messages?.filter(m => m.type === 'deleted').length || 0,
+        } : null,
+        
+        // Functions and edge functions
+        functions: deploy.functions || [],
+        edgeFunctions: deploy.edge_functions || [],
+        
+        // Build log URL (if available)
+        buildLogUrl: deploy.build_log_url,
+      }
+      
+      res.json({ deploy: details })
+    } catch (error) {
+      console.error('Error fetching deploy details:', error)
+      res.status(500).json({ 
+        error: 'Failed to fetch deploy details',
+        message: error.message 
+      })
+    }
+  })
+
   // ===== OpenAI API Proxy Endpoint =====
 
   // Proxy OpenAI chat completions (streaming)

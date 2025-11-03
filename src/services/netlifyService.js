@@ -84,6 +84,29 @@ export async function fetchNetlifyDeploys(siteIds = []) {
   }
 }
 
+/**
+ * Fetch detailed information about a specific deploy
+ * @param {string} deployId - The deploy ID
+ * @returns {Promise<Object>} Deploy details object
+ */
+export async function fetchDeployDetails(deployId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/netlify/deploy/${deployId}`, {
+      headers: getNetlifyHeaders()
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch deploy details: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    return data.deploy || null;
+  } catch (error) {
+    console.error('Error fetching deploy details:', error);
+    throw error;
+  }
+}
+
 export function getNetlifyDeployUrl(deployId, siteId) {
   return `https://app.netlify.com/sites/${siteId}/deploys/${deployId}`;
 }

@@ -23,6 +23,7 @@ import {
 } from '@/services/netlifyService';
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { WidgetModal, WidgetModalFooter } from '@/components/ui/widget-modal';
+import { NetlifyDeployExplorer } from './NetlifyDeployExplorer';
 
 /**
  * DeploymentWidgetV2 - Netlify deployments widget using BaseWidgetV2
@@ -60,6 +61,10 @@ export function DeploymentWidgetV2({ rowSpan = 3, dragRef }) {
   
   // Temporary settings for modal
   const [tempSettings, setTempSettings] = useState(settings);
+  
+  // Explorer state
+  const [explorerOpen, setExplorerOpen] = useState(false);
+  const [selectedDeployId, setSelectedDeployId] = useState(null);
   
   // Load sites on mount
   useEffect(() => {
@@ -187,8 +192,12 @@ export function DeploymentWidgetV2({ rowSpan = 3, dragRef }) {
   };
 
   const handleDeployClick = (deploy) => {
-    const deployUrl = getNetlifyDeployUrl(deploy.id, deploy.siteId);
-    window.open(deployUrl, '_blank');
+    setSelectedDeployId(deploy.id);
+    setExplorerOpen(true);
+  };
+  
+  const handleDeployChange = (newDeployId) => {
+    setSelectedDeployId(newDeployId);
   };
   
   const handleSiteToggle = (siteId) => {
@@ -552,6 +561,15 @@ export function DeploymentWidgetV2({ rowSpan = 3, dragRef }) {
         </div>
       </div>
     </WidgetModal>
+    
+    {/* Deploy Explorer */}
+    <NetlifyDeployExplorer
+      open={explorerOpen}
+      onOpenChange={setExplorerOpen}
+      deployId={selectedDeployId}
+      deployList={filteredDeploys}
+      onDeployChange={handleDeployChange}
+    />
   </>
   );
 }
