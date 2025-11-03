@@ -224,7 +224,7 @@ export function ChecklistExplorerV2({
           icon: item.checked ? Square : CheckSquare,
           onClick: handleToggleComplete,
           variant: item.checked ? 'outline' : 'default',
-          className: item.checked ? '' : 'bg-green-600 hover:bg-green-500 text-white border-green-600'
+          className: item.checked ? '' : 'bg-green-700 hover:bg-green-500 text-white border-green-600'
         },
         {
           label: 'Delete',

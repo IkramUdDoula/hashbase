@@ -80,7 +80,7 @@ export function BD24LiveExplorer({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, hasPrevious, hasNext]);
+  }, [open, hasPrevious, hasNext, handlePrevious, handleNext]);
 
   return (
     <Explorer
