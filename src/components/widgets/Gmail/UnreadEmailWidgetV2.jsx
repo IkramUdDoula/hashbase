@@ -6,6 +6,7 @@ import { Mail, LogIn, ExternalLink, Loader2 } from 'lucide-react';
 import { SiGmail } from 'react-icons/si';
 import { fetchUnreadEmails, getAuthUrl, checkAuthStatus, getGmailUrl } from '@/services/gmailService';
 import { formatRelativeDate } from '@/lib/dateUtils';
+import { GmailExplorer } from './GmailExplorer';
 
 export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
   const [emails, setEmails] = useState([]);
@@ -15,6 +16,8 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [explorerOpen, setExplorerOpen] = useState(false);
+  const [selectedEmailId, setSelectedEmailId] = useState(null);
 
   const loadEmails = async () => {
     try {
@@ -53,13 +56,18 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
   };
 
   const handleOpenEmail = (emailId) => {
-    const gmailUrl = getGmailUrl(emailId);
-    window.open(gmailUrl, '_blank');
-    
-    // Refresh after 10 seconds to allow time for email to be marked as read
-    setTimeout(() => {
-      loadEmails();
-    }, 10000);
+    // Open explorer instead of external link
+    setSelectedEmailId(emailId);
+    setExplorerOpen(true);
+  };
+
+  const handleExplorerEmailChange = (newEmailId) => {
+    setSelectedEmailId(newEmailId);
+  };
+
+  const handleExplorerClose = () => {
+    setExplorerOpen(false);
+    setSelectedEmailId(null);
   };
 
   useEffect(() => {
@@ -133,48 +141,49 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
   );
 
   return (
-    <BaseWidgetV2
-      logo={SiGmail}
-      appName="Gmail"
-      widgetName="Unread"
-      tooltip="Your latest unread messages from Gmail"
-      badge={badge}
-      
-      // Action Buttons
-      customActions={customActions}
-      showRefresh={true}
-      onRefresh={handleRefresh}
-      refreshing={refreshing}
-      
-      // Content State
-      state={currentState}
-      
-      // Loading State
-      loadingMessage="Loading emails..."
-      
-      // Error State
-      errorIcon={Mail}
-      errorMessage={error || 'Failed to load emails'}
-      errorActionLabel="Try Again"
-      errorActionLoading={refreshing}
-      onErrorAction={handleRefresh}
-      errorSecondaryActionLabel="Authenticate with Gmail"
-      errorSecondaryActionLoading={authenticating}
-      onErrorSecondaryAction={handleAuthenticate}
-      
-      // Empty State
-      emptyMessage="No unread emails"
-      emptySubmessage="You're all caught up!"
-      
-      // Search
-      searchEnabled={emails.length > 0}
-      searchValue={searchQuery}
-      onSearchChange={setSearchQuery}
-      searchPlaceholder="Search emails..."
-      
-      rowSpan={rowSpan}
-      dragRef={dragRef}
-    >
+    <>
+      <BaseWidgetV2
+        logo={SiGmail}
+        appName="Gmail"
+        widgetName="Unread"
+        tooltip="Your latest unread messages from Gmail"
+        badge={badge}
+        
+        // Action Buttons
+        customActions={customActions}
+        showRefresh={true}
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
+        
+        // Content State
+        state={currentState}
+        
+        // Loading State
+        loadingMessage="Loading emails..."
+        
+        // Error State
+        errorIcon={Mail}
+        errorMessage={error || 'Failed to load emails'}
+        errorActionLabel="Try Again"
+        errorActionLoading={refreshing}
+        onErrorAction={handleRefresh}
+        errorSecondaryActionLabel="Authenticate with Gmail"
+        errorSecondaryActionLoading={authenticating}
+        onErrorSecondaryAction={handleAuthenticate}
+        
+        // Empty State
+        emptyMessage="No unread emails"
+        emptySubmessage="You're all caught up!"
+        
+        // Search
+        searchEnabled={emails.length > 0}
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search emails..."
+        
+        rowSpan={rowSpan}
+        dragRef={dragRef}
+      >
       {filteredEmails.length === 0 && searchQuery ? (
         <div className="flex flex-col items-center justify-center h-full text-center p-4">
           <Mail className="h-8 w-8 text-muted-foreground mb-2" />
@@ -204,17 +213,25 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
                 
                 <p className="text-xs text-blue-600 dark:text-blue-400 line-clamp-1 mb-1">{senderEmail}</p>
                 
-                <div className="flex items-center justify-between gap-1">
-                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100 line-clamp-1 flex-1">
-                    {email.subject}
-                  </p>
-                  <ExternalLink className="h-4 w-4 text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                </div>
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100 line-clamp-1">
+                  {email.subject}
+                </p>
               </div>
             );
           })}
         </div>
       )}
-    </BaseWidgetV2>
+      </BaseWidgetV2>
+
+      {/* Gmail Explorer */}
+      <GmailExplorer
+        open={explorerOpen}
+        onOpenChange={handleExplorerClose}
+        emailId={selectedEmailId}
+        emailList={filteredEmails}
+        onEmailChange={handleExplorerEmailChange}
+        onRefresh={loadEmails}
+      />
+    </>
   );
 }

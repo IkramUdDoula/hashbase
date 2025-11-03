@@ -88,6 +88,24 @@ export async function fetchUnreadEmails() {
   }
 }
 
+export async function fetchEmailDetails(messageId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/gmail/email/${messageId}`, {
+      headers: getHeaders()
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch email details: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    return data.email;
+  } catch (error) {
+    console.error('Error fetching email details:', error);
+    throw error;
+  }
+}
+
 export async function markAsRead(messageId) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/gmail/mark-read`, {
