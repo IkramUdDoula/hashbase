@@ -4,21 +4,87 @@ A modern, highly customizable React dashboard application featuring drag-and-dro
 
 ![Dashboard Preview](https://img.shields.io/badge/React-18.3-blue) ![Vite](https://img.shields.io/badge/Vite-5.2-646CFF) ![TailwindCSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC)
 
+## What is Hashbase?
+
+Hashbase is a **personal dashboard platform** that brings all your important information into one place. It's designed for developers and power users who want to:
+
+- **Monitor multiple services** - Gmail, GitHub, Netlify, News, and more in a single view
+- **Customize their workspace** - Drag, drop, and resize widgets to create your perfect layout
+- **Explore details** - Click any item to open a detailed side-sheet view with full information
+- **Stay productive** - Auto-refresh, keyboard shortcuts, and search functionality built-in
+- **Keep data private** - All API credentials stored locally in your browser, never sent to external servers
+
+### Key Highlights
+
+✨ **10 Built-in Widgets** - Gmail, Netlify, GitHub (Commits & Issues), AI Chat, News, BD24 Live, Checklist, Timer, and Demo  
+🔍 **Explorer System** - Click any item to view detailed information in a side-sheet with navigation  
+🎨 **Fully Customizable** - Drag-and-drop layout with 1-4 row sizing per widget  
+🔐 **Privacy-First** - API keys stored in browser localStorage, encrypted config export/import  
+⚡ **Modern Stack** - React 18, Vite, Tailwind CSS, shadcn/ui, react-dnd  
+📱 **Developer-Friendly** - Comprehensive development guide for creating custom widgets
+
+---
+
+## Table of Contents
+
+1. [What is Hashbase?](#what-is-hashbase)
+2. [Features](#features)
+3. [Prerequisites](#prerequisites)
+4. [Quick Start](#quick-start)
+5. [Widget Configuration](#widget-configuration)
+6. [Usage Guide](#usage-guide)
+7. [Project Structure](#project-structure)
+8. [Development](#development)
+9. [Troubleshooting](#troubleshooting)
+
+---
+
+## How to Use Hashbase
+
+### First Time Setup (5 minutes)
+
+1. **Clone and install** - `git clone <repo> && cd hashbase && npm install`
+2. **Configure environment** - Copy `.env.example` to `.env` and generate encryption key
+3. **Start the app** - `npm run dev` and open `http://localhost:5000`
+4. **Configure widgets** - Click Settings (⚙️) > Configuration > Secrets to add API keys
+5. **Customize layout** - Drag widgets around, resize them, enable/disable from Settings > Apps
+
+### Daily Usage
+
+- **View items** - Click any item in a widget to open the Explorer with full details
+- **Navigate** - Use ← → arrow keys or Previous/Next buttons to browse items
+- **Search** - Use the search bar in widgets to filter content
+- **Refresh** - Click the refresh button (🔄) or wait for auto-refresh
+- **Resize** - Click the resize icon (⇕) in bottom-right corner to change widget size
+- **Move** - Drag widgets by their logo/icon to rearrange your layout
+
+### Advanced Features
+
+- **Backup config** - Settings > Secrets > Download Config (encrypted with AES-256-GCM)
+- **Restore config** - Settings > Secrets > Upload Config (works across devices)
+- **Dark mode** - Automatically enabled, toggle in Settings > Theme
+- **Landing page** - Set `VITE_ENV=prod` in `.env` to show landing page instead of dashboard
+
+---
+
 ## Features
 
-### Widget Features (All using BaseWidgetV2)
-- 📧 **Gmail Widget V2** - Display unread emails with OAuth2 authentication, dual error actions, auto-refresh, integrated search
-- 🚀 **Netlify Widget V2** - Monitor deploys with status badges, color-coded cards, build time tracking, error messages
+### Available Widgets (All using BaseWidgetV2)
+
+- 📧 **Gmail Widget** - Display unread emails with OAuth2 authentication, explorer view, auto-refresh, integrated search
+- 🚀 **Netlify Widget** - Monitor deploys with status badges, explorer view, color-coded cards, build time tracking
 - 🤖 **AI Chat Widget** - Chat with OpenAI (GPT-4, GPT-3.5) or Claude AI (Sonnet, Opus, Haiku) with streaming responses and web search
-- 💻 **GitHub Commits Widget** - View commits from repositories with configurable settings, status indicators, auto-refresh (1-30 min)
-- 📰 **News Widget V2** - Latest headlines with country/category filtering (20+ countries), settings modal, integrated search
-- 🌐 **BD24 Live Widget V2** - Bangladesh news via RSS with timestamp display, 30-minute auto-refresh, caching
-- ✅ **Checklist Widget** - Simple task checklist with automatic reordering, checked items move to bottom
+- 💻 **GitHub Commits Widget** - View commits from all branches with explorer view, status indicators, file changes, auto-refresh (1-30 min)
+- 💻 **GitHub Issues Widget** - Track repository issues with explorer view, labels, assignees, filtering, and search
+- 📰 **News Widget** - Latest headlines with country/category filtering (20+ countries), settings modal, integrated search
+- 🌐 **BD24 Live Widget** - Bangladesh news via RSS with explorer view, timestamp display, 30-minute auto-refresh, caching
+- ✅ **Checklist Widget** - Task checklist with explorer view, automatic reordering, checked items move to bottom
 - ⏱️ **Timer Widget** - Stopwatch with lap system and countdown timer with browser notifications
 - 🧪 **Demo Widget** - Comprehensive showcase of all BaseWidgetV2 features, states, and UI components
 
-### Core Features
-- 🚀 **Landing Page** - Beautiful single-page landing with punchy hero text, contact form, and dashboard preview (production mode)
+### Core Platform Features
+
+- 🔍 **Explorer System** - Side-sheet detail views for widgets with navigation, keyboard shortcuts (←/→/Esc), and universal button support
 - 🎯 **Advanced Drag & Drop Layout** - Powered by react-dnd with intelligent position validation and collision detection
 - 📐 **Smart Widget Resizing** - Resize widgets from 1-4 rows with automatic space detection and fit validation
 - 💾 **Persistent Layout System** - Custom layouts saved to localStorage with automatic validation and preservation
@@ -26,7 +92,6 @@ A modern, highly customizable React dashboard application featuring drag-and-dro
 - ⚙️ **In-App Configuration** - Configure API secrets directly in the app (stored in localStorage)
 - 🔑 **Advanced Secrets Management** - Add custom secrets, search functionality, alphabetically sorted display
 - 📥 **Config Export/Import** - Download and upload entire dashboard configuration with automatic AES-256-GCM encryption
-- 🔍 **Web Search Integration** - Real-time web search for AI responses using Tavily AI API
 - 🎨 **Beautiful Modern UI** - Built with Tailwind CSS and shadcn/ui components with gradient backgrounds
 - 🌓 **Dark Mode Support** - Full dark mode with smooth transitions and optimized contrast
 - 🔄 **Auto-Refresh** - Widgets auto-refresh at configurable intervals (1-30 min depending on widget)
@@ -34,6 +99,7 @@ A modern, highly customizable React dashboard application featuring drag-and-dro
 - ⚡ **Fast Development** - Vite dev server with integrated Express API backend
 - 🔐 **Secure Credentials** - API credentials stored in browser localStorage, never sent externally
 - 🎭 **Standardized Widget System** - BaseWidgetV2 architecture with consistent states, search, and settings modals
+- 🚀 **Landing Page** - Beautiful single-page landing with hero text, GitHub issue form, and dashboard preview (production mode)
 
 ## Prerequisites
 
@@ -306,24 +372,46 @@ In Settings > Secrets tab, there's a "Clear All Data" button in the Danger Zone 
 
 Use this if you want to start fresh or are experiencing authentication issues. **Note:** You'll need to re-authenticate with Gmail after clearing data.
 
-## Usage
+## Usage Guide
+
+### Explorer System
+
+Many widgets feature an **Explorer** - a side-sheet detail view that opens when you click on items:
+
+**Features:**
+- **Side Sheet View** - Opens from the right with backdrop overlay
+- **Navigation** - Move between items using Previous/Next buttons or keyboard shortcuts
+- **Keyboard Shortcuts:**
+  - `←` (Left Arrow) - Previous item
+  - `→` (Right Arrow) - Next item
+  - `Esc` (Escape) - Close explorer
+- **Action Buttons** - Context-specific actions (e.g., "Open in GitHub", "Reply", "Mark as Read")
+- **Rich Content** - Detailed information not visible in widget cards
+
+**Widgets with Explorers:**
+- Gmail - Full email view with headers, body, attachments
+- GitHub Commits - Full commit details, file changes, statistics
+- GitHub Issues - Complete issue details, comments, timeline
+- Netlify - Deploy details, logs, build information
+- BD24 Live - Full article content
+- Checklist - Item details and editing
 
 ### Landing Page
 
-The application includes a beautiful landing page that can be enabled in production mode:
+The application includes a beautiful landing page for production mode:
 
 **Features:**
-- **Punchy Hero Section** - Large, gradient text with compelling call-to-action
-- **Contact Form** - Popup form that redirects submissions to email (doula.ikram@gmail.com)
-- **Dashboard Preview** - Visual showcase of the dashboard with glowing effects
-- **Dark Theme** - Consistent with the dashboard's dark mode aesthetic
+- **Hero Section** - Large, gradient text with compelling call-to-action
+- **GitHub Issue Form** - Contact form that creates issues in your GitHub repository
+- **Dashboard Preview** - Visual showcase with glowing effects
+- **Dark Theme** - Consistent with dashboard aesthetic
 - **Animated Elements** - Smooth fade-in animations and hover effects
-- **Feature Highlights** - Three key features displayed in cards
 
 **How to Enable:**
 - Set `VITE_ENV=prod` in your `.env` file to show the landing page
 - Set `VITE_ENV=dev` (default) to show the dashboard
-- Restart the dev server after changing the environment variable
+- Configure GitHub credentials in `.env` for form submissions (optional, falls back to mailto)
+- Restart the dev server after changing environment variables
 
 ### Widget Layout System
 
@@ -342,20 +430,22 @@ The dashboard features a powerful drag-and-drop layout system with intelligent s
 For detailed technical documentation, see [LAYOUT_PRESERVATION_CHANGES.md](./LAYOUT_PRESERVATION_CHANGES.md)
 
 ### Gmail Widget
-- Displays your unread emails
+- Displays your unread emails with OAuth2 authentication
+- **Explorer View** - Click any email to view full details (headers, body, attachments)
 - Auto-refreshes every 60 seconds
 - Click the refresh button to manually refresh
-- Click on emails to open them in Gmail
-- Shows sender, subject, and time received
+- Shows sender, subject, snippet, and time received
+- Search through emails by sender, subject, or content
+- Actions in explorer: Reply, Forward, Mark as Read, Open in Gmail
 
 ### Netlify Widget
 - Displays latest deploys from all your Netlify projects
-- Shows deploy status (ready, building, error)
-- Displays build time, branch, and context
+- **Explorer View** - Click any deploy to view detailed information
+- Shows deploy status (ready, building, error) with color-coded badges
+- Displays build time, branch, context, and commit info
 - Auto-refreshes every 60 seconds
-- Click "Deploy" to view deploy details in Netlify
-- Click "Site" to visit the live site
-- Color-coded badges for different deploy states
+- Search through deploys by site name or branch
+- Actions in explorer: View Deploy, Visit Site, View Logs
 
 ### AI Chat Widget
 - Chat with AI assistants (OpenAI GPT-4 or Claude)
@@ -376,30 +466,61 @@ For detailed technical documentation, see [LAYOUT_PRESERVATION_CHANGES.md](./LAY
 - Press Enter to send, Shift+Enter for new line
 - Toggle web search on/off to enhance responses with real-time information
 
-### GitHub Widget
-- Displays recent commits from your configured GitHub repository
+### GitHub Commits Widget
+- Displays recent commits from **all branches** of your configured repository
+- **Explorer View** - Click any commit to view:
+  - Full commit message (title + body)
+  - Commit statistics (files changed, additions, deletions)
+  - Complete list of changed files with line counts
+  - File status badges (added, modified, removed, renamed)
+  - Author details and commit SHA
+  - Branch information and CI/CD status
 - Shows commit messages, authors, timestamps, and commit SHAs
-- Clean, modern card design without avatars for focused content
 - **Configurable auto-refresh** - Choose from 1, 5, 10, 15, or 30 minutes
-- **Commit status indicators** - Toggle to show/hide status badges
+- **Commit status indicators** - Toggle to show/hide CI/CD status badges
 - **Repository name display** - Toggle to show/hide repo name in cards
-- Click on any commit to view it on GitHub
-- Configure all settings via the settings modal in the widget
+- Search through commits by message, author, or SHA
+- Configure repository and settings via the settings modal
 - Supports any public or private repository (with proper token permissions)
+- Actions in explorer: Open in GitHub, Copy SHA
+
+### GitHub Issues Widget
+- Track and manage repository issues
+- **Explorer View** - Click any issue to view:
+  - Full issue description
+  - Labels and assignees
+  - Comments and timeline
+  - Issue metadata (state, number, created date)
+- Filter by issue state (open, closed, all)
+- Search through issues by title, description, or labels
+- Shows issue number, title, state, labels, and assignees
+- Color-coded state badges (open, closed)
+- Configure repository via settings modal
+- Actions in explorer: Open in GitHub, Add Comment, Close/Reopen Issue
 
 ### News Widget
 - Displays latest news headlines from around the world powered by NewsAPI
 - **Country Selection** - Choose from 20+ countries (US, UK, Canada, India, Australia, etc.)
 - **Topic Filtering** - Filter by General, Business, Technology, Entertainment, Sports, Science, or Health
 - **Integrated Search** - Search through headlines by title, description, or source
-- **Settings Modal** - Easy configuration via settings button with modern UI
+- **Settings Modal** - Easy configuration via settings button
 - Auto-refreshes every 5 minutes
 - Click on any article to read the full story on the source website
 - Settings persist in localStorage
-- Gradient card design with hover effects
+- Modern card design with hover effects
+
+### BD24 Live Widget
+- Bangladesh news via RSS feed parsing
+- **Explorer View** - Click any article to view full content
+- Shows article title, timestamp, and source
+- Auto-refreshes every 30 minutes
+- 30-minute caching to reduce external requests
+- Search through articles by title or content
+- Actions in explorer: Open in Browser
 
 ### Checklist Widget
 - Simple task checklist with automatic reordering
+- **Explorer View** - Click any item to view and edit details
 - Add new tasks with Enter key
 - Check/uncheck items with visual feedback
 - Checked items automatically move to the bottom
@@ -431,48 +552,77 @@ For detailed technical documentation, see [LAYOUT_PRESERVATION_CHANGES.md](./LAY
 hashbase/
 ├── src/
 │   ├── components/
-│   │   ├── ui/                         # shadcn/ui components (button, dialog, tooltip, etc.)
+│   │   ├── ui/
+│   │   │   ├── explorer.jsx            # Base explorer component with helper components
+│   │   │   ├── widget-modal.jsx        # Widget settings modal component
+│   │   │   ├── button.jsx              # shadcn/ui button component
+│   │   │   ├── dialog.jsx              # shadcn/ui dialog component
+│   │   │   ├── badge.jsx               # shadcn/ui badge component
+│   │   │   └── tooltip.jsx             # shadcn/ui tooltip component
 │   │   ├── widgets/
-│   │   │   ├── AI/                     # AI Chat widget (AIChatWidget.jsx + components)
-│   │   │   ├── BD24Live/               # BD24 Live news widget (V2)
-│   │   │   ├── Checklist/              # Checklist widget with auto-sorting
-│   │   │   ├── Demo/                   # Demo widget showcasing BaseWidgetV2
-│   │   │   ├── GitHub/                 # GitHub commits widget (V2)
-│   │   │   ├── Gmail/                  # Gmail unread emails widget (V2)
-│   │   │   ├── Netlify/                # Netlify deploys widget (V2)
-│   │   │   ├── News/                   # News headlines widget (V2)
-│   │   │   ├── Timer/                  # Timer widget with stopwatch and countdown
-│   │   │   └── README.md               # Widget development guide
-│   │   ├── BaseWidgetV2.jsx            # Standardized widget container with states
+│   │   │   ├── AI/                     # AI Chat widget
+│   │   │   │   ├── AIChatWidget.jsx           # Main widget component
+│   │   │   │   ├── ChatHistoryModal.jsx       # Chat history modal
+│   │   │   │   └── LLMSettingsModal.jsx       # LLM settings modal
+│   │   │   ├── BD24Live/               # BD24 Live news widget
+│   │   │   │   ├── BD24LiveWidgetV2.jsx       # Main widget component
+│   │   │   │   └── BD24LiveExplorer.jsx       # Explorer component
+│   │   │   ├── Checklist/              # Checklist widget
+│   │   │   │   ├── ChecklistWidget.jsx        # Main widget component
+│   │   │   │   ├── ChecklistExplorer.jsx      # Explorer component (v1)
+│   │   │   │   └── ChecklistExplorerV2.jsx    # Explorer component (v2)
+│   │   │   ├── Demo/                   # Demo widget
+│   │   │   │   └── DemoWidget.jsx             # BaseWidgetV2 showcase
+│   │   │   ├── GitHub/                 # GitHub widgets
+│   │   │   │   ├── GitHubCommitsWidget.jsx    # Commits widget
+│   │   │   │   ├── GitHubCommitsExplorer.jsx  # Commits explorer
+│   │   │   │   ├── GitHubIssuesWidget.jsx     # Issues widget
+│   │   │   │   └── GitHubIssuesExplorer.jsx   # Issues explorer
+│   │   │   ├── Gmail/                  # Gmail widget
+│   │   │   │   ├── UnreadEmailWidgetV2.jsx    # Main widget component
+│   │   │   │   └── GmailExplorer.jsx          # Explorer component
+│   │   │   ├── Netlify/                # Netlify widget
+│   │   │   │   ├── DeploymentWidgetV2.jsx     # Main widget component
+│   │   │   │   └── NetlifyDeployExplorer.jsx  # Explorer component
+│   │   │   ├── News/                   # News widget
+│   │   │   │   ├── NewsWidgetV2.jsx           # Main widget component
+│   │   │   │   └── NewsSettingsDialog.jsx     # Settings dialog
+│   │   │   ├── Timer/                  # Timer widget
+│   │   │   │   └── TimerWidget.jsx            # Stopwatch + countdown
+│   │   │   └── README.md               # Widget development guide (legacy)
+│   │   ├── BaseWidgetV2.jsx            # Standardized widget container
 │   │   ├── Canvas.jsx                  # Drag-and-drop canvas with layout management
 │   │   ├── DraggableWidget.jsx         # Draggable widget wrapper with resize
 │   │   ├── DropZone.jsx                # Drop zone component for drag-and-drop
-│   │   ├── LandingPage.jsx             # Beautiful landing page with contact form
+│   │   ├── LandingPage.jsx             # Landing page with GitHub issue form
 │   │   ├── ScreenSizeGuard.jsx         # Minimum screen size enforcement
 │   │   ├── SettingsButton.jsx          # Settings panel (Apps, Secrets, Theme)
 │   │   ├── WidgetEmptyState.jsx        # Empty state component
 │   │   └── WidgetSearch.jsx            # Search component for widgets
-│   ├── public/
-│   │   └── image.png                   # Dashboard preview image for landing page
+│   ├── contexts/
+│   │   ├── ExplorerContext.jsx         # Explorer state management (global)
+│   │   └── ThemeContext.jsx            # Dark mode context provider
 │   ├── services/
 │   │   ├── aiService.js                # OpenAI & Claude API integration
 │   │   ├── bd24LiveService.js          # BD24 Live RSS feed service
 │   │   ├── configService.js            # Config export/import with AES-256-GCM encryption
-│   │   ├── githubService.js            # GitHub API service
-│   │   ├── gmailService.js             # Gmail API service
+│   │   ├── githubService.js            # GitHub API service (commits, issues, branches)
+│   │   ├── gmailService.js             # Gmail API service with OAuth2
 │   │   ├── layoutService.js            # Layout management, validation & space finding
 │   │   ├── netlifyService.js           # Netlify API service
 │   │   ├── newsService.js              # NewsAPI service
 │   │   ├── secretsService.js           # Secrets management (localStorage)
 │   │   └── widgetRegistry.js           # Widget enable/disable preferences
-│   ├── contexts/
-│   │   └── ThemeContext.jsx            # Dark mode context provider
 │   ├── lib/
 │   │   ├── dateUtils.js                # Date formatting utilities
 │   │   └── utils.js                    # General utility functions (cn, etc.)
+│   ├── public/
+│   │   └── image.png                   # Dashboard preview image
 │   ├── App.jsx                         # Main app component with widget registry
 │   ├── main.jsx                        # React entry point
 │   └── index.css                       # Global styles with Tailwind directives
+├── public/
+│   └── favicon.ico                     # Favicon
 ├── vite.config.js                      # Vite config with integrated Express API server
 ├── generate-encryption-key.js          # Utility to generate AES-256 encryption keys
 ├── .env                                # Environment variables (gitignored)
@@ -481,8 +631,9 @@ hashbase/
 ├── tailwind.config.js                  # Tailwind CSS configuration
 ├── postcss.config.js                   # PostCSS configuration
 ├── jsconfig.json                       # JavaScript path aliases (@/ → src/)
-├── UPGRADE_SUMMARY.md                  # BaseWidgetV2 migration summary
-├── WIDGET_UPGRADE_GUIDE.md             # Guide for upgrading to BaseWidgetV2
+├── DEVELOPMENT_GUIDE.md                # Complete widget & explorer development guide
+├── UPGRADE_SUMMARY.md                  # BaseWidgetV2 migration summary (legacy)
+├── WIDGET_UPGRADE_GUIDE.md             # Guide for upgrading to BaseWidgetV2 (legacy)
 ├── LAYOUT_PRESERVATION_CHANGES.md      # Layout preservation system documentation
 └── README.md                           # This file
 ```
@@ -674,28 +825,27 @@ npm run build    # Build for production
 npm run preview  # Preview production build
 ```
 
-### Adding a New Widget
+### Creating New Widgets and Explorers
 
-1. **Create widget component** in `src/components/widgets/YourWidget/`
-2. **Create service** (if needed) in `src/services/yourService.js`
-3. **Register widget** in `src/App.jsx`:
-   ```javascript
-   const allWidgets = [
-     // ... existing widgets
-     { 
-       id: 'your-widget-id', 
-       component: YourWidget, 
-       rowSpan: 2,  // Default size (1-4)
-       name: 'Your Widget Name',
-       description: 'Widget description',
-       icon: YourIcon
-     },
-   ];
-   ```
-4. **Add API endpoints** (if needed) in `vite.config.js` API server section
-5. **Test drag-and-drop** and resize functionality
+For comprehensive development documentation, see **[DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md)**
 
-See `src/components/widgets/README.md` for detailed widget development guide.
+The guide includes:
+- **Widget Development** - Step-by-step widget creation (5 steps)
+- **Explorer Development** - Creating side-sheet detail views (2 steps)
+- **Integration Guide** - Complete working examples
+- **Best Practices** - State management, localStorage, UI/UX, performance
+- **API Reference** - Complete prop documentation for BaseWidgetV2 and Explorer
+- **Common Patterns** - Reusable code patterns and examples
+- **Troubleshooting** - Solutions to common issues
+
+**Quick Start:**
+1. Create widget component in `src/components/widgets/YourWidget/`
+2. Create explorer component (optional) in same directory
+3. Register widget in `src/App.jsx`
+4. Add localStorage keys to `src/services/configService.js`
+5. Test all states and functionality
+
+See existing widgets for reference examples.
 
 ### BaseWidgetV2 - Standardized Widget Container
 
