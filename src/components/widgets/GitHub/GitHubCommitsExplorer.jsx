@@ -259,11 +259,11 @@ export function GitHubCommitsExplorer({
                     <span className="font-medium text-gray-900 dark:text-gray-100">
                       {commit.author.username}
                     </span>
-                    {/* {commit.author.name !== commit.author.username && (
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {commit.author.name}
-                      </span>
-                    )} */}
+                      {/* {commit.author.name !== commit.author.username && (
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          {commit.author.name}
+                        </span>
+                      )} */}
                     {commit.author.email && (
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         {commit.author.email}

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { BaseWidgetV2 } from '../../BaseWidgetV2';
 import { 
   AlertCircle,
-  ExternalLink,
   MessageSquare,
   Plus,
   Settings as SettingsIcon,
@@ -23,6 +22,7 @@ import {
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { WidgetModal, WidgetModalFooter } from '@/components/ui/widget-modal';
 import { Button } from '@/components/ui/button';
+import { GitHubIssuesExplorer } from './GitHubIssuesExplorer';
 
 /**
  * GitHubIssuesWidget - GitHub issues widget using BaseWidgetV2
@@ -69,6 +69,10 @@ export function GitHubIssuesWidget({ rowSpan = 3, dragRef }) {
     body: '',
   });
   const [creatingIssue, setCreatingIssue] = useState(false);
+  
+  // Explorer state
+  const [explorerOpen, setExplorerOpen] = useState(false);
+  const [selectedIssueId, setSelectedIssueId] = useState(null);
   
   // Load repositories on mount
   useEffect(() => {
@@ -177,7 +181,12 @@ export function GitHubIssuesWidget({ rowSpan = 3, dragRef }) {
   };
   
   const handleIssueClick = (issue) => {
-    window.open(issue.url, '_blank');
+    setSelectedIssueId(issue.id);
+    setExplorerOpen(true);
+  };
+  
+  const handleIssueChange = (issueId) => {
+    setSelectedIssueId(issueId);
   };
   
   const handleCreateIssueOpen = () => {
@@ -339,18 +348,15 @@ export function GitHubIssuesWidget({ rowSpan = 3, dragRef }) {
                 </div>
                 
                 {/* Issue title and state */}
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-start gap-2 flex-1 min-w-0">
-                    {issue.state === 'open' ? (
-                      <Circle className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
-                    )}
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2">
-                      {getIssueTitle(issue.title)}
-                    </p>
-                  </div>
-                  <ExternalLink className="h-4 w-4 text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                <div className="flex items-start gap-2 mb-2">
+                  {issue.state === 'open' ? (
+                    <Circle className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                  )}
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2">
+                    {getIssueTitle(issue.title)}
+                  </p>
                 </div>
 
                 {/* Labels */}
@@ -688,6 +694,15 @@ export function GitHubIssuesWidget({ rowSpan = 3, dragRef }) {
           </div>
         </div>
       </WidgetModal>
+      
+      {/* Issues Explorer */}
+      <GitHubIssuesExplorer
+        open={explorerOpen}
+        onOpenChange={setExplorerOpen}
+        issueId={selectedIssueId}
+        issueList={filteredIssues}
+        onIssueChange={handleIssueChange}
+      />
     </>
   );
 }
