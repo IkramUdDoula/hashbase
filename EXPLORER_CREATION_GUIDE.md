@@ -31,7 +31,16 @@ This guide explains how to create and integrate Explorer components in your widg
 - **Body**: Dynamic content zone customized per widget
 - **Footer**: Action buttons relevant to the content
 - **Navigation**: Move between items without closing the explorer
+- **Keyboard Shortcuts**: Arrow keys for navigation, Escape to close
 - **Responsive**: Adapts to different screen sizes
+
+### Keyboard Shortcuts
+
+All explorers support the following keyboard shortcuts:
+
+- **Arrow Left (←)**: Navigate to previous item
+- **Arrow Right (→)**: Navigate to next item
+- **Escape (Esc)**: Close the explorer
 
 ---
 
@@ -42,8 +51,9 @@ The Explorer system consists of:
 1. **Base Explorer Component** (`src/components/ui/explorer.jsx`)
    - Provides the shell (header, body, footer structure)
    - Handles open/close state
-   - Manages navigation logic
+   - Manages navigation logic (buttons and keyboard shortcuts)
    - Applies backdrop overlay
+   - Keyboard event handling for accessibility
 
 2. **Custom Explorer Components** (e.g., `GmailExplorer.jsx`)
    - Extends the base explorer

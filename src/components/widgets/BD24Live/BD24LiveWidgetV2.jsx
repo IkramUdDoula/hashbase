@@ -5,6 +5,7 @@ import { Newspaper, ExternalLink, AlertCircle, Clock } from 'lucide-react';
 import { fetchBD24LiveNews, checkBD24LiveStatus } from '@/services/bd24LiveService';
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { Button } from '@/components/ui/button';
+import { BD24LiveExplorer } from './BD24LiveExplorer';
 
 /**
  * BD24LiveWidgetV2 - BD24 Live news widget using BaseWidgetV2
@@ -26,6 +27,10 @@ export function BD24LiveWidgetV2({ rowSpan = 2, dragRef }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [errorActionLoading, setErrorActionLoading] = useState(false);
   const [lastFetched, setLastFetched] = useState(null);
+  
+  // Explorer state
+  const [explorerOpen, setExplorerOpen] = useState(false);
+  const [selectedArticleId, setSelectedArticleId] = useState(null);
 
   // Load news articles
   const loadNews = async () => {
@@ -50,7 +55,12 @@ export function BD24LiveWidgetV2({ rowSpan = 2, dragRef }) {
         setArticles([]);
         setCurrentState('empty');
       } else {
-        setArticles(response);
+        // Add unique IDs to articles (using URL as ID)
+        const articlesWithIds = response.map((article, index) => ({
+          ...article,
+          id: article.url || `article-${index}`
+        }));
+        setArticles(articlesWithIds);
         setCurrentState('positive');
         setLastFetched(new Date());
       }
@@ -110,7 +120,18 @@ export function BD24LiveWidgetV2({ rowSpan = 2, dragRef }) {
   };
 
   const handleArticleClick = (article) => {
-    window.open(article.url, '_blank');
+    // Open explorer instead of external link
+    setSelectedArticleId(article.id);
+    setExplorerOpen(true);
+  };
+
+  const handleExplorerArticleChange = (newArticleId) => {
+    setSelectedArticleId(newArticleId);
+  };
+
+  const handleExplorerClose = () => {
+    setExplorerOpen(false);
+    setSelectedArticleId(null);
   };
 
   // Filter articles based on search
@@ -126,6 +147,7 @@ export function BD24LiveWidgetV2({ rowSpan = 2, dragRef }) {
   // No badge or custom actions needed
 
   return (
+    <>
     <BaseWidgetV2
       // Header Zone
       logo={Newspaper}
@@ -176,32 +198,62 @@ export function BD24LiveWidgetV2({ rowSpan = 2, dragRef }) {
           {filteredArticles.map((article, index) => (
             <div
               key={`${article.url}-${index}`}
-              className="p-3 rounded-lg bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border border-blue-200 dark:border-blue-700 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all cursor-pointer group"
+              className="p-3 rounded-lg bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/40 dark:to-slate-900/40 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all cursor-pointer group"
               onClick={() => handleArticleClick(article)}
             >
-              {/* Title */}
-              <div className="flex items-start justify-between gap-2 mb-1.5">
-                <p className="font-semibold text-sm text-blue-900 dark:text-blue-100 line-clamp-2 flex-1">
-                  {article.title}
-                </p>
-                <ExternalLink className="h-4 w-4 text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
-              </div>
-              
-              {/* Source and time */}
-              <div className="flex items-center justify-between gap-2 text-xs">
-                <span className="text-blue-600 dark:text-blue-400 font-medium truncate">
-                  {article.source || 'BD24 Live'}
-                </span>
-                {article.publishedAt && (
-                  <span className="text-blue-700 dark:text-blue-300 whitespace-nowrap">
-                    {formatRelativeDate(article.publishedAt)}
-                  </span>
+              <div className="flex gap-3">
+                {/* Thumbnail Image */}
+                {article.image && (
+                  <div className="flex-shrink-0 w-20 h-20 rounded-md overflow-hidden border border-gray-300 dark:border-gray-600">
+                    <img 
+                      src={article.image} 
+                      alt={article.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.style.display = 'none';
+                      }}
+                    />
+                  </div>
                 )}
+                
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  {/* Title */}
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 line-clamp-2 flex-1">
+                      {article.title}
+                    </p>
+                    <ExternalLink className="h-4 w-4 text-gray-600 dark:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
+                  </div>
+                  
+                  {/* Source and time */}
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-gray-700 dark:text-gray-300 font-medium truncate">
+                      {article.source || 'BD24 Live'}
+                    </span>
+                    {article.publishedAt && (
+                      <span className="text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                        {formatRelativeDate(article.publishedAt)}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           ))}
         </div>
       )}
     </BaseWidgetV2>
+
+    {/* Explorer */}
+    <BD24LiveExplorer
+      open={explorerOpen}
+      onOpenChange={handleExplorerClose}
+      articleId={selectedArticleId}
+      articleList={articles}
+      onArticleChange={handleExplorerArticleChange}
+    />
+  </>
   );
 }

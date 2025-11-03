@@ -11,11 +11,17 @@ import { Button } from "@/components/ui/button"
  * 
  * Features:
  * - Navigation between items (prev/next)
+ * - Keyboard shortcuts (Arrow Left/Right for navigation, Escape to close)
  * - Wizard/App name display
  * - Close button
  * - Dynamic content body
  * - Backdrop overlay
  * - Custom footer buttons
+ * 
+ * Keyboard Shortcuts:
+ * - Arrow Left: Previous item
+ * - Arrow Right: Next item
+ * - Escape: Close explorer
  * 
  * @param {Object} props
  * @param {boolean} props.open - Controls visibility
@@ -53,6 +59,34 @@ const Explorer = ({
       document.body.style.overflow = 'unset'
     }
   }, [open])
+
+  // Keyboard navigation support
+  React.useEffect(() => {
+    if (!open) return
+
+    const handleKeyDown = (e) => {
+      // Left arrow key - Previous
+      if (e.key === 'ArrowLeft' && hasPrevious && onPrevious) {
+        e.preventDefault()
+        onPrevious()
+      }
+      // Right arrow key - Next
+      else if (e.key === 'ArrowRight' && hasNext && onNext) {
+        e.preventDefault()
+        onNext()
+      }
+      // Escape key - Close
+      else if (e.key === 'Escape') {
+        e.preventDefault()
+        onOpenChange(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open, hasPrevious, hasNext, onPrevious, onNext, onOpenChange])
 
   if (!open) return null
 

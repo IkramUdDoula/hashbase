@@ -792,12 +792,30 @@ function createApiServer() {
     cacheExpiry: 30 * 60 * 1000 // 30 minutes in milliseconds
   }
 
-  // Initialize RSS parser
-  const rssParser = new Parser()
+  // Initialize RSS parser with custom fields
+  const rssParser = new Parser({
+    customFields: {
+      item: [
+        ['media:content', 'media:content', {keepArray: false}],
+        ['media:thumbnail', 'media:thumbnail', {keepArray: false}]
+      ]
+    }
+  })
 
   // Check if BD24 Live RSS feed is operational
   app.get('/api/bd24live/status', (req, res) => {
     res.json({ operational: true })
+  })
+
+  // Clear BD24 Live cache (for debugging)
+  app.post('/api/bd24live/clear-cache', (req, res) => {
+    bd24LiveCache = {
+      articles: [],
+      lastFetched: null,
+      cacheExpiry: 30 * 60 * 1000
+    }
+    console.log('🗑️  BD24 Live cache cleared')
+    res.json({ success: true, message: 'Cache cleared' })
   })
 
   // Fetch latest news from BD24 Live RSS feed
@@ -828,10 +846,18 @@ function createApiServer() {
       const articles = feed.items.slice(0, 20).map((item, index) => {
         // Extract image from media:content or enclosure
         let image = null
-        if (item['media:content'] && item['media:content']['$'] && item['media:content']['$'].url) {
-          image = item['media:content']['$'].url
+        
+        // Try different possible structures
+        if (item['media:content']) {
+          if (item['media:content']['$'] && item['media:content']['$'].url) {
+            image = decodeURIComponent(item['media:content']['$'].url)
+          } else if (item['media:content'].url) {
+            image = decodeURIComponent(item['media:content'].url)
+          } else if (typeof item['media:content'] === 'string') {
+            image = decodeURIComponent(item['media:content'])
+          }
         } else if (item.enclosure && item.enclosure.url) {
-          image = item.enclosure.url
+          image = decodeURIComponent(item.enclosure.url)
         }
         
         return {
