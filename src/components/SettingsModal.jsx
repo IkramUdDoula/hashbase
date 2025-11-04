@@ -654,6 +654,12 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
       label: 'GitHub Personal Access Token',
       description: 'Get from github.com/settings/tokens (needs repo scope)',
       placeholder: 'ghp_xxxxxxxxxxxxx'
+    },
+    {
+      key: SECRET_KEYS.POSTHOG_ACCESS_TOKEN,
+      label: 'PostHog Personal API Key',
+      description: 'Get from PostHog Settings > Personal API Keys (requires project:read scope)',
+      placeholder: 'phx_xxxxxxxxxxxxx'
     }
   ];
 

@@ -157,6 +157,8 @@ function getDashboardKeys() {
     'stopwatchTime',
     'stopwatchLaps',
     'countdownInitial',
+    // PostHog widget data
+    'posthog_errors_settings',
   ];
   
   // Add per-canvas layout keys dynamically
