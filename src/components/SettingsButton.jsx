@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Settings, Sun, Moon, AppWindow, ChevronLeft } from 'lucide-react';
+import { Settings, Sun, Moon, AppWindow, ChevronLeft, ChevronUp, ChevronDown } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useCanvas } from '@/contexts/CanvasContext';
 import { SettingsModal } from './SettingsModal';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from '@/components/ui/sheet';
 
@@ -9,6 +10,21 @@ export function SettingsButton({ availableWidgets = [] }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const { canvases, activeCanvasId, setActiveCanvasId } = useCanvas();
+  
+  const currentIndex = canvases.findIndex(c => c.id === activeCanvasId);
+  const canvasNumber = currentIndex + 1;
+  const hasMultipleCanvases = canvases.length > 1;
+  
+  const handleNavigateUp = () => {
+    const newIndex = currentIndex > 0 ? currentIndex - 1 : canvases.length - 1;
+    setActiveCanvasId(canvases[newIndex].id);
+  };
+
+  const handleNavigateDown = () => {
+    const newIndex = currentIndex < canvases.length - 1 ? currentIndex + 1 : 0;
+    setActiveCanvasId(canvases[newIndex].id);
+  };
 
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
@@ -21,14 +37,48 @@ export function SettingsButton({ availableWidgets = [] }) {
 
   return (
     <>
-      {/* Edge trigger button - small square on the right edge */}
-      <button
-        onClick={() => setIsDrawerOpen(true)}
-        className="fixed right-0 top-1/2 -translate-y-1/2 z-40 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-2 rounded-l-lg shadow-lg hover:shadow-xl border-2 border-r-0 border-gray-200 dark:border-gray-800 transition-all duration-200 group hover:pr-3"
-        aria-label="Open settings"
-      >
-        <Settings className="h-4 w-4 group-hover:rotate-90 transition-transform duration-300" />
-      </button>
+      {/* Settings and Canvas Navigator Container */}
+      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-1">
+        {/* Canvas Navigator - Up Chevron */}
+        {hasMultipleCanvases && (
+          <button
+            onClick={handleNavigateUp}
+            className="group bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-2 rounded-l-lg shadow-lg border-2 border-r-0 border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-200"
+            aria-label="Previous canvas"
+            title="Previous canvas"
+          >
+            <ChevronUp className="h-4 w-4 group-hover:-translate-y-0.5 transition-transform duration-200" />
+          </button>
+        )}
+
+        {/* Canvas Indicator */}
+        {hasMultipleCanvases && (
+          <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-2 py-1 rounded-l-lg shadow-lg border-2 border-r-0 border-gray-200 dark:border-gray-800 text-xs font-medium text-center">
+            {canvasNumber}/{canvases.length}
+          </div>
+        )}
+
+        {/* Canvas Navigator - Down Chevron */}
+        {hasMultipleCanvases && (
+          <button
+            onClick={handleNavigateDown}
+            className="group bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-2 rounded-l-lg shadow-lg border-2 border-r-0 border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-200"
+            aria-label="Next canvas"
+            title="Next canvas"
+          >
+            <ChevronDown className="h-4 w-4 group-hover:translate-y-0.5 transition-transform duration-200" />
+          </button>
+        )}
+
+        {/* Settings Button */}
+        <button
+          onClick={() => setIsDrawerOpen(true)}
+          className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-2 rounded-l-lg shadow-lg hover:shadow-xl border-2 border-r-0 border-gray-200 dark:border-gray-800 transition-all duration-200 group hover:pr-3"
+          aria-label="Open settings"
+        >
+          <Settings className="h-4 w-4 group-hover:rotate-90 transition-transform duration-300" />
+        </button>
+      </div>
 
       {/* Settings Drawer */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>

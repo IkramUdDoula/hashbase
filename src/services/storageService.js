@@ -84,27 +84,53 @@ export async function requestFolderAccess() {
  * @returns {string[]} Array of localStorage keys
  */
 function getDashboardKeys() {
-  return [
+  const baseKeys = [
     'hashbase_secrets',
     'hashbase_widget_preferences',
     'widgetLayout',
     'widgetRowSpans',
     'widgetLayoutConfig',
     'hashbase-theme',
-    'ai_chat_conversations',
-    'ai_chat_current_conversation',
-    'ai_chat_settings',
+    // Canvas management
+    'hashbase_canvases',
+    'hashbase_active_canvas',
+    // AI Chat widget related keys
+    'hashbase_ai_conversations',
+    'hashbase_ai_current_conversation',
+    'hashbase_ai_chat_settings',
+    'hashbase_ai_llm_settings',
+    // News widget settings
     'news_country',
     'news_category',
+    // GitHub widget settings
     'github_widget_owner',
     'github_widget_repo',
+    // Checklist widget data
     'checklistItems',
     'checklistSettings',
+    // Timer widget data
     'timerMode',
     'stopwatchTime',
     'stopwatchLaps',
     'countdownInitial',
   ];
+  
+  // Add per-canvas layout keys dynamically
+  const canvasKeys = [];
+  try {
+    const canvasesJson = localStorage.getItem('hashbase_canvases');
+    if (canvasesJson) {
+      const canvases = JSON.parse(canvasesJson);
+      canvases.forEach(canvas => {
+        canvasKeys.push(`widgetLayout_${canvas.id}`);
+        canvasKeys.push(`widgetRowSpans_${canvas.id}`);
+      });
+    }
+  } catch (e) {
+    console.warn('Error reading canvas keys:', e);
+  }
+  
+  return [...baseKeys, ...canvasKeys];
 }
 
 /**

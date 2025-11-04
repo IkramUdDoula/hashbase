@@ -14,6 +14,7 @@ import { SettingsButton } from './components/SettingsButton';
 import { Canvas } from './components/Canvas';
 import { ScreenSizeGuard } from './components/ScreenSizeGuard';
 import { ToastProvider, useToast } from './components/ui/toast';
+import { CanvasProvider } from './contexts/CanvasContext';
 import { isWidgetEnabled, setWidgetPreferences } from './services/widgetRegistry';
 
 function AppContent() {
@@ -103,8 +104,9 @@ function AppContent() {
     },
   ];
 
-  // Set default widget preferences and layout
-  useEffect(() => {
+  // Set default widget preferences and layout - MUST run before first render
+  // This is why we use useMemo instead of useEffect to ensure synchronous execution
+  useMemo(() => {
     const hasPreferences = localStorage.getItem('hashbase_widget_preferences');
     const layoutVersion = localStorage.getItem('hashbase_layout_version');
     
@@ -116,17 +118,17 @@ function AppContent() {
     }
     
     if (!hasPreferences) {
-      // First time user - only enable News and Gmail
+      // First time user - enable News and Checklist widgets
       const defaultPreferences = {
         'news-headlines': true,
-        'gmail-unread': true,
+        'gmail-unread': false,
         'netlify-deploys': false,
         'ai-chat': false,
         'github-commits': false,
         'github-issues': false,
         'bd24live-news': false,
         'checklist': true,
-        'timer': true
+        'timer': false
       };
       setWidgetPreferences(defaultPreferences);
     }
@@ -162,7 +164,7 @@ function AppContent() {
           <Canvas widgets={enabledWidgets} />
         </div>
 
-        {/* Floating Settings Button */}
+        {/* Floating Settings Button with Canvas Navigator (Right) */}
         <SettingsButton availableWidgets={allWidgets} />
       </div>
     </ScreenSizeGuard>
@@ -172,7 +174,9 @@ function AppContent() {
 function App() {
   return (
     <ToastProvider>
-      <AppContent />
+      <CanvasProvider>
+        <AppContent />
+      </CanvasProvider>
     </ToastProvider>
   );
 }

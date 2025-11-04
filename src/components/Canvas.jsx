@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { DraggableWidget } from './DraggableWidget';
 import { DropZone } from './DropZone';
 import { setWidgetEnabled } from '@/services/widgetRegistry';
+import { useCanvas } from '@/contexts/CanvasContext';
 import {
   createLayoutConfig,
   saveLayoutConfig,
@@ -22,12 +23,44 @@ import {
 } from '@/services/layoutService';
 
 export function Canvas({ widgets }) {
+  const { activeCanvasId, canvases } = useCanvas();
+  
+  // Get widgets that are already placed in OTHER canvases (memoized)
+  const placedInOtherCanvases = useMemo(() => {
+    const placedWidgets = new Set();
+    
+    canvases.forEach(canvas => {
+      if (canvas.id === activeCanvasId) return; // Skip current canvas
+      
+      const layoutJson = localStorage.getItem(`widgetLayout_${canvas.id}`);
+      if (layoutJson) {
+        try {
+          const layout = JSON.parse(layoutJson);
+          layout.forEach(column => {
+            column.forEach(widget => {
+              placedWidgets.add(widget.id);
+            });
+          });
+        } catch (e) {
+          console.error(`Error reading layout for canvas ${canvas.id}:`, e);
+        }
+      }
+    });
+    
+    return placedWidgets;
+  }, [canvases, activeCanvasId]);
+  
+  // Filter widgets to only show those not placed in other canvases (memoized)
+  const availableWidgets = useMemo(() => {
+    return widgets.filter(widget => !placedInOtherCanvases.has(widget.id));
+  }, [widgets, placedInOtherCanvases]);
+  
   // Layout configuration state - tracks widget-to-dropzone mappings
   const [layoutConfig, setLayoutConfig] = useState(null);
   
   // Load saved layout from localStorage or create default layout
   const getInitialLayout = () => {
-    const saved = localStorage.getItem('widgetLayout');
+    const saved = localStorage.getItem(`widgetLayout_${activeCanvasId}`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -38,8 +71,8 @@ export function Canvas({ widgets }) {
             Array.isArray(col) && col.every(w => w && w.id && w.rowSpan !== undefined && w.startRow !== undefined)
           );
           if (isNewFormat) {
-            // Validate that all widget IDs in saved layout exist in current widgets
-            const currentWidgetIds = new Set(widgets.map(w => w.id));
+            // Validate that all widget IDs in saved layout exist in available widgets
+            const currentWidgetIds = new Set(availableWidgets.map(w => w.id));
             const savedWidgetIds = new Set();
             parsed.forEach(col => col.forEach(w => savedWidgetIds.add(w.id)));
             
@@ -47,7 +80,7 @@ export function Canvas({ widgets }) {
             const newWidgetIds = Array.from(currentWidgetIds).filter(id => !savedWidgetIds.has(id));
             const hasNewWidgets = newWidgetIds.length > 0;
             
-            // Check if there are widgets in saved layout that are now disabled
+            // Check if there are widgets in saved layout that are now disabled or placed elsewhere
             const disabledWidgetIds = Array.from(savedWidgetIds).filter(id => !currentWidgetIds.has(id));
             const hasDisabledWidgets = disabledWidgetIds.length > 0;
             
@@ -55,7 +88,7 @@ export function Canvas({ widgets }) {
             // We should preserve layout unless there's a structural issue
             let layout = parsed;
             
-            // Remove disabled widgets from layout
+            // Remove disabled widgets or widgets placed in other canvases from layout
             if (hasDisabledWidgets) {
               disabledWidgetIds.forEach(widgetId => {
                 layout = removeWidgetFromLayout(layout, widgetId);
@@ -63,8 +96,10 @@ export function Canvas({ widgets }) {
             }
             
             // Add new widgets to layout if there's space
-            if (hasNewWidgets) {
-              const newWidgets = widgets.filter(w => newWidgetIds.includes(w.id));
+            // NOTE: Only auto-add widgets if there's already a saved layout
+            // For fresh users, we rely on the default layout logic below
+            if (hasNewWidgets && savedWidgetIds.size > 0) {
+              const newWidgets = availableWidgets.filter(w => newWidgetIds.includes(w.id));
               
               const failedWidgets = [];
               
@@ -99,37 +134,50 @@ export function Canvas({ widgets }) {
           }
         }
         // Invalid format, clear it
-        localStorage.removeItem('widgetLayout');
+        localStorage.removeItem(`widgetLayout_${activeCanvasId}`);
       } catch (e) {
-        localStorage.removeItem('widgetLayout');
+        localStorage.removeItem(`widgetLayout_${activeCanvasId}`);
       }
     }
     
-    // Default layout: News (4 rows) in column 0, Gmail (2 rows) in column 2
+    // Default layout: Only populate first canvas (canvas-1) with News and Checklist widgets
+    // All other canvases start blank
     const layout = Array(COLUMNS).fill(null).map(() => []);
     
-    widgets.forEach((widget) => {
-      if (widget.id === 'news-headlines') {
-        // News widget in column 0, rows 0-3 (4 rows)
-        layout[0].push({
-          id: widget.id,
-          rowSpan: 4,
-          startRow: 0
-        });
-      } else if (widget.id === 'gmail-unread') {
-        // Gmail widget in column 2, rows 0-1 (2 rows)
-        layout[2].push({
-          id: widget.id,
-          rowSpan: 2,
-          startRow: 0
-        });
-      }
-    });
+    // Only add default widgets to the first canvas
+    if (activeCanvasId === 'canvas-1') {
+      availableWidgets.forEach((widget) => {
+        if (widget.id === 'news-headlines') {
+          // News widget in column 0, rows 0-1 (2 rows)
+          layout[0].push({
+            id: widget.id,
+            rowSpan: 2,
+            startRow: 0
+          });
+        } else if (widget.id === 'checklist') {
+          // Checklist widget in column 1, rows 0-1 (2 rows)
+          layout[1].push({
+            id: widget.id,
+            rowSpan: 2,
+            startRow: 0
+          });
+        }
+      });
+    }
+    // For all other canvases, return empty layout
     
     return layout;
   };
 
   const [layout, setLayout] = useState(getInitialLayout);
+  
+  // Reload layout when active canvas changes
+  useEffect(() => {
+    const newLayout = getInitialLayout();
+    const newRowSpans = getInitialRowSpans();
+    setLayout(newLayout);
+    setRowSpans(newRowSpans);
+  }, [activeCanvasId]);
   
   // Initialize layout configuration on mount
   useEffect(() => {
@@ -158,26 +206,36 @@ export function Canvas({ widgets }) {
   
   // Widget row spans - tracks how many rows each widget occupies
   const getInitialRowSpans = () => {
-    const saved = localStorage.getItem('widgetRowSpans');
+    const saved = localStorage.getItem(`widgetRowSpans_${activeCanvasId}`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Validate that saved rowSpans match current widget IDs
-        const currentWidgetIds = new Set(widgets.map(w => w.id));
+        // Validate that saved rowSpans match current available widget IDs
+        const currentWidgetIds = new Set(availableWidgets.map(w => w.id));
         const savedIds = Object.keys(parsed);
-        const allIdsValid = savedIds.every(id => currentWidgetIds.has(id));
         
-        if (allIdsValid && savedIds.length === widgets.length) {
-          return parsed;
-        }
-        // IDs don't match, clear and rebuild
-        localStorage.removeItem('widgetRowSpans');
+        // Filter to only include widgets that are available
+        const filteredSpans = {};
+        savedIds.forEach(id => {
+          if (currentWidgetIds.has(id)) {
+            filteredSpans[id] = parsed[id];
+          }
+        });
+        
+        // Add any new widgets
+        availableWidgets.forEach(widget => {
+          if (!filteredSpans[widget.id]) {
+            filteredSpans[widget.id] = widget.rowSpan || 1;
+          }
+        });
+        
+        return filteredSpans;
       } catch (e) {
-        localStorage.removeItem('widgetRowSpans');
+        localStorage.removeItem(`widgetRowSpans_${activeCanvasId}`);
       }
     }
     const spans = {};
-    widgets.forEach(widget => {
+    availableWidgets.forEach(widget => {
       spans[widget.id] = widget.rowSpan || 1;
     });
     return spans;
@@ -188,7 +246,7 @@ export function Canvas({ widgets }) {
   // Track resize direction for each widget (expand or reduce)
   const [resizeDirections, setResizeDirections] = useState(() => {
     const directions = {};
-    widgets.forEach(widget => {
+    availableWidgets.forEach(widget => {
       directions[widget.id] = 'expand'; // Default to expanding
     });
     return directions;
@@ -196,9 +254,9 @@ export function Canvas({ widgets }) {
 
   // Save layout and rowSpans to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('widgetLayout', JSON.stringify(layout));
-    localStorage.setItem('widgetRowSpans', JSON.stringify(rowSpans));
-  }, [layout, rowSpans]);
+    localStorage.setItem(`widgetLayout_${activeCanvasId}`, JSON.stringify(layout));
+    localStorage.setItem(`widgetRowSpans_${activeCanvasId}`, JSON.stringify(rowSpans));
+  }, [layout, rowSpans, activeCanvasId]);
 
   // Calculate which rows are occupied in a column
   const getOccupiedRows = (column) => {
@@ -367,7 +425,7 @@ export function Canvas({ widgets }) {
 
   // Get widget component by id
   const getWidgetById = (id) => {
-    return widgets.find(w => w.id === id);
+    return availableWidgets.find(w => w.id === id);
   };
 
   // Validate if a widget can be dropped at a specific position

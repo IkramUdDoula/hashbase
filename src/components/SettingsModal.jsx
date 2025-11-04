@@ -1,9 +1,19 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Eye, EyeOff, Save, Key, AppWindow, Trash2, Search, Grid3x3, Download, Upload, FolderOpen, HardDrive, RefreshCw, Database } from 'lucide-react';
+import { X, Eye, EyeOff, Save, Key, AppWindow, Trash2, Search, Grid3x3, Download, Upload, FolderOpen, HardDrive, RefreshCw, Database, Layers, Plus, Edit2, AlertTriangle } from 'lucide-react';
+import { useCanvas } from '@/contexts/CanvasContext';
+import { useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { getSecrets, setSecrets, SECRET_KEYS } from '@/services/secretsService';
 import { getWidgetPreferences, setWidgetPreferences } from '@/services/widgetRegistry';
 import { downloadConfig, uploadConfig, getConfigSummary } from '@/services/configService';
@@ -732,8 +742,8 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
               }`}
             >
-              <Grid3x3 className="h-4 w-4" />
-              Canvas
+              <Layers className="h-4 w-4" />
+              Canvases
             </button>
             <button
               onClick={() => setActiveTab('storage')}
@@ -954,9 +964,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
 
           {/* Canvas Tab Panel */}
           {activeTab === 'canvas' && (
-            <div id="canvas-panel" role="tabpanel" aria-labelledby="canvas-tab">
-              <CanvasVisualization />
-            </div>
+            <CanvasManagementPanel onClose={onClose} />
           )}
 
           {/* Storage Tab Panel */}
@@ -1407,6 +1415,209 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
         </div>
       </div>
 
+    </div>
+  );
+}
+
+/**
+ * Canvas Management Panel Component
+ * Manages multiple canvases - create, delete, rename, switch
+ */
+function CanvasManagementPanel({ onClose }) {
+  const { 
+    canvases, 
+    activeCanvasId, 
+    createCanvas, 
+    deleteCanvas, 
+    setActiveCanvasId,
+    renameCanvas 
+  } = useCanvas();
+  const { addToast } = useToast();
+  
+  const [editingCanvasId, setEditingCanvasId] = useState(null);
+  const [editName, setEditName] = useState('');
+
+  const handleStartEdit = (canvas) => {
+    setEditingCanvasId(canvas.id);
+    setEditName(canvas.name);
+  };
+
+  const handleSaveEdit = () => {
+    if (editName.trim() && editingCanvasId) {
+      renameCanvas(editingCanvasId, editName.trim());
+      setEditingCanvasId(null);
+      setEditName('');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCanvasId(null);
+    setEditName('');
+  };
+
+  const handleDeleteClick = (canvas) => {
+    if (canvases.length <= 1) {
+      addToast('You must have at least one canvas.', 'error');
+      return;
+    }
+
+    const success = deleteCanvas(canvas.id);
+    if (success) {
+      addToast(`${canvas.name} has been permanently deleted.`, 'success');
+    } else {
+      addToast('Unable to delete the canvas. Please try again.', 'error');
+    }
+  };
+
+  const handleCreateCanvas = () => {
+    createCanvas();
+  };
+
+  const handleSwitchCanvas = (canvasId) => {
+    setActiveCanvasId(canvasId);
+  };
+
+  return (
+    <div id="canvas-panel" role="tabpanel" aria-labelledby="canvas-tab" className="space-y-4">
+      {/* Tab Description */}
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        Manage your canvases. Each canvas has its own independent widget layout. Create multiple canvases to organize different workspaces.
+      </p>
+
+      {/* Create New Canvas Button */}
+      <Button
+        onClick={handleCreateCanvas}
+        className="w-full flex items-center justify-center gap-2"
+        variant="outline"
+      >
+        <Plus className="h-4 w-4" />
+        Create New Canvas
+      </Button>
+
+      {/* Canvas List */}
+      <div className="space-y-3">
+        {canvases.map((canvas) => {
+          const isActive = canvas.id === activeCanvasId;
+          const isEditing = editingCanvasId === canvas.id;
+
+          return (
+            <div
+              key={canvas.id}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                isActive
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                {/* Canvas Info */}
+                <div className="flex items-center gap-3 flex-1">
+                  <Layers className={`h-5 w-5 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`} />
+                  
+                  {isEditing ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveEdit();
+                          if (e.key === 'Escape') handleCancelEdit();
+                        }}
+                        className="h-8 text-sm"
+                        autoFocus
+                      />
+                      <Button
+                        onClick={handleSaveEdit}
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2"
+                      >
+                        <Save className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        onClick={handleCancelEdit}
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className={`font-medium ${isActive ? 'text-blue-900 dark:text-blue-100' : 'text-gray-900 dark:text-gray-100'}`}>
+                          {canvas.name}
+                        </p>
+                        {isActive && (
+                          <Badge className="bg-blue-500 text-white text-xs">Active</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        Created: {new Date(canvas.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                {!isEditing && (
+                  <div className="flex items-center gap-2">
+                    {/* Switch Button */}
+                    {!isActive && (
+                      <Button
+                        onClick={() => handleSwitchCanvas(canvas.id)}
+                        size="sm"
+                        variant="outline"
+                        className="border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                      >
+                        Switch
+                      </Button>
+                    )}
+
+                    {/* Edit Button */}
+                    <Button
+                      onClick={() => handleStartEdit(canvas)}
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                      title="Rename canvas"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+
+                    {/* Delete Button */}
+                    {canvases.length > 1 && (
+                      <Button
+                        onClick={() => handleDeleteClick(canvas)}
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                        title="Delete canvas"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Info Note */}
+      <div className="p-4 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
+        <p className="text-xs text-gray-900 dark:text-gray-100">
+          <strong>Note:</strong> Each canvas maintains its own widget layout. Deleting a canvas will permanently remove its layout. You must have at least one canvas.
+        </p>
+      </div>
+
+      {/* Canvas Visualization */}
+      <div className="mt-6">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Current Canvas Layout</h3>
+        <CanvasVisualization />
+      </div>
     </div>
   );
 }

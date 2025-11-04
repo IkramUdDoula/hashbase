@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { RefreshCw, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useCanvas } from '@/contexts/CanvasContext';
 import {
   loadLayoutConfig,
   getDropzoneNumber,
@@ -12,16 +13,53 @@ import {
 } from '@/services/layoutService';
 
 export function CanvasVisualization() {
+  const { activeCanvasId } = useCanvas();
   const [layoutConfig, setLayoutConfig] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
   const [copied, setCopied] = useState(false);
 
   const loadConfig = () => {
-    const config = loadLayoutConfig();
-    setLayoutConfig(config);
-    if (config) {
+    // Load layout for the active canvas
+    const layoutJson = localStorage.getItem(`widgetLayout_${activeCanvasId}`);
+    if (!layoutJson) {
+      setLayoutConfig(null);
+      setDebugInfo(null);
+      return;
+    }
+    
+    try {
+      const layout = JSON.parse(layoutJson);
+      // Convert layout array to config format
+      const widgets = {};
+      layout.forEach((column, colIndex) => {
+        column.forEach(widget => {
+          const startDropzone = getDropzoneNumber(colIndex, widget.startRow);
+          const dropzones = [];
+          for (let i = 0; i < widget.rowSpan; i++) {
+            dropzones.push(getDropzoneNumber(colIndex, widget.startRow + i));
+          }
+          widgets[widget.id] = {
+            startDropzone,
+            rowSpan: widget.rowSpan,
+            colIndex,
+            rowIndex: widget.startRow,
+            dropzones
+          };
+        });
+      });
+      
+      const config = {
+        widgets,
+        occupiedDropzones: new Set(Object.values(widgets).flatMap(w => w.dropzones))
+      };
+      
+      setLayoutConfig(config);
       const info = getLayoutDebugInfo(config);
       setDebugInfo(info);
+    } catch (e) {
+      console.error('Error loading canvas layout:', e);
+      setLayoutConfig(null);
+      setDebugInfo(null);
     }
   };
 
@@ -35,7 +73,7 @@ export function CanvasVisualization() {
 
   useEffect(() => {
     loadConfig();
-  }, []);
+  }, [activeCanvasId]);
 
   if (!layoutConfig) {
     return (
