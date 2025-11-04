@@ -160,6 +160,7 @@ function getDashboardKeys() {
     'countdownInitial',
     // PostHog widget data
     'posthog_errors_settings',
+    'posthog_surveys_settings',
   ];
   
   // Add per-canvas layout keys dynamically

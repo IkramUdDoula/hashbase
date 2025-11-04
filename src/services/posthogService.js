@@ -767,3 +767,444 @@ export async function fetchErrorEvent(projectId, errorId) {
     return null;
   }
 }
+
+// ============================================================================
+// SURVEYS API
+// ============================================================================
+
+/**
+ * Fetch surveys from PostHog
+ * @param {string} projectId - PostHog project ID
+ * @param {Object} options - Fetch options
+ * @param {number} options.limit - Maximum number of surveys to fetch
+ * @param {number} options.offset - Offset for pagination
+ * @param {string} options.search - Search query
+ * @returns {Promise<Object>} Surveys data with count and results
+ */
+export async function fetchSurveys(projectId, options = {}) {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('PostHog access token not configured');
+  }
+
+  if (!projectId) {
+    throw new Error('PostHog project ID not configured');
+  }
+
+  const { limit = 50, offset = 0, search = '' } = options;
+
+  try {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString(),
+    });
+
+    if (search) {
+      params.append('search', search);
+    }
+
+    const response = await fetch(`${POSTHOG_API_BASE}/api/projects/${projectId}/surveys?${params}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Invalid PostHog access token');
+      } else if (response.status === 403) {
+        throw new Error('Access denied. Check your PostHog permissions.');
+      } else if (response.status === 404) {
+        throw new Error('Project not found. Check your project ID.');
+      }
+      throw new Error(`PostHog API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    return {
+      count: data.count || 0,
+      next: data.next,
+      previous: data.previous,
+      results: data.results || []
+    };
+  } catch (error) {
+    console.error('Error fetching PostHog surveys:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch a single survey's details
+ * @param {string} projectId - PostHog project ID
+ * @param {string} surveyId - Survey UUID
+ * @returns {Promise<Object>} Survey details
+ */
+export async function fetchSurveyDetails(projectId, surveyId) {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('PostHog access token not configured');
+  }
+
+  if (!projectId || !surveyId) {
+    throw new Error('Project ID and Survey ID are required');
+  }
+
+  try {
+    const response = await fetch(`${POSTHOG_API_BASE}/api/projects/${projectId}/surveys/${surveyId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch survey details: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching survey details:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch survey statistics
+ * @param {string} projectId - PostHog project ID
+ * @param {string} surveyId - Survey UUID
+ * @param {Object} options - Options for date range
+ * @param {string} options.date_from - ISO timestamp for start date
+ * @param {string} options.date_to - ISO timestamp for end date
+ * @returns {Promise<Object>} Survey statistics
+ */
+export async function fetchSurveyStats(projectId, surveyId, options = {}) {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('PostHog access token not configured');
+  }
+
+  if (!projectId || !surveyId) {
+    throw new Error('Project ID and Survey ID are required');
+  }
+
+  try {
+    const params = new URLSearchParams();
+    if (options.date_from) {
+      params.append('date_from', options.date_from);
+    }
+    if (options.date_to) {
+      params.append('date_to', options.date_to);
+    }
+
+    const queryString = params.toString();
+    const url = `${POSTHOG_API_BASE}/api/projects/${projectId}/surveys/${surveyId}/stats${queryString ? '?' + queryString : ''}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch survey stats: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching survey stats:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch all survey responses count
+ * @param {string} projectId - PostHog project ID
+ * @returns {Promise<Object>} Response counts for all surveys
+ */
+export async function fetchAllSurveyResponsesCount(projectId) {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('PostHog access token not configured');
+  }
+
+  if (!projectId) {
+    throw new Error('Project ID is required');
+  }
+
+  try {
+    const response = await fetch(
+      `${POSTHOG_API_BASE}/api/projects/${projectId}/surveys/responses_count`, 
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch survey responses count: ${response.status}`);
+      return {};
+    }
+
+    const data = await response.json();
+    return data || {};
+  } catch (error) {
+    console.error('Error fetching survey responses count:', error);
+    return {};
+  }
+}
+
+/**
+ * Fetch survey responses using the Query API
+ * Survey responses are stored as 'survey sent' events in PostHog
+ * @param {string} projectId - PostHog project ID
+ * @param {string} surveyId - Survey UUID
+ * @param {number} limit - Number of responses to fetch
+ * @returns {Promise<Object>} Survey responses with counts and breakdowns
+ */
+export async function fetchSurveyResponses(projectId, surveyId, limit = 100) {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('PostHog access token not configured');
+  }
+
+  if (!projectId || !surveyId) {
+    throw new Error('Project ID and Survey ID are required');
+  }
+
+  try {
+    // Query for 'survey sent' events which contain the responses
+    const query = {
+      kind: 'EventsQuery',
+      select: [
+        'uuid',
+        'timestamp',
+        'properties.$survey_id',
+        'properties.$survey_response',
+        'properties.$survey_response_1',
+        'properties.$survey_response_2',
+        'properties.$survey_response_3',
+        'distinct_id'
+      ],
+      where: [
+        `event = 'survey sent'`,
+        `properties.$survey_id = '${surveyId}'`
+      ],
+      orderBy: ['timestamp DESC'],
+      limit: limit
+    };
+
+    const response = await fetch(
+      `${POSTHOG_API_BASE}/api/projects/${projectId}/query/`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query })
+      }
+    );
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch survey responses: ${response.status}`);
+      return { count: 0, results: [] };
+    }
+
+    const data = await response.json();
+    return {
+      count: data.results?.length || 0,
+      results: data.results || []
+    };
+  } catch (error) {
+    console.error('Error fetching survey responses:', error);
+    return { count: 0, results: [] };
+  }
+}
+
+/**
+ * Fetch aggregated survey question results
+ * @param {string} projectId - PostHog project ID
+ * @param {string} surveyId - Survey UUID
+ * @param {Array} questions - Array of survey questions
+ * @returns {Promise<Object>} Aggregated results per question
+ */
+export async function fetchSurveyQuestionResults(projectId, surveyId, questions = []) {
+  const responses = await fetchSurveyResponses(projectId, surveyId, 1000);
+  
+  if (!responses.results || responses.results.length === 0) {
+    return null;
+  }
+
+  // Aggregate responses by question
+  const questionResults = {};
+  
+  questions.forEach((question, index) => {
+    const responseKey = `properties.$survey_response${index === 0 ? '' : '_' + index}`;
+    const responseCounts = {};
+    let total = 0;
+    let sum = 0;
+
+    responses.results.forEach(result => {
+      const response = result[index + 2]; // Offset by 2 (uuid, timestamp)
+      if (response !== null && response !== undefined && response !== '') {
+        total++;
+        responseCounts[response] = (responseCounts[response] || 0) + 1;
+        
+        // For rating questions, calculate average
+        if (question.type === 'rating' && !isNaN(response)) {
+          sum += Number(response);
+        }
+      }
+    });
+
+    questionResults[`question_${index}`] = {
+      total,
+      choices: responseCounts,
+      average: question.type === 'rating' && total > 0 ? sum / total : null
+    };
+  });
+
+  return questionResults;
+}
+
+/**
+ * Fetch survey activity log
+ * @param {string} projectId - PostHog project ID
+ * @param {string} surveyId - Survey UUID
+ * @returns {Promise<Array>} Activity log entries
+ */
+export async function fetchSurveyActivity(projectId, surveyId) {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('PostHog access token not configured');
+  }
+
+  if (!projectId || !surveyId) {
+    throw new Error('Project ID and Survey ID are required');
+  }
+
+  try {
+    const response = await fetch(`${POSTHOG_API_BASE}/api/projects/${projectId}/surveys/${surveyId}/activity`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch survey activity: ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+    return data.results || data || [];
+  } catch (error) {
+    console.error('Error fetching survey activity:', error);
+    return [];
+  }
+}
+
+/**
+ * Update a survey
+ * @param {string} projectId - PostHog project ID
+ * @param {string} surveyId - Survey UUID
+ * @param {Object} updates - Fields to update
+ * @returns {Promise<Object>} Updated survey
+ */
+export async function updateSurvey(projectId, surveyId, updates) {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('PostHog access token not configured');
+  }
+
+  if (!projectId || !surveyId) {
+    throw new Error('Project ID and Survey ID are required');
+  }
+
+  try {
+    const response = await fetch(`${POSTHOG_API_BASE}/api/projects/${projectId}/surveys/${surveyId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || errorData.message || `Failed to update survey: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error updating survey:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get survey status based on dates and archived flag
+ * @param {Object} survey - Survey object
+ * @returns {string} Status: 'running', 'draft', 'completed', 'paused', 'archived'
+ */
+export function getSurveyStatus(survey) {
+  if (survey.archived) {
+    return 'archived';
+  }
+
+  const now = new Date();
+  const startDate = survey.start_date ? new Date(survey.start_date) : null;
+  const endDate = survey.end_date ? new Date(survey.end_date) : null;
+
+  // If no start date, it's a draft
+  if (!startDate) {
+    return 'draft';
+  }
+
+  // If start date is in the future, it's a draft
+  if (startDate > now) {
+    return 'draft';
+  }
+
+  // If end date exists and is in the past, it's completed
+  if (endDate && endDate < now) {
+    return 'completed';
+  }
+
+  // If has responses limit and reached it, it's completed
+  if (survey.responses_limit && survey.response_count >= survey.responses_limit) {
+    return 'completed';
+  }
+
+  // Otherwise, it's running
+  return 'running';
+}
+
+/**
+ * Calculate survey completion rate
+ * @param {Object} survey - Survey object
+ * @returns {number} Completion rate percentage (0-100)
+ */
+export function getSurveyCompletionRate(survey) {
+  if (!survey.responses_limit || survey.responses_limit === 0) {
+    return 0;
+  }
+
+  const rate = (survey.response_count / survey.responses_limit) * 100;
+  return Math.min(100, Math.round(rate * 10) / 10); // Round to 1 decimal
+}
