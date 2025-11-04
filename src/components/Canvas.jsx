@@ -3,7 +3,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { DraggableWidget } from './DraggableWidget';
 import { DropZone } from './DropZone';
-import { setWidgetEnabled } from '@/services/widgetRegistry';
+import { setWidgetEnabled, getWidgetCanvasAssignments } from '@/services/widgetRegistry';
 import { useCanvas } from '@/contexts/CanvasContext';
 import {
   createLayoutConfig,
@@ -25,35 +25,24 @@ import {
 export function Canvas({ widgets }) {
   const { activeCanvasId, canvases } = useCanvas();
   
-  // Get widgets that are already placed in OTHER canvases (memoized)
-  const placedInOtherCanvases = useMemo(() => {
-    const placedWidgets = new Set();
-    
-    canvases.forEach(canvas => {
-      if (canvas.id === activeCanvasId) return; // Skip current canvas
-      
-      const layoutJson = localStorage.getItem(`widgetLayout_${canvas.id}`);
-      if (layoutJson) {
-        try {
-          const layout = JSON.parse(layoutJson);
-          layout.forEach(column => {
-            column.forEach(widget => {
-              placedWidgets.add(widget.id);
-            });
-          });
-        } catch (e) {
-          console.error(`Error reading layout for canvas ${canvas.id}:`, e);
-        }
-      }
-    });
-    
-    return placedWidgets;
-  }, [canvases, activeCanvasId]);
-  
-  // Filter widgets to only show those not placed in other canvases (memoized)
+  // Filter widgets based on canvas assignments (memoized)
   const availableWidgets = useMemo(() => {
-    return widgets.filter(widget => !placedInOtherCanvases.has(widget.id));
-  }, [widgets, placedInOtherCanvases]);
+    const canvasAssignments = getWidgetCanvasAssignments();
+    
+    return widgets.filter(widget => {
+      const assignedCanvas = canvasAssignments[widget.id];
+      
+      // If widget is assigned to a specific canvas, only show it on that canvas
+      if (assignedCanvas) {
+        return assignedCanvas === activeCanvasId;
+      }
+      
+      // If widget is not assigned to any canvas:
+      // - For canvas-1: show unassigned widgets (backward compatibility)
+      // - For other canvases: don't show unassigned widgets (user must explicitly assign)
+      return activeCanvasId === 'canvas-1';
+    });
+  }, [widgets, activeCanvasId]);
   
   // Layout configuration state - tracks widget-to-dropzone mappings
   const [layoutConfig, setLayoutConfig] = useState(null);
@@ -66,19 +55,26 @@ export function Canvas({ widgets }) {
         const parsed = JSON.parse(saved);
         // Validate that the saved layout has the correct structure
         if (Array.isArray(parsed) && parsed.length === COLUMNS) {
-          // Check if it's the new format (array of arrays with widget objects)
-          const isNewFormat = parsed.every(col => 
-            Array.isArray(col) && col.every(w => w && w.id && w.rowSpan !== undefined && w.startRow !== undefined)
-          );
-          if (isNewFormat) {
-            // Validate that all widget IDs in saved layout exist in available widgets
-            const currentWidgetIds = new Set(availableWidgets.map(w => w.id));
-            const savedWidgetIds = new Set();
-            parsed.forEach(col => col.forEach(w => savedWidgetIds.add(w.id)));
-            
-            // Check if there are NEW widgets not in the saved layout (newly enabled)
-            const newWidgetIds = Array.from(currentWidgetIds).filter(id => !savedWidgetIds.has(id));
-            const hasNewWidgets = newWidgetIds.length > 0;
+          // Check if layout is empty (all columns are empty arrays)
+          const isEmpty = parsed.every(col => Array.isArray(col) && col.length === 0);
+          
+          // If layout is empty but we have widgets assigned to this canvas, auto-place them
+          if (isEmpty && availableWidgets.length > 0) {
+            // Don't use saved empty layout, fall through to auto-placement
+          } else {
+            // Check if it's the new format (array of arrays with widget objects)
+            const isNewFormat = parsed.every(col => 
+              Array.isArray(col) && col.every(w => w && w.id && w.rowSpan !== undefined && w.startRow !== undefined)
+            );
+            if (isNewFormat) {
+              // Validate that all widget IDs in saved layout exist in available widgets
+              const currentWidgetIds = new Set(availableWidgets.map(w => w.id));
+              const savedWidgetIds = new Set();
+              parsed.forEach(col => col.forEach(w => savedWidgetIds.add(w.id)));
+              
+              // Check if there are NEW widgets not in the saved layout (newly enabled)
+              const newWidgetIds = Array.from(currentWidgetIds).filter(id => !savedWidgetIds.has(id));
+              const hasNewWidgets = newWidgetIds.length > 0;
             
             // Check if there are widgets in saved layout that are now disabled or placed elsewhere
             const disabledWidgetIds = Array.from(savedWidgetIds).filter(id => !currentWidgetIds.has(id));
@@ -130,7 +126,8 @@ export function Canvas({ widgets }) {
               }
             }
             
-            return layout;
+              return layout;
+            }
           }
         }
         // Invalid format, clear it
@@ -140,31 +137,68 @@ export function Canvas({ widgets }) {
       }
     }
     
-    // Default layout: Only populate first canvas (canvas-1) with News and Checklist widgets
-    // All other canvases start blank
+    // Default layout: Auto-place widgets assigned to this canvas
     const layout = Array(COLUMNS).fill(null).map(() => []);
     
-    // Only add default widgets to the first canvas
-    if (activeCanvasId === 'canvas-1') {
+    // Auto-place widgets for this canvas
+    if (availableWidgets.length > 0) {
+      let currentColumn = 0;
+      let currentRow = 0;
+      
       availableWidgets.forEach((widget) => {
-        if (widget.id === 'news-headlines') {
-          // News widget in column 0, rows 0-1 (2 rows)
-          layout[0].push({
+        const rowSpan = widget.rowSpan || 1;
+        
+        // Check if widget fits in current column at current row
+        let placed = false;
+        
+        // Try to place in current column
+        if (currentRow + rowSpan <= MAX_ROWS_PER_COLUMN) {
+          layout[currentColumn].push({
             id: widget.id,
-            rowSpan: 2,
-            startRow: 0
+            rowSpan: rowSpan,
+            startRow: currentRow
           });
-        } else if (widget.id === 'checklist') {
-          // Checklist widget in column 1, rows 0-1 (2 rows)
-          layout[1].push({
-            id: widget.id,
-            rowSpan: 2,
-            startRow: 0
-          });
+          currentRow += rowSpan;
+          placed = true;
+        } else {
+          // Move to next column
+          currentColumn++;
+          currentRow = 0;
+          
+          // Try placing in next column
+          if (currentColumn < COLUMNS && currentRow + rowSpan <= MAX_ROWS_PER_COLUMN) {
+            layout[currentColumn].push({
+              id: widget.id,
+              rowSpan: rowSpan,
+              startRow: currentRow
+            });
+            currentRow += rowSpan;
+            placed = true;
+          }
+        }
+        
+        // If still not placed, try to find any available space
+        if (!placed) {
+          for (let col = 0; col < COLUMNS; col++) {
+            const emptySpace = findEmptySpace(layout, rowSpan);
+            if (emptySpace) {
+              layout[emptySpace.colIndex].push({
+                id: widget.id,
+                rowSpan: rowSpan,
+                startRow: emptySpace.startRow
+              });
+              placed = true;
+              break;
+            }
+          }
         }
       });
+      
+      // Sort widgets in each column by startRow
+      layout.forEach(column => {
+        column.sort((a, b) => a.startRow - b.startRow);
+      });
     }
-    // For all other canvases, return empty layout
     
     return layout;
   };

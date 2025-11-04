@@ -7,7 +7,7 @@
  */
 
 import { getSecrets } from './secretsService';
-import { getWidgetPreferences } from './widgetRegistry';
+import { getWidgetPreferences, getWidgetCanvasAssignments } from './widgetRegistry';
 
 const CONFIG_VERSION = '1.0.0';
 
@@ -129,6 +129,7 @@ function getDashboardKeys() {
   const baseKeys = [
     'hashbase_secrets',
     'hashbase_widget_preferences',
+    'hashbase_widget_canvas_assignments',  // Canvas assignments for widgets
     'widgetLayout',
     'widgetRowSpans',
     'widgetLayoutConfig',

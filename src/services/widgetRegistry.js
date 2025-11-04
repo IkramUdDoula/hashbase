@@ -1,6 +1,7 @@
 // Widget registry service for managing available apps and their enabled/disabled state
 
 const WIDGET_PREFERENCES_KEY = 'hashbase_widget_preferences';
+const WIDGET_CANVAS_ASSIGNMENTS_KEY = 'hashbase_widget_canvas_assignments';
 
 /**
  * Get widget preferences from localStorage
@@ -16,6 +17,60 @@ export function getWidgetPreferences() {
     console.error('Error reading widget preferences from localStorage:', error);
   }
   return {};
+}
+
+/**
+ * Get widget canvas assignments from localStorage
+ * @returns {Object} Object with widget IDs as keys and canvas IDs as values
+ */
+export function getWidgetCanvasAssignments() {
+  try {
+    const stored = localStorage.getItem(WIDGET_CANVAS_ASSIGNMENTS_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error reading widget canvas assignments from localStorage:', error);
+  }
+  return {};
+}
+
+/**
+ * Set widget canvas assignments
+ * @param {Object} assignments - Object with widget IDs as keys and canvas IDs as values
+ */
+export function setWidgetCanvasAssignments(assignments) {
+  try {
+    localStorage.setItem(WIDGET_CANVAS_ASSIGNMENTS_KEY, JSON.stringify(assignments));
+  } catch (error) {
+    console.error('Error saving widget canvas assignments to localStorage:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get the canvas ID assigned to a specific widget
+ * @param {string} widgetId - The widget ID
+ * @returns {string|null} Canvas ID or null if not assigned
+ */
+export function getWidgetCanvasAssignment(widgetId) {
+  const assignments = getWidgetCanvasAssignments();
+  return assignments[widgetId] || null;
+}
+
+/**
+ * Assign a widget to a specific canvas
+ * @param {string} widgetId - The widget ID
+ * @param {string} canvasId - The canvas ID (or null to unassign)
+ */
+export function assignWidgetToCanvas(widgetId, canvasId) {
+  const assignments = getWidgetCanvasAssignments();
+  if (canvasId === null) {
+    delete assignments[widgetId];
+  } else {
+    assignments[widgetId] = canvasId;
+  }
+  setWidgetCanvasAssignments(assignments);
 }
 
 /**

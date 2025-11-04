@@ -292,10 +292,10 @@ export function TimerWidget({ rowSpan = 2, dragRef }) {
                   <div className="flex justify-center gap-3">
                     <button
                       onClick={handleStopwatchStartPause}
-                      className={`p-4 rounded-lg font-medium transition-all ${
+                      className={`p-4 rounded-lg font-medium transition-all border bg-transparent ${
                         stopwatchRunning
-                          ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                          : 'bg-green-500 hover:bg-green-600 text-white'
+                          ? 'border-yellow-500 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-950/20'
+                          : 'border-green-500 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/20'
                       }`}
                       title={stopwatchRunning ? 'Pause' : 'Start'}
                     >
@@ -309,7 +309,7 @@ export function TimerWidget({ rowSpan = 2, dragRef }) {
                     <button
                       onClick={handleAddLap}
                       disabled={stopwatchTime === 0}
-                      className="p-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-4 border border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 bg-transparent rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Lap"
                     >
                       <Plus className="h-6 w-6" />
@@ -318,7 +318,7 @@ export function TimerWidget({ rowSpan = 2, dragRef }) {
                     <button
                       onClick={handleStopwatchReset}
                       disabled={stopwatchTime === 0 && laps.length === 0}
-                      className="p-4 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-4 border border-red-500 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 bg-transparent rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Reset"
                     >
                       <RotateCcw className="h-6 w-6" />
@@ -390,10 +390,10 @@ export function TimerWidget({ rowSpan = 2, dragRef }) {
                 <div className="flex justify-center gap-3">
                   <button
                     onClick={handleCountdownStartPause}
-                    className={`p-4 rounded-lg font-medium transition-all ${
+                    className={`p-4 rounded-lg font-medium transition-all border bg-transparent ${
                       countdownRunning
-                        ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                        : 'bg-green-500 hover:bg-green-600 text-white'
+                        ? 'border-yellow-500 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-950/20'
+                        : 'border-green-500 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/20'
                     }`}
                     title={countdownRunning ? 'Pause' : 'Start'}
                   >
@@ -407,7 +407,7 @@ export function TimerWidget({ rowSpan = 2, dragRef }) {
                   <button
                     onClick={handleCountdownReset}
                     disabled={countdownTime === countdownInitial && !countdownRunning}
-                    className="p-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-4 border border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 bg-transparent rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Reset"
                   >
                     <RotateCcw className="h-6 w-6" />
@@ -416,7 +416,7 @@ export function TimerWidget({ rowSpan = 2, dragRef }) {
                   <button
                     onClick={handleCountdownStop}
                     disabled={countdownTime === 0}
-                    className="p-4 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-4 border border-red-500 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 bg-transparent rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Stop"
                   >
                     <StopCircle className="h-6 w-6" />
@@ -444,10 +444,10 @@ export function TimerWidget({ rowSpan = 2, dragRef }) {
           <div className="flex gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-800">
             <button
               onClick={() => setMode('stopwatch')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+              className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all border ${
                 mode === 'stopwatch'
-                  ? 'bg-blue-600 text-white dark:bg-blue-500'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400'
+                  : 'border-gray-300 dark:border-gray-700 bg-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
               <Clock className="h-4 w-4 inline mr-2" />
@@ -455,10 +455,10 @@ export function TimerWidget({ rowSpan = 2, dragRef }) {
             </button>
             <button
               onClick={() => setMode('countdown')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+              className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all border ${
                 mode === 'countdown'
-                  ? 'bg-blue-600 text-white dark:bg-blue-500'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400'
+                  : 'border-gray-300 dark:border-gray-700 bg-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
               <Timer className="h-4 w-4 inline mr-2" />

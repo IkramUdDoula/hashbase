@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { getSecrets, setSecrets, SECRET_KEYS } from '@/services/secretsService';
-import { getWidgetPreferences, setWidgetPreferences } from '@/services/widgetRegistry';
+import { getWidgetPreferences, setWidgetPreferences, getWidgetCanvasAssignments, setWidgetCanvasAssignments } from '@/services/widgetRegistry';
 import { downloadConfig, uploadConfig, getConfigSummary } from '@/services/configService';
 import { ScrollbarStyles } from '@/components/ui/scrollbar-styles';
 import { CanvasVisualization } from './CanvasVisualization';
@@ -40,9 +40,11 @@ import {
 } from '@/services/storageService';
 
 export function SettingsModal({ isOpen, onClose, availableWidgets }) {
+  const { canvases } = useCanvas();
   const [activeTab, setActiveTab] = useState('apps');
   const [secrets, setSecretsState] = useState({});
   const [widgetPrefs, setWidgetPrefsState] = useState({});
+  const [widgetCanvasAssignments, setWidgetCanvasAssignmentsState] = useState({});
   const [showSecrets, setShowSecrets] = useState({});
   const [saveStatus, setSaveStatus] = useState('');
   const [clearClickCount, setClearClickCount] = useState(0);
@@ -67,9 +69,11 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
     if (isOpen) {
       const loadedSecrets = getSecrets();
       const loadedPrefs = getWidgetPreferences();
+      const loadedCanvasAssignments = getWidgetCanvasAssignments();
       
       setSecretsState(loadedSecrets);
       setWidgetPrefsState(loadedPrefs);
+      setWidgetCanvasAssignmentsState(loadedCanvasAssignments);
       setSaveStatus('');
       
       // Load storage settings
@@ -181,9 +185,27 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
     }));
   };
 
+  const handleToggleCanvasAssignment = (widgetId, canvasId) => {
+    setWidgetCanvasAssignmentsState(prev => {
+      const current = prev[widgetId];
+      // If already assigned to this canvas, unassign
+      if (current === canvasId) {
+        const updated = { ...prev };
+        delete updated[widgetId];
+        return updated;
+      }
+      // Otherwise, assign to this canvas (one widget can only be in one canvas)
+      return {
+        ...prev,
+        [widgetId]: canvasId
+      };
+    });
+  };
+
   const handleSaveWidgetPrefs = () => {
     try {
       setWidgetPreferences(widgetPrefs);
+      setWidgetCanvasAssignments(widgetCanvasAssignments);
       setSaveStatus('App preferences saved! Refreshing page...');
       setTimeout(() => {
         window.location.reload();
@@ -770,7 +792,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
             <div id="apps-panel" role="tabpanel" aria-labelledby="apps-tab" className="space-y-4">
               {/* Tab Description */}
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Enable or disable widgets to show on your canvas. Changes will take effect after refreshing the page.
+                Enable or disable widgets and assign them to specific canvases. Each widget can only be assigned to one canvas at a time. Changes will take effect after refreshing the page.
               </p>
               
               {/* No Space Warning */}
@@ -814,37 +836,77 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                 ) : (
                   filteredApps.map((widget) => {
                   const isEnabled = widgetPrefs[widget.id] !== false;
+                  const assignedCanvas = widgetCanvasAssignments[widget.id];
                   return (
                     <div
                       key={widget.id}
-                      className="flex items-center justify-between p-4 rounded-lg border-2 border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600 transition-colors"
+                      className="p-4 rounded-lg border-2 border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600 transition-colors"
                     >
-                      {/* Title & Details */}
-                      <div className="flex items-center gap-3">
-                        {widget.icon && <widget.icon className="h-5 w-5 text-gray-700 dark:text-gray-300" />}
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-gray-100">
-                            {widget.name} <span className="text-gray-500 dark:text-gray-400">({widget.rowSpan} {widget.rowSpan === 1 ? 'row' : 'rows'})</span>
-                          </p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">{widget.description}</p>
+                      {/* Header: Icon, Title, Details & Toggle */}
+                      <div className="flex items-center justify-between mb-3">
+                        {/* Title & Details */}
+                        <div className="flex items-center gap-3">
+                          {widget.icon && <widget.icon className="h-5 w-5 text-gray-700 dark:text-gray-300" />}
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-gray-100">
+                              {widget.name} <span className="text-gray-500 dark:text-gray-400">({widget.rowSpan} {widget.rowSpan === 1 ? 'row' : 'rows'})</span>
+                            </p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">{widget.description}</p>
+                          </div>
                         </div>
-                      </div>
-                      {/* Parameter Type: Toggle Button */}
-                      <button
-                        onClick={() => handleToggleWidget(widget.id)}
-                        role="switch"
-                        aria-checked={isEnabled}
-                        aria-label={`Toggle ${widget.name}`}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          isEnabled ? 'bg-gray-900 dark:bg-gray-100' : 'bg-gray-300 dark:bg-gray-700'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
-                            isEnabled ? 'bg-white dark:bg-gray-900 translate-x-6' : 'bg-white translate-x-1'
+                        {/* Parameter Type: Toggle Button */}
+                        <button
+                          onClick={() => handleToggleWidget(widget.id)}
+                          role="switch"
+                          aria-checked={isEnabled}
+                          aria-label={`Toggle ${widget.name}`}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            isEnabled ? 'bg-gray-900 dark:bg-gray-100' : 'bg-gray-300 dark:bg-gray-700'
                           }`}
-                        />
-                      </button>
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
+                              isEnabled ? 'bg-white dark:bg-gray-900 translate-x-6' : 'bg-white translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      
+                      {/* Canvas Assignment Checkboxes */}
+                      {isEnabled && (
+                        <div className="pl-8">
+                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Assign to Canvas:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {canvases.map((canvas) => {
+                              const isAssigned = assignedCanvas === canvas.id;
+                              return (
+                                <button
+                                  key={canvas.id}
+                                  onClick={() => handleToggleCanvasAssignment(widget.id, canvas.id)}
+                                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                                    isAssigned
+                                      ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
+                                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                  }`}
+                                >
+                                  <div className={`w-3 h-3 rounded-sm border-2 flex items-center justify-center ${
+                                    isAssigned
+                                      ? 'border-white dark:border-gray-900 bg-white dark:bg-gray-900'
+                                      : 'border-gray-400 dark:border-gray-600'
+                                  }`}>
+                                    {isAssigned && (
+                                      <svg className="w-2 h-2 text-gray-900 dark:text-gray-100" fill="currentColor" viewBox="0 0 12 12">
+                                        <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    )}
+                                  </div>
+                                  {canvas.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                   })

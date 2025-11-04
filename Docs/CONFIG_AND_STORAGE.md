@@ -116,6 +116,7 @@ Both systems use the same data structure and support encryption for sensitive da
 |-----|-------------|---------|
 | `hashbase_secrets` | API keys and tokens (encrypted) | `{ "OPENAI_API_KEY": "sk-..." }` |
 | `hashbase_widget_preferences` | Enabled/disabled widgets | `{ "timer-widget": true }` |
+| `hashbase_widget_canvas_assignments` | Widget-to-canvas assignments | `{ "timer-widget": "canvas-1" }` |
 | `hashbase-theme` | Light/dark mode | `"dark"` |
 
 ### Canvas Management
@@ -396,6 +397,7 @@ stopAutoSync();
 // Core configuration
 'hashbase_secrets'                    // API keys (encrypted in export)
 'hashbase_widget_preferences'         // Widget enable/disable
+'hashbase_widget_canvas_assignments'  // Widget-to-canvas assignments
 'hashbase-theme'                      // Light/dark mode
 
 // Canvas management
