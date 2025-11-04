@@ -3,7 +3,6 @@ import { BaseWidgetV2 } from '../../BaseWidgetV2';
 import { 
   AlertCircle,
   MessageSquare,
-  Plus,
   Settings as SettingsIcon,
   CheckCircle2,
   Circle,
@@ -15,14 +14,12 @@ import { SiGithub } from 'react-icons/si';
 import { 
   fetchIssues, 
   fetchUserRepositories,
-  createIssue,
   isGitHubConfigured,
   getRepoSelectionPreferences,
   saveRepoSelectionPreferences
 } from '@/services/githubIssuesService';
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { WidgetModal, WidgetModalFooter } from '@/components/ui/widget-modal';
-import { Button } from '@/components/ui/button';
 import { GitHubIssuesExplorer } from './GitHubIssuesExplorer';
 
 /**
@@ -30,7 +27,6 @@ import { GitHubIssuesExplorer } from './GitHubIssuesExplorer';
  * 
  * Features:
  * - Displays issues from selected or all user repositories
- * - Create new issues directly from the widget
  * - Filter by repository
  * - Search functionality
  * - Auto-refresh capability
@@ -45,7 +41,6 @@ export function GitHubIssuesWidget({ rowSpan = 3, dragRef }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [createIssueOpen, setCreateIssueOpen] = useState(false);
   const [errorActionLoading, setErrorActionLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   
@@ -62,14 +57,6 @@ export function GitHubIssuesWidget({ rowSpan = 3, dragRef }) {
   
   // Temporary settings for modal
   const [tempSettings, setTempSettings] = useState(settings);
-  
-  // Create issue form state
-  const [newIssue, setNewIssue] = useState({
-    repo: '',
-    title: '',
-    body: '',
-  });
-  const [creatingIssue, setCreatingIssue] = useState(false);
   
   // Explorer state
   const [explorerOpen, setExplorerOpen] = useState(false);
@@ -190,44 +177,6 @@ export function GitHubIssuesWidget({ rowSpan = 3, dragRef }) {
     setSelectedIssueId(issueId);
   };
   
-  const handleCreateIssueOpen = () => {
-    setNewIssue({
-      repo: repositories.length > 0 ? repositories[0].fullName : '',
-      title: '',
-      body: '',
-    });
-    setCreateIssueOpen(true);
-  };
-  
-  const handleCreateIssue = async () => {
-    if (!newIssue.repo || !newIssue.title.trim()) {
-      return;
-    }
-    
-    setCreatingIssue(true);
-    try {
-      const createdIssue = await createIssue(
-        newIssue.repo,
-        newIssue.title,
-        newIssue.body
-      );
-      
-      // Add the new issue to the list
-      setIssues(prev => [createdIssue, ...prev]);
-      
-      // Close modal and reset form
-      setCreateIssueOpen(false);
-      setNewIssue({ repo: '', title: '', body: '' });
-      
-      // Open the created issue in a new tab
-      window.open(createdIssue.url, '_blank');
-    } catch (err) {
-      alert(err.message || 'Failed to create issue');
-    } finally {
-      setCreatingIssue(false);
-    }
-  };
-  
   const handleRepoToggle = (repoFullName) => {
     setTempSettings(prev => {
       const isSelected = prev.selectedRepos.includes(repoFullName);
@@ -283,17 +232,6 @@ export function GitHubIssuesWidget({ rowSpan = 3, dragRef }) {
         showRefresh={true}
         onRefresh={handleRefresh}
         refreshing={refreshing}
-        customActions={
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleCreateIssueOpen}
-            title="Create Issue"
-            className="hover:bg-white/20"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        }
         
         // Content State
         state={currentState}
@@ -601,97 +539,6 @@ export function GitHubIssuesWidget({ rowSpan = 3, dragRef }) {
             >
               Reset to Defaults
             </button>
-          </div>
-        </div>
-      </WidgetModal>
-      
-      {/* Create Issue Modal */}
-      <WidgetModal
-        open={createIssueOpen}
-        onOpenChange={setCreateIssueOpen}
-        title="Create New Issue"
-        description="Create a new issue in your GitHub repository."
-        icon={SiGithub}
-        footer={
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={() => setCreateIssueOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleCreateIssue}
-              disabled={creatingIssue || !newIssue.title.trim()}
-              className="px-4 py-2 text-sm font-medium text-white bg-gray-900 dark:bg-gray-100 dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-            >
-              {creatingIssue ? (
-                <>
-                  <div className="h-4 w-4 border-2 border-white dark:border-gray-900 border-t-transparent rounded-full animate-spin"></div>
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4" />
-                  Create Issue
-                </>
-              )}
-            </button>
-          </div>
-        }
-      >
-        <div className="space-y-4">
-          {/* Repository Selection */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Repository *
-            </label>
-            <div className="relative">
-              <select
-                value={newIssue.repo}
-                onChange={(e) => setNewIssue({ ...newIssue, repo: e.target.value })}
-                className="w-full px-3 py-2 pr-8 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 appearance-none cursor-pointer"
-              >
-                {repositories.map((repo) => (
-                  <option key={repo.id} value={repo.fullName}>
-                    {repo.fullName}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 dark:text-gray-400">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-          </div>
-          
-          {/* Issue Title */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Title *
-            </label>
-            <input
-              type="text"
-              value={newIssue.title}
-              onChange={(e) => setNewIssue({ ...newIssue, title: e.target.value })}
-              placeholder="Brief description of the issue"
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600"
-            />
-          </div>
-          
-          {/* Issue Body */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Description
-            </label>
-            <textarea
-              value={newIssue.body}
-              onChange={(e) => setNewIssue({ ...newIssue, body: e.target.value })}
-              placeholder="Detailed description of the issue (optional)"
-              rows={6}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 resize-none"
-            />
           </div>
         </div>
       </WidgetModal>
