@@ -375,7 +375,7 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
             
             {/* Repository List */}
             {!tempSettings.selectAll && (
-              <div className="mt-3 max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-700 rounded-lg">
+              <div className="mt-3 max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-700 rounded-lg custom-scrollbar">
                 {repositories.length === 0 ? (
                   <div className="p-3 text-sm text-gray-600 dark:text-gray-400 text-center">
                     Loading repositories...
