@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Settings, Loader2, RotateCcw } from 'lucide-react';
 import { ScrollbarStyles } from '@/components/ui/scrollbar-styles';
@@ -133,20 +133,47 @@ export function BaseWidgetV2({
 }) {
   // State for header visibility
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
+  const [isHoveringTop, setIsHoveringTop] = useState(false);
+  const hideTimeoutRef = useRef(null);
   
   // Use flexible height - widgets fill their grid cell
   const heightClass = 'h-full';
+  
+  // Effect to handle the 5-second delay before hiding
+  useEffect(() => {
+    if (isHoveringTop) {
+      // Show header immediately when hovering top
+      setIsHeaderVisible(true);
+      // Clear any existing timeout
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
+    } else {
+      // Start 5-second countdown when no longer hovering top
+      hideTimeoutRef.current = setTimeout(() => {
+        setIsHeaderVisible(false);
+      }, 5000);
+    }
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, [isHoveringTop]);
   
   // Handle mouse movement to detect cursor near top
   const handleMouseMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const mouseY = e.clientY - rect.top;
     // Show header if cursor is within 40px of the top
-    setIsHeaderVisible(mouseY < 40);
+    setIsHoveringTop(mouseY < 40);
   };
   
   const handleMouseLeave = () => {
-    setIsHeaderVisible(false);
+    setIsHoveringTop(false);
   };
   
   // Header content with logo, app name, and widget name
@@ -169,7 +196,7 @@ export function BaseWidgetV2({
   
   // Render action buttons
   const renderActions = () => (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-0.5">
       {customActions}
       
       {showSettings && (
@@ -178,9 +205,9 @@ export function BaseWidgetV2({
           size="icon"
           onClick={onSettingsClick}
           title="Settings"
-          className="hover:bg-white/20"
+          className="hover:bg-white/20 h-6 w-6"
         >
-          <Settings className="h-4 w-4" />
+          <Settings className="h-3 w-3" />
         </Button>
       )}
       
@@ -191,9 +218,9 @@ export function BaseWidgetV2({
           onClick={onRefresh}
           disabled={refreshing}
           title="Refresh"
-          className="hover:bg-white/20"
+          className="hover:bg-white/20 h-6 w-6"
         >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
         </Button>
       )}
     </div>
@@ -293,20 +320,20 @@ export function BaseWidgetV2({
   
   return (
     <div 
-      className={`w-full flex flex-col bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 rounded-xl shadow-sm ${heightClass} ${className} relative overflow-hidden transition-all duration-200 ease-in-out`}
+      className={`w-full flex flex-col bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 rounded-xl shadow-sm ${heightClass} ${className} overflow-hidden transition-all duration-200 ease-in-out`}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Floating Header Zone - Only visible on hover near top */}
+      {/* Header Zone - Slides down and pushes content */}
       <div 
-        className={`absolute top-0 left-0 right-0 z-10 px-3 pt-2 pb-1.5 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 transition-all duration-300 ease-in-out ${
+        className={`px-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 transition-all duration-300 ease-in-out overflow-hidden ${
           isHeaderVisible 
-            ? 'translate-y-0 opacity-100' 
-            : '-translate-y-full opacity-0'
+            ? 'max-h-9 pt-1.5 pb-1 opacity-100' 
+            : 'max-h-0 pt-0 pb-0 opacity-0'
         }`}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {Logo && (
               <TooltipProvider>
                 <Tooltip>
@@ -315,7 +342,7 @@ export function BaseWidgetV2({
                       ref={dragRef}
                       className="cursor-move p-0.5 rounded hover:bg-white/50 dark:hover:bg-white/10 transition-colors"
                     >
-                      <Logo className="h-4 w-4 text-gray-700 dark:text-gray-300" />
+                      <Logo className="h-3 w-3 text-gray-700 dark:text-gray-300" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="bottom-start">
@@ -324,16 +351,16 @@ export function BaseWidgetV2({
                 </Tooltip>
               </TooltipProvider>
             )}
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden md:inline">{appName}</span>
-            <p className="hidden lg:inline">-</p>
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden lg:inline">{widgetName}</span>
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400 hidden md:inline">{appName}</span>
+            <p className="hidden lg:inline text-xs">-</p>
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400 hidden lg:inline">{widgetName}</span>
             {badge && <div className="ml-1">{badge}</div>}
           </div>
           {renderActions()}
         </div>
       </div>
       
-      {/* Content Zone with custom scrollbar - Full height */}
+      {/* Content Zone with custom scrollbar - Adjusts based on header visibility */}
       <div className="flex-1 overflow-hidden flex flex-col px-3 py-2">
         <ScrollbarStyles />
         {renderContent()}
