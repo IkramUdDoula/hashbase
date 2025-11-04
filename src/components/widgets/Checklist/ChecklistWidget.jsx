@@ -25,6 +25,7 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
   const [newItemText, setNewItemText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   
   // Explorer state
@@ -223,6 +224,7 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
   ) : null;
   
   // Always show positive state so input box is visible
+  // Handle empty state within the content area
   const getWidgetState = () => {
     return 'positive';
   };
@@ -249,8 +251,8 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
         
         // Empty State
         emptyIcon={CheckSquare}
-        emptyMessage="No checklist items"
-        emptySubmessage="Use the input box above to add your first task"
+        emptyMessage={items.length === 0 ? "No checklist items" : "No items to display"}
+        emptySubmessage={items.length === 0 ? "Use the input box below to add your first task" : "All items are hidden or filtered out"}
         
         // Positive State (Content)
         searchEnabled={items.length > 5}
@@ -269,13 +271,19 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
             {items.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <CheckSquare className="h-12 w-12 text-gray-300 dark:text-gray-700 mb-3" />
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">No tasks yet</p>
-                <p className="text-xs text-gray-500 dark:text-gray-500">Start adding tasks using the input below</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">No checklist items</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500">Use the input box below to add your first task</p>
               </div>
             ) : filteredItems.length === 0 && searchQuery ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <CheckSquare className="h-8 w-8 text-muted-foreground mb-2" />
                 <p className="text-sm text-muted-foreground">No items match your search</p>
+              </div>
+            ) : filteredItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <CheckSquare className="h-8 w-8 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">No items to display</p>
+                <p className="text-xs text-muted-foreground mt-1">All items are hidden or filtered out</p>
               </div>
             ) : (
               <div className="space-y-1.5">
@@ -344,11 +352,10 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
             )}
           </div>
           
-          {/* Quick Add Input - Fixed at bottom */}
+          {/* Quick Add Input - Fixed at bottom - Always visible */}
           <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <Plus className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
             <input
-              type="text"
               value={newItemText}
               onChange={(e) => setNewItemText(e.target.value)}
               onKeyDown={handleKeyPress}
@@ -421,18 +428,46 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
           {/* Clear All Completed */}
           <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-800">
             <button
-              onClick={() => {
-                if (confirm('Are you sure you want to delete all completed items?')) {
-                  setItems(items.filter(item => !item.checked));
-                  setSettingsOpen(false);
-                }
-              }}
+              onClick={() => setConfirmDeleteOpen(true)}
               disabled={items.filter(item => item.checked).length === 0}
               className="w-full px-4 py-2 text-sm font-medium text-red-700 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Clear All Completed
             </button>
           </div>
+        </div>
+      </WidgetModal>
+      
+      {/* Confirm Delete Dialog */}
+      <WidgetModal
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title="Delete Completed Items"
+        description="Are you sure you want to delete all completed items? This action cannot be undone."
+        icon={CheckSquare}
+        footer={
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setConfirmDeleteOpen(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                setItems(items.filter(item => !item.checked));
+                setConfirmDeleteOpen(false);
+                setSettingsOpen(false);
+              }}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 dark:bg-red-500 rounded-lg hover:bg-red-700 dark:hover:bg-red-600 transition-colors"
+            >
+              Delete All
+            </button>
+          </div>
+        }
+      >
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          You are about to delete <span className="font-semibold text-gray-900 dark:text-gray-100">{items.filter(item => item.checked).length}</span> completed item{items.filter(item => item.checked).length !== 1 ? 's' : ''}.
         </div>
       </WidgetModal>
       

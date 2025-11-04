@@ -69,6 +69,9 @@ import {
  * @param {React.Component} props.emptyIcon - Empty state icon component
  * @param {string} props.emptyMessage - Primary empty message
  * @param {string} props.emptySubmessage - Secondary empty message (optional)
+ * @param {string} props.emptyActionLabel - Empty state action button label (optional)
+ * @param {function} props.onEmptyAction - Empty state action button click handler (optional)
+ * @param {boolean} props.emptyActionLoading - Empty state action button loading state (optional)
  * 
  * POSITIVE STATE (Content):
  * @param {boolean} props.searchEnabled - Show search bar (default: false)
@@ -118,6 +121,9 @@ export function BaseWidgetV2({
   emptyIcon: EmptyIcon,
   emptyMessage,
   emptySubmessage,
+  emptyActionLabel,
+  onEmptyAction,
+  emptyActionLoading = false,
   
   // Positive State (Content)
   searchEnabled = false,
@@ -296,6 +302,9 @@ export function BaseWidgetV2({
             icon={EmptyIcon || Logo}
             message={emptyMessage}
             submessage={emptySubmessage}
+            actionLabel={emptyActionLabel}
+            onAction={onEmptyAction}
+            actionLoading={emptyActionLoading}
           />
         );
       

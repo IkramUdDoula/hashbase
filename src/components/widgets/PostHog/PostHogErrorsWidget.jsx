@@ -35,23 +35,23 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
   // Widget state management
   const [errors, setErrors] = useState([]);
   const [currentState, setCurrentState] = useState('loading');
+  const [errorMessage, setErrorMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [errorActionLoading, setErrorActionLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
   const [isInitialized, setIsInitialized] = useState(false);
   
   // Settings state
   const [settings, setSettings] = useState({
     projectId: '',
-    projectUrl: '',
-    status: 'active', // 'active', 'resolved', 'all'
+    projectUrl: 'https://us.posthog.com',
     maxErrors: 50,
+    refreshInterval: 0.5, // 30 seconds in minutes
     autoRefresh: true,
-    refreshInterval: 5, // minutes
-    filterTestAccounts: true, // Filter out internal and test users
-    filterHosts: [], // Array of hosts to filter errors from
+    status: 'all',
+    filterTestAccounts: true,
+    filterHosts: []
   });
   
   // API availability state
@@ -167,7 +167,6 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
         setCurrentState('positive');
       }
     } catch (err) {
-      setErrorMessage(err.message || 'Failed to load errors. Please try again.');
       setCurrentState('error');
     } finally {
       setRefreshing(false);
@@ -311,7 +310,7 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
         
         // Error State
         errorIcon={AlertTriangle}
-        errorMessage={errorMessage}
+        errorMessage={errorMessage || "Failed to load errors. Please check your settings and try again."}
         errorActionLabel="Try Again"
         onErrorAction={handleErrorAction}
         errorActionLoading={errorActionLoading}
@@ -319,7 +318,7 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
         // Empty State
         emptyIcon={AlertTriangle}
         emptyMessage="No errors found"
-        emptySubmessage={settings.status === 'active' ? "No active errors. Great job!" : "No errors match your criteria."}
+        emptySubmessage={settings.status === 'all' ? "No errors in the last 30 days. Great job!" : "No errors match your criteria."}
         
         // Positive State (Content)
         searchEnabled={true}
@@ -342,8 +341,7 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
             {filteredErrors.map((error) => {
               // Determine card styling based on status
               const isResolved = error.status === 'resolved';
-              const isActive = error.status === 'active';
-              const isSuppressed = error.status === 'suppressed';
+              const isActive = error.status === 'active' || error.status === 'open';
               
               const cardClasses = isResolved
                 ? 'p-3 rounded-lg bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/40 dark:to-slate-900/40 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all cursor-pointer group'
@@ -461,7 +459,7 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
               Error Status
             </label>
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Filter errors by their status
+              Filter errors by their status (managed locally)
             </p>
             <div className="relative">
               <select
@@ -533,9 +531,10 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
               <div className="relative">
                 <select
                   value={tempSettings.refreshInterval}
-                  onChange={(e) => setTempSettings({ ...tempSettings, refreshInterval: parseInt(e.target.value) })}
+                  onChange={(e) => setTempSettings({ ...tempSettings, refreshInterval: parseFloat(e.target.value) })}
                   className="w-full px-3 py-2 pr-8 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 appearance-none cursor-pointer"
                 >
+                  <option value="0.5">30 seconds (realtime)</option>
                   <option value="1">1 minute</option>
                   <option value="5">5 minutes</option>
                   <option value="10">10 minutes</option>
@@ -641,10 +640,10 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
                 const defaults = {
                   projectId: '',
                   projectUrl: 'https://app.posthog.com',
-                  status: 'active',
+                  status: 'all',
                   maxErrors: 50,
                   autoRefresh: true,
-                  refreshInterval: 5,
+                  refreshInterval: 0.5,
                   filterTestAccounts: true,
                   filterHosts: [],
                 };
@@ -667,6 +666,7 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
         onErrorChange={handleErrorChange}
         projectUrl={settings.projectUrl}
         projectId={settings.projectId}
+        onStatusChange={loadErrors}
       />
     </>
   );

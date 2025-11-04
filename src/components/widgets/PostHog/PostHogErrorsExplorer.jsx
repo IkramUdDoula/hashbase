@@ -9,7 +9,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink, AlertTriangle, Clock, Hash, User, Globe, Monitor, MapPin, Code, Loader2, Copy, Check } from 'lucide-react';
 import { formatRelativeDate } from '@/lib/dateUtils';
-import { fetchIssueIdFromFingerprint, fetchErrorEvent, fetchStackFrames } from '@/services/posthogService';
+import { fetchIssueIdFromFingerprint, fetchErrorEvent, fetchStackFrames, saveErrorStatus } from '@/services/posthogService';
 
 export function PostHogErrorsExplorer({ 
   open, 
@@ -18,7 +18,8 @@ export function PostHogErrorsExplorer({
   errorList = [],
   onErrorChange,
   projectUrl,
-  projectId
+  projectId,
+  onStatusChange
 }) {
   // Find current error from the list
   const currentIndex = errorList.findIndex(e => e.id === errorId);
@@ -168,9 +169,23 @@ export function PostHogErrorsExplorer({
                       {error.severity}
                     </span>
                   )}
-                  <span className={error.status === 'resolved' ? 'text-xs px-2 py-0.5 rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'}>
-                    {error.status === 'resolved' ? 'Resolved' : 'Active'}
-                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const newStatus = error.status === 'resolved' ? 'active' : 'resolved';
+                      saveErrorStatus(error.fingerprint, newStatus);
+                      if (onStatusChange) {
+                        onStatusChange();
+                      }
+                    }}
+                    className={`text-xs px-2 py-0.5 rounded transition-colors cursor-pointer hover:opacity-80 ${
+                      error.status === 'resolved' 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
+                        : 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
+                    }`}
+                  >
+                    {error.status === 'resolved' ? '✓ Resolved' : 'Active'} (Click to toggle)
+                  </button>
                 </div>
                 <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
                   {error.exceptionValue || error.message || error.title || 'Unknown error'}
@@ -327,103 +342,6 @@ export function PostHogErrorsExplorer({
                         <td className="py-2.5 pr-4 text-gray-600 dark:text-gray-400 font-medium">OS</td>
                         <td className="py-2.5 text-gray-900 dark:text-gray-100">
                           {error.environment.os}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </ExplorerSection>
-
-
-            {/* Last Seen Details */}
-            <ExplorerSection title="Last Seen Details">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                      <td className="py-2.5 pr-4 text-gray-600 dark:text-gray-400 font-medium w-32">Synthetic</td>
-                      <td className="py-2.5 text-gray-900 dark:text-gray-100">
-                        {error.synthetic !== undefined ? (error.synthetic ? 'true' : 'false') : 'false'}
-                      </td>
-                    </tr>
-                    
-                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                      <td className="py-2.5 pr-4 text-gray-600 dark:text-gray-400 font-medium">Handled</td>
-                      <td className="py-2.5 text-gray-900 dark:text-gray-100">
-                        {error.handled !== undefined ? (error.handled ? 'true' : 'false') : 'true'}
-                      </td>
-                    </tr>
-
-                    {error.lib && (
-                      <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                        <td className="py-2.5 pr-4 text-gray-600 dark:text-gray-400 font-medium">Library</td>
-                        <td className="py-2.5 text-gray-900 dark:text-gray-100">
-                          {error.lib} {error.libVersion && error.libVersion}
-                        </td>
-                      </tr>
-                    )}
-
-                    {error.environment?.browser && (
-                      <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                        <td className="py-2.5 pr-4 text-gray-600 dark:text-gray-400 font-medium flex items-center gap-1">
-                          <Monitor className="h-3.5 w-3.5" />
-                          Browser
-                        </td>
-                        <td className="py-2.5 text-gray-900 dark:text-gray-100">
-                          {error.environment.browser}
-                        </td>
-                      </tr>
-                    )}
-
-                    {error.environment?.os && (
-                      <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                        <td className="py-2.5 pr-4 text-gray-600 dark:text-gray-400 font-medium">OS</td>
-                        <td className="py-2.5 text-gray-900 dark:text-gray-100">
-                          {error.environment.os}
-                        </td>
-                      </tr>
-                    )}
-
-                    {error.environment?.url && (
-                      <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                        <td className="py-2.5 pr-4 text-gray-600 dark:text-gray-400 font-medium flex items-center gap-1">
-                          <Globe className="h-3.5 w-3.5" />
-                          URL
-                        </td>
-                        <td className="py-2.5">
-                          <a 
-                            href={error.environment.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 dark:text-blue-400 hover:underline break-all inline-flex items-center gap-1"
-                          >
-                            {error.environment.url}
-                            <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                          </a>
-                        </td>
-                      </tr>
-                    )}
-
-                    {error.level && (
-                      <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                        <td className="py-2.5 pr-4 text-gray-600 dark:text-gray-400 font-medium">Level</td>
-                        <td className="py-2.5">
-                          <span className={`text-xs px-2 py-0.5 rounded ${getSeverityColor(error.level)}`}>
-                            {error.level}
-                          </span>
-                        </td>
-                      </tr>
-                    )}
-
-                    {error.component && (
-                      <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                        <td className="py-2.5 pr-4 text-gray-600 dark:text-gray-400 font-medium flex items-center gap-1">
-                          <Code className="h-3.5 w-3.5" />
-                          Component
-                        </td>
-                        <td className="py-2.5 text-gray-900 dark:text-gray-100">
-                          {error.component}
                         </td>
                       </tr>
                     )}

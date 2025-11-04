@@ -368,6 +368,8 @@ export function AIChatWidget({ rowSpan = 3, dragRef }) {
         emptyIcon={Bot}
         emptyMessage="No AI provider configured"
         emptySubmessage="Add your OpenAI API key in Settings to start chatting"
+        emptyActionLabel="Open Settings"
+        onEmptyAction={() => setShowLLMSettings(true)}
         rowSpan={rowSpan}
         dragRef={dragRef}
       >
