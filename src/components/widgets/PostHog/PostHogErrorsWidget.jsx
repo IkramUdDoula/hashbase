@@ -6,7 +6,9 @@ import {
   Clock,
   Hash,
   CheckCircle2,
-  XCircle
+  XCircle,
+  CheckSquare,
+  CheckSquare2
 } from 'lucide-react';
 import { SiPosthog } from 'react-icons/si';
 import { 
@@ -316,7 +318,7 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
         errorActionLoading={errorActionLoading}
         
         // Empty State
-        emptyIcon={AlertTriangle}
+        emptyIcon={CheckSquare2}
         emptyMessage="No errors found"
         emptySubmessage={settings.status === 'all' ? "No errors in the last 30 days. Great job!" : "No errors match your criteria."}
         

@@ -8,7 +8,8 @@ import {
   CheckCircle2,
   Circle,
   Tag,
-  GitBranch
+  GitBranch,
+  CheckSquare2
 } from 'lucide-react';
 import { SiGithub } from 'react-icons/si';
 import { 
@@ -308,7 +309,7 @@ export function GitHubIssuesWidget({ rowSpan = 3, dragRef }) {
         errorActionLoading={errorActionLoading}
         
         // Empty State
-        emptyIcon={Circle}
+        emptyIcon={CheckSquare2}
         emptyMessage="No issues found"
         emptySubmessage={settings.issueState === 'open' ? "No open issues in selected repositories." : "No issues match your criteria."}
         

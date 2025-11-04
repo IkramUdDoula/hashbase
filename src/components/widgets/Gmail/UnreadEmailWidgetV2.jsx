@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { BaseWidgetV2 } from '../../BaseWidgetV2';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Mail, LogIn, ExternalLink, Loader2 } from 'lucide-react';
+import { Mail, LogIn, ExternalLink, Loader2, MailCheck, MailWarning } from 'lucide-react';
 import { SiGmail } from 'react-icons/si';
 import { fetchUnreadEmails, getAuthUrl, checkAuthStatus, getGmailUrl } from '@/services/gmailService';
 import { formatRelativeDate } from '@/lib/dateUtils';
@@ -162,7 +162,8 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
         loadingMessage="Loading emails..."
         
         // Error State
-        errorIcon={Mail}
+        errorLogo={SiGmail}
+        errorIcon={MailWarning}
         errorMessage={error || 'Failed to load emails'}
         errorActionLabel="Try Again"
         errorActionLoading={refreshing}
@@ -172,6 +173,7 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
         onErrorSecondaryAction={handleAuthenticate}
         
         // Empty State
+        emptyIcon={MailCheck}
         emptyMessage="No unread emails"
         emptySubmessage="You're all caught up!"
         

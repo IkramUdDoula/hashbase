@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { 
   CheckSquare, 
   Plus,
-  X
+  X,
+  CheckSquare2
 } from 'lucide-react';
 import { WidgetModal, WidgetModalFooter } from '@/components/ui/widget-modal';
 import { ChecklistExplorerV2 } from './ChecklistExplorerV2';
@@ -269,10 +270,9 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
           {/* Checklist Items - Scrollable area */}
           <div className="flex-1 overflow-y-auto space-y-2 mb-2 min-h-0">
             {items.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <CheckSquare className="h-12 w-12 text-gray-300 dark:text-gray-700 mb-3" />
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">No checklist items</p>
-                <p className="text-xs text-gray-500 dark:text-gray-500">Use the input box below to add your first task</p>
+              <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                <CheckSquare2 className="h-8 w-8 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">No checklist items</p>
               </div>
             ) : filteredItems.length === 0 && searchQuery ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
