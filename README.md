@@ -700,10 +700,11 @@ hashbase/
 ## Security Notes
 
 - **Gmail API credentials** (Client ID/Secret) stored in `.env` file on server (gitignored)
-- **Gmail OAuth tokens** stored in browser localStorage and sent via `x-gmail-token` header
+- **Gmail OAuth tokens** stored in browser localStorage, encrypted in config exports, and persisted across sessions
 - **All other API keys** (Netlify, OpenAI, Claude, Tavily, GitHub) stored in browser localStorage
 - **No external transmission** - Credentials in localStorage never leave your device
 - **OAuth auto-refresh** - Gmail tokens refreshed automatically by Google API client
+- **Persistent authentication** - Gmail tokens included in encrypted config backups for cross-device sync
 - **Proxy protection** - All API calls proxied through backend to keep server-side keys secure
 - **Environment variables** - `.env` file excluded from version control via `.gitignore`
 - **Clear data option** - Settings panel includes "Clear All Data" to remove all stored credentials
@@ -717,6 +718,7 @@ hashbase/
 - Restart the dev server after adding credentials (`npm run dev`)
 - Make sure you've completed the Gmail authentication process by clicking the login button
 - Check your browser's localStorage for `gmail_tokens` key
+- **Note:** Gmail tokens are now persisted in config exports - import your config to restore authentication
 - Try re-authenticating by clearing localStorage (Settings > Secrets > Clear All Data) and clicking the login button
 - Ensure the Gmail API is enabled in Google Cloud Console
 - Verify the redirect URI in Google Cloud Console matches `http://localhost:5000/oauth2callback`

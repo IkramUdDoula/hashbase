@@ -5,9 +5,6 @@ import {
   Settings as SettingsIcon,
   Clock,
   Hash,
-  CheckCircle2,
-  XCircle,
-  CheckSquare,
   CheckSquare2
 } from 'lucide-react';
 import { SiPosthog } from 'react-icons/si';
@@ -51,9 +48,10 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
     maxErrors: 50,
     refreshInterval: 0.5, // 30 seconds in minutes
     autoRefresh: true,
-    status: 'all',
+    lastSeenDays: 30,
     filterTestAccounts: true,
-    filterHosts: []
+    filterHosts: [],
+    sortBy: 'occurrences-desc' // occurrences-desc, occurrences-asc, lastSeen-desc, lastSeen-asc, users-desc, users-asc
   });
   
   // API availability state
@@ -78,7 +76,9 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
         const normalizedSettings = {
           ...parsed,
           filterHosts: Array.isArray(parsed.filterHosts) ? parsed.filterHosts : [],
-          filterTestAccounts: parsed.filterTestAccounts !== undefined ? parsed.filterTestAccounts : true
+          filterTestAccounts: parsed.filterTestAccounts !== undefined ? parsed.filterTestAccounts : true,
+          lastSeenDays: parsed.lastSeenDays !== undefined ? parsed.lastSeenDays : 30,
+          sortBy: parsed.sortBy || 'occurrences-desc'
         };
         setSettings(normalizedSettings);
         setTempSettings(normalizedSettings);
@@ -155,10 +155,10 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
 
       const errorData = await fetchErrors(
         settings.projectId, 
-        settings.status, 
         settings.maxErrors,
         settings.filterTestAccounts,
-        settings.filterHosts
+        settings.filterHosts,
+        settings.lastSeenDays
       );
       
       if (errorData.length === 0) {
@@ -179,7 +179,7 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
     if (isInitialized) {
       loadErrors();
     }
-  }, [isInitialized, settings.projectId, settings.status, settings.maxErrors, settings.filterTestAccounts, settings.filterHosts, settings.autoRefresh, settings.refreshInterval]);
+  }, [isInitialized, settings.projectId, settings.maxErrors, settings.filterTestAccounts, settings.filterHosts, settings.lastSeenDays, settings.autoRefresh, settings.refreshInterval]);
   
   // Auto-refresh if enabled
   useEffect(() => {
@@ -261,7 +261,7 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
     }
   };
   
-  // Filter errors based on search
+  // Filter and sort errors
   const filteredErrors = errors.filter(error => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
@@ -270,6 +270,23 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
       error.type?.toLowerCase().includes(query) ||
       error.message?.toLowerCase().includes(query)
     );
+  }).sort((a, b) => {
+    switch (settings.sortBy) {
+      case 'occurrences-desc':
+        return (b.occurrences || 0) - (a.occurrences || 0);
+      case 'occurrences-asc':
+        return (a.occurrences || 0) - (b.occurrences || 0);
+      case 'lastSeen-desc':
+        return new Date(b.lastSeen || b.firstSeen) - new Date(a.lastSeen || a.firstSeen);
+      case 'lastSeen-asc':
+        return new Date(a.lastSeen || a.firstSeen) - new Date(b.lastSeen || b.firstSeen);
+      case 'users-desc':
+        return (b.affectedUsers || 0) - (a.affectedUsers || 0);
+      case 'users-asc':
+        return (a.affectedUsers || 0) - (b.affectedUsers || 0);
+      default:
+        return 0;
+    }
   });
   
   // Get severity badge color
@@ -320,7 +337,7 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
         // Empty State
         emptyIcon={CheckSquare2}
         emptyMessage="No errors found"
-        emptySubmessage={settings.status === 'all' ? "No errors in the last 30 days. Great job!" : "No errors match your criteria."}
+        emptySubmessage={`No errors in the last ${settings.lastSeenDays} days. Great job!`}
         
         // Positive State (Content)
         searchEnabled={true}
@@ -341,13 +358,8 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
         ) : (
           <div className="space-y-2">
             {filteredErrors.map((error) => {
-              // Determine card styling based on status
-              const isResolved = error.status === 'resolved';
-              const isActive = error.status === 'active' || error.status === 'open';
-              
-              const cardClasses = isResolved
-                ? 'p-3 rounded-lg bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/40 dark:to-slate-900/40 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all cursor-pointer group'
-                : 'p-3 rounded-lg bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-900/40 border-2 border-red-300 dark:border-red-800 hover:shadow-md hover:border-red-400 dark:hover:border-red-700 transition-all cursor-pointer group';
+              // All errors shown in red
+              const cardClasses = 'p-3 rounded-lg bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-900/40 border-2 border-red-300 dark:border-red-800 hover:shadow-md hover:border-red-400 dark:hover:border-red-700 transition-all cursor-pointer group';
               
               return (
                 <div
@@ -358,12 +370,8 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
                   {/* Error type and severity */}
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      {isResolved ? (
-                        <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-                      ) : (
-                        <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                      )}
-                      <span className={`text-xs font-semibold ${isResolved ? 'text-gray-900 dark:text-gray-100' : 'text-red-900 dark:text-red-100'}`}>
+                      <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                      <span className="text-xs font-semibold text-red-900 dark:text-red-100">
                         {error.type || 'Error'}
                       </span>
                     </div>
@@ -375,12 +383,12 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
                   </div>
                   
                   {/* Error message */}
-                  <p className={`text-sm font-medium line-clamp-2 mb-2 ${isResolved ? 'text-gray-900 dark:text-gray-100' : 'text-red-900 dark:text-red-100'}`}>
+                  <p className="text-sm font-medium line-clamp-2 mb-2 text-red-900 dark:text-red-100">
                     {error.exceptionValue || error.message || error.title || 'Unknown error'}
                   </p>
 
                   {/* Metadata */}
-                  <div className={`flex items-center justify-between text-xs ${isResolved ? 'text-gray-600 dark:text-gray-400' : 'text-red-700 dark:text-red-300'}`}>
+                  <div className="flex items-center justify-between text-xs text-red-700 dark:text-red-300">
                     <div className="flex items-center gap-3">
                       {error.occurrences && (
                         <div className="flex items-center gap-1">
@@ -455,23 +463,56 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
             />
           </div>
           
-          {/* Error Status Filter */}
+          {/* Last Seen Timeline */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Error Status
+              Last Seen Timeline
             </label>
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Filter errors by their status (managed locally)
+              How far back to look for errors (in days)
             </p>
             <div className="relative">
               <select
-                value={tempSettings.status}
-                onChange={(e) => setTempSettings({ ...tempSettings, status: e.target.value })}
+                value={tempSettings.lastSeenDays}
+                onChange={(e) => setTempSettings({ ...tempSettings, lastSeenDays: parseInt(e.target.value) })}
                 className="w-full px-3 py-2 pr-8 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 appearance-none cursor-pointer"
               >
-                <option value="active">Active Errors</option>
-                <option value="resolved">Resolved Errors</option>
-                <option value="all">All Errors</option>
+                <option value="1">Last 24 hours</option>
+                <option value="3">Last 3 days</option>
+                <option value="7">Last 7 days</option>
+                <option value="14">Last 14 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="60">Last 60 days</option>
+                <option value="90">Last 90 days</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 dark:text-gray-400">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          
+          {/* Sort By */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Sort By
+            </label>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              How to sort the error list
+            </p>
+            <div className="relative">
+              <select
+                value={tempSettings.sortBy}
+                onChange={(e) => setTempSettings({ ...tempSettings, sortBy: e.target.value })}
+                className="w-full px-3 py-2 pr-8 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 appearance-none cursor-pointer"
+              >
+                <option value="occurrences-desc">Occurrences (High to Low)</option>
+                <option value="occurrences-asc">Occurrences (Low to High)</option>
+                <option value="lastSeen-desc">Last Seen (Newest to Oldest)</option>
+                <option value="lastSeen-asc">Last Seen (Oldest to Newest)</option>
+                <option value="users-desc">Users Affected (Most to Least)</option>
+                <option value="users-asc">Users Affected (Least to Most)</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 dark:text-gray-400">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -642,12 +683,13 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
                 const defaults = {
                   projectId: '',
                   projectUrl: 'https://app.posthog.com',
-                  status: 'all',
+                  lastSeenDays: 30,
                   maxErrors: 50,
                   autoRefresh: true,
                   refreshInterval: 0.5,
                   filterTestAccounts: true,
                   filterHosts: [],
+                  sortBy: 'occurrences-desc'
                 };
                 setTempSettings(defaults);
               }}
@@ -668,7 +710,6 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
         onErrorChange={handleErrorChange}
         projectUrl={settings.projectUrl}
         projectId={settings.projectId}
-        onStatusChange={loadErrors}
       />
     </>
   );

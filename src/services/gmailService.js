@@ -1,5 +1,6 @@
 // Gmail API service for fetching unread emails
 // Tokens are stored in localStorage and sent via headers
+// Tokens are also persisted in config exports for cross-device/session persistence
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -16,6 +17,31 @@ function getGmailToken() {
   } catch (error) {
     console.error('Error getting Gmail token:', error);
     return null;
+  }
+}
+
+// Save Gmail token to localStorage
+// This is automatically included in config exports and encrypted
+export function saveGmailToken(token) {
+  try {
+    localStorage.setItem(GMAIL_TOKEN_KEY, token);
+    console.log('✅ Gmail token saved to localStorage (will be encrypted in config exports)');
+    return true;
+  } catch (error) {
+    console.error('Error saving Gmail token:', error);
+    return false;
+  }
+}
+
+// Clear Gmail token from localStorage
+export function clearGmailToken() {
+  try {
+    localStorage.removeItem(GMAIL_TOKEN_KEY);
+    console.log('🗑️ Gmail token cleared from localStorage');
+    return true;
+  } catch (error) {
+    console.error('Error clearing Gmail token:', error);
+    return false;
   }
 }
 

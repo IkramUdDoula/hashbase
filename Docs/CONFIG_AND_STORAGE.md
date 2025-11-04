@@ -166,8 +166,9 @@ Both systems use the same data structure and support encryption for sensitive da
 
 | Key | Reason |
 |-----|--------|
-| `gmail_tokens` | Managed by OAuth flow in `.env` file |
 | `hashbase_storage_settings` | Storage configuration (not user data) |
+
+**Note:** `gmail_tokens` is now **included** in exports and encrypted for persistent authentication across devices and sessions.
 
 ---
 
@@ -438,8 +439,8 @@ stopAutoSync();
 // Storage settings (not exported)
 'hashbase_storage_settings'           // Folder sync config
 
-// OAuth tokens (not exported)
-'gmail_tokens'                        // Gmail OAuth tokens
+// OAuth tokens (encrypted in exports)
+'gmail_tokens'                        // Gmail OAuth tokens (encrypted with secrets)
 ```
 
 ### Widget Layout Structure
@@ -1089,7 +1090,7 @@ Old configs with single canvas are automatically migrated:
 ### What's Encrypted
 
 - ✅ API keys (`hashbase_secrets`)
-- ✅ OAuth tokens (if included)
+- ✅ Gmail OAuth tokens (`gmail_tokens`)
 - ✅ Any sensitive credentials
 
 ### What's NOT Encrypted

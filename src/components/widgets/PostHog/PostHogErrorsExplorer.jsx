@@ -9,7 +9,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink, AlertTriangle, Clock, Hash, User, Globe, Monitor, MapPin, Code, Loader2, Copy, Check } from 'lucide-react';
 import { formatRelativeDate } from '@/lib/dateUtils';
-import { fetchIssueIdFromFingerprint, fetchErrorEvent, fetchStackFrames, saveErrorStatus } from '@/services/posthogService';
+import { fetchIssueIdFromFingerprint, fetchErrorEvent, fetchStackFrames } from '@/services/posthogService';
 
 export function PostHogErrorsExplorer({ 
   open, 
@@ -18,8 +18,7 @@ export function PostHogErrorsExplorer({
   errorList = [],
   onErrorChange,
   projectUrl,
-  projectId,
-  onStatusChange
+  projectId
 }) {
   // Find current error from the list
   const currentIndex = errorList.findIndex(e => e.id === errorId);
@@ -124,13 +123,6 @@ export function PostHogErrorsExplorer({
     }
   };
 
-  // Get status badge color (no longer used, kept for compatibility)
-  const getStatusBadge = (status) => {
-    if (status === 'resolved') {
-      return <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Resolved</span>;
-    }
-    return <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">Active</span>;
-  };
 
   return (
     <Explorer
@@ -169,23 +161,6 @@ export function PostHogErrorsExplorer({
                       {error.severity}
                     </span>
                   )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const newStatus = error.status === 'resolved' ? 'active' : 'resolved';
-                      saveErrorStatus(error.fingerprint, newStatus);
-                      if (onStatusChange) {
-                        onStatusChange();
-                      }
-                    }}
-                    className={`text-xs px-2 py-0.5 rounded transition-colors cursor-pointer hover:opacity-80 ${
-                      error.status === 'resolved' 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
-                        : 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
-                    }`}
-                  >
-                    {error.status === 'resolved' ? '✓ Resolved' : 'Active'} (Click to toggle)
-                  </button>
                 </div>
                 <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
                   {error.exceptionValue || error.message || error.title || 'Unknown error'}

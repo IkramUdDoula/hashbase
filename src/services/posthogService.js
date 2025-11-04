@@ -156,13 +156,13 @@ export async function fetchAvailableHosts(projectId) {
 /**
  * Fetch errors from PostHog using the Query API
  * @param {string} projectId - PostHog project ID
- * @param {string} status - Error status filter ('active', 'resolved', 'all')
  * @param {number} maxErrors - Maximum number of errors to fetch
  * @param {boolean} filterTestAccounts - Filter out internal and test users
  * @param {Array<string>} filterHosts - Array of hosts to filter errors from
+ * @param {number} lastSeenDays - How far back to look for errors (in days)
  * @returns {Promise<Array>} Array of error objects
  */
-export async function fetchErrors(projectId, status = 'all', maxErrors = 50, filterTestAccounts = true, filterHosts = []) {
+export async function fetchErrors(projectId, maxErrors = 50, filterTestAccounts = true, filterHosts = [], lastSeenDays = 30) {
   const token = getAccessToken();
   if (!token) {
     throw new Error('PostHog access token not configured');
@@ -178,10 +178,10 @@ export async function fetchErrors(projectId, status = 'all', maxErrors = 50, fil
     
     if (hasErrorTrackingApi) {
       // Use the newer ErrorTrackingQuery API which supports filterTestAccounts
-      return await fetchErrorsWithErrorTrackingApi(projectId, status, maxErrors, filterTestAccounts, filterHosts);
+      return await fetchErrorsWithErrorTrackingApi(projectId, maxErrors, filterTestAccounts, filterHosts, lastSeenDays);
     } else {
       // Fallback to EventsQuery API
-      return await fetchErrorsWithEventsQuery(projectId, status, maxErrors, filterHosts);
+      return await fetchErrorsWithEventsQuery(projectId, maxErrors, filterHosts, lastSeenDays);
     }
   } catch (error) {
     throw error;
@@ -192,26 +192,19 @@ export async function fetchErrors(projectId, status = 'all', maxErrors = 50, fil
  * Fetch errors using ErrorTrackingQuery API (supports filterTestAccounts)
  * @private
  */
-async function fetchErrorsWithErrorTrackingApi(projectId, status, maxErrors, filterTestAccounts, filterHosts) {
+async function fetchErrorsWithErrorTrackingApi(projectId, maxErrors, filterTestAccounts, filterHosts, lastSeenDays) {
   const token = getAccessToken();
-  
-  // Fetch more errors than requested to account for client-side filtering
-  // This ensures we get enough errors after filtering by status
-  const fetchLimit = status === 'all' ? maxErrors : maxErrors * 3;
   
   const query = {
     kind: 'ErrorTrackingQuery',
     dateRange: {
-      date_from: '-30d',
+      date_from: `-${lastSeenDays}d`,
       date_to: null
     },
-    limit: fetchLimit,
+    limit: maxErrors,
     filterTestAccounts: filterTestAccounts,
     orderBy: 'last_seen'
   };
-
-  // Don't filter by status in the API - we'll filter client-side
-  // This ensures we always get the latest status from PostHog
 
   const response = await fetch(`${POSTHOG_API_BASE}/api/environments/${projectId}/query/`, {
     method: 'POST',
@@ -233,7 +226,7 @@ async function fetchErrorsWithErrorTrackingApi(projectId, status, maxErrors, fil
       // 400 might mean the query format is wrong or API changed
       // Fall back to EventsQuery
       console.warn('ErrorTrackingQuery returned 400, falling back to EventsQuery');
-      return await fetchErrorsWithEventsQuery(projectId, status, maxErrors, filterHosts);
+      return await fetchErrorsWithEventsQuery(projectId, maxErrors, filterHosts, lastSeenDays);
     }
     throw new Error(`PostHog API error: ${response.status}`);
   }
@@ -242,16 +235,6 @@ async function fetchErrorsWithErrorTrackingApi(projectId, status, maxErrors, fil
   
   // Transform ErrorTrackingQuery results
   let errors = transformErrorTrackingData(data.results || []);
-  
-  // Apply status filtering client-side to get real-time status updates
-  if (status === 'active') {
-    errors = errors.filter(error => error.status === 'active');
-  } else if (status === 'resolved') {
-    errors = errors.filter(error => error.status === 'resolved');
-  } else if (status === 'suppressed') {
-    errors = errors.filter(error => error.status === 'suppressed');
-  }
-  // If status === 'all', don't filter
   
   // Apply host filtering if specified
   if (filterHosts && filterHosts.length > 0) {
@@ -266,9 +249,6 @@ async function fetchErrorsWithErrorTrackingApi(projectId, status, maxErrors, fil
     });
   }
   
-  // Limit to requested number after filtering
-  errors = errors.slice(0, maxErrors);
-  
   return errors;
 }
 
@@ -276,7 +256,7 @@ async function fetchErrorsWithErrorTrackingApi(projectId, status, maxErrors, fil
  * Fetch errors using EventsQuery API (fallback, no filterTestAccounts)
  * @private
  */
-async function fetchErrorsWithEventsQuery(projectId, status, maxErrors, filterHosts) {
+async function fetchErrorsWithEventsQuery(projectId, maxErrors, filterHosts, lastSeenDays) {
   const token = getAccessToken();
   
   const query = {
@@ -307,7 +287,8 @@ async function fetchErrorsWithEventsQuery(projectId, status, maxErrors, filterHo
     orderBy: ['timestamp DESC'],
     limit: maxErrors * 2,
     where: [
-      "event = '$exception'"
+      "event = '$exception'",
+      `timestamp >= now() - interval ${lastSeenDays} day`
     ]
   };
   
@@ -342,65 +323,14 @@ async function fetchErrorsWithEventsQuery(projectId, status, maxErrors, filterHo
   const data = await response.json();
   
   // Transform the data into a more usable format
-  const errors = transformErrorData(data.results || [], status);
+  const errors = transformErrorData(data.results || []);
   
   // Group errors by fingerprint to get occurrence counts
   const groupedErrors = groupErrorsByFingerprint(errors);
   
-  // Apply local status from localStorage
-  applyLocalStatus(groupedErrors);
-  
-  // Filter by status if needed
-  let filteredErrors = groupedErrors;
-  if (status === 'active' || status === 'open') {
-    filteredErrors = groupedErrors.filter(e => e.status === 'open' || e.status === 'active');
-  } else if (status === 'resolved') {
-    filteredErrors = groupedErrors.filter(e => e.status === 'resolved');
-  }
-  
-  return filteredErrors.slice(0, maxErrors);
+  return groupedErrors.slice(0, maxErrors);
 }
 
-/**
- * Apply local status from localStorage
- * @param {Array} errors - Array of error objects
- */
-function applyLocalStatus(errors) {
-  try {
-    const statusData = localStorage.getItem('posthog_error_status');
-    const statusMap = statusData ? JSON.parse(statusData) : {};
-    
-    errors.forEach(error => {
-      if (error.fingerprint && statusMap[error.fingerprint]) {
-        error.status = statusMap[error.fingerprint];
-      } else {
-        // Default to 'active' for consistency with API
-        error.status = error.status || 'active';
-      }
-    });
-  } catch (e) {
-    // Default to active if localStorage fails
-    errors.forEach(error => {
-      error.status = error.status || 'active';
-    });
-  }
-}
-
-/**
- * Save error status to localStorage
- * @param {string} fingerprint - Error fingerprint
- * @param {string} status - Status (open or resolved)
- */
-export function saveErrorStatus(fingerprint, status) {
-  try {
-    const statusData = localStorage.getItem('posthog_error_status');
-    const statusMap = statusData ? JSON.parse(statusData) : {};
-    statusMap[fingerprint] = status;
-    localStorage.setItem('posthog_error_status', JSON.stringify(statusMap));
-  } catch (e) {
-    // Silently fail
-  }
-}
 
 /**
  * Transform ErrorTrackingQuery results into a structured format
@@ -446,7 +376,7 @@ function transformErrorTrackingData(results) {
  * @param {Array} results - Raw results from PostHog API
  * @returns {Array} Transformed error objects
  */
-function transformErrorData(results, statusFilter = 'active') {
+function transformErrorData(results) {
   return results.map((result, index) => {
     // Map result array indices to properties
     const uuid = result[0];
@@ -488,9 +418,6 @@ function transformErrorData(results, statusFilter = 'active') {
       ? parsedExceptionValues[0]
       : null;
     
-    // Default status is active - will be overridden by localStorage
-    const status = 'active';
-    
     return {
       id: uuid || `error-${index}`,
       issueId: issueId, // PostHog's issue ID for direct linking
@@ -515,8 +442,7 @@ function transformErrorData(results, statusFilter = 'active') {
       userEmail: personEmail,
       firstSeen: timestamp,
       lastSeen: timestamp,
-      occurrences: 1,
-      status: status
+      occurrences: 1
     };
   });
 }

@@ -137,7 +137,8 @@ function getDashboardKeys() {
     // Canvas management
     'hashbase_canvases',
     'hashbase_active_canvas',
-    // Note: gmail_tokens excluded - managed by .env file OAuth flow
+    // Gmail OAuth tokens - now included for persistence across devices/sessions
+    'gmail_tokens',
     // AI Chat widget related keys
     'hashbase_ai_conversations',
     'hashbase_ai_current_conversation',
@@ -204,7 +205,8 @@ export async function exportConfig() {
       try {
         const parsed = JSON.parse(value);
         // Separate secrets from other data
-        if (key === 'hashbase_secrets') {
+        // Encrypt both API secrets and OAuth tokens for security
+        if (key === 'hashbase_secrets' || key === 'gmail_tokens') {
           secretsData[key] = parsed;
         } else {
           regularData[key] = parsed;
