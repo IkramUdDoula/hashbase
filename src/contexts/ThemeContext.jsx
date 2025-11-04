@@ -20,8 +20,6 @@ export function ThemeProvider({ children }) {
     
     // Save to localStorage
     localStorage.setItem('hashbase-theme', theme);
-    
-    console.log('Theme applied:', theme, 'Classes:', root.classList.toString());
   }, [theme]);
 
   return (

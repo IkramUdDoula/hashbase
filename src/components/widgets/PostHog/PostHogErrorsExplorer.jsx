@@ -36,26 +36,21 @@ export function PostHogErrorsExplorer({
   useEffect(() => {
     async function loadStackTrace() {
       if (!error || !projectId || !open) {
-        console.log('Stack trace loading skipped:', { error: !!error, projectId, open });
         setStackFrames([]);
         return;
       }
       
-      console.log('Loading stack trace for error:', error.id, 'projectId:', projectId);
       setLoadingStackTrace(true);
       setStackTraceError(null);
       
       try {
         // Fetch the error event to get frames
         const errorEvent = await fetchErrorEvent(projectId, error.id);
-        console.log('Error event received:', errorEvent);
         
         if (errorEvent && errorEvent.frames) {
           // Use frames directly from the exception list
-          console.log('Using frames from exception list:', errorEvent.frames);
           setStackFrames(errorEvent.frames);
         } else {
-          console.log('No frames in error event');
           setStackFrames([]);
         }
       } catch (err) {

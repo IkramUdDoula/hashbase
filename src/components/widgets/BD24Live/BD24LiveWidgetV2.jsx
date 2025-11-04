@@ -49,7 +49,6 @@ export function BD24LiveWidgetV2({ rowSpan = 2, dragRef }) {
       }
       
       const response = await fetchBD24LiveNews();
-      console.log('📰 BD24 Live Widget - Received articles:', response.length);
       
       if (response.length === 0) {
         setArticles([]);

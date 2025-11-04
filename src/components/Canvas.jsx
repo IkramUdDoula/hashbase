@@ -232,11 +232,35 @@ export function Canvas({ widgets }) {
   }, []);
   
   // Update layout configuration whenever layout changes
+  // Note: handleDrop now updates config synchronously, but this useEffect
+  // still handles other layout changes (like resize, initial load, canvas switch)
   useEffect(() => {
+    // Skip if layoutConfig is already up-to-date (prevents double updates after drop)
+    if (layoutConfig) {
+      const currentConfig = createLayoutConfig(layout);
+      const currentWidgetIds = Object.keys(currentConfig.widgets).sort().join(',');
+      const existingWidgetIds = Object.keys(layoutConfig.widgets).sort().join(',');
+      
+      // Only update if widget positions or IDs have changed
+      if (currentWidgetIds === existingWidgetIds) {
+        const positionsChanged = Object.keys(currentConfig.widgets).some(widgetId => {
+          const current = currentConfig.widgets[widgetId];
+          const existing = layoutConfig.widgets[widgetId];
+          return !existing || 
+                 current.startDropzone !== existing.startDropzone ||
+                 current.rowSpan !== existing.rowSpan;
+        });
+        
+        if (!positionsChanged) {
+          return; // Skip update if nothing changed
+        }
+      }
+    }
+    
     const config = createLayoutConfig(layout);
     setLayoutConfig(config);
     saveLayoutConfig(config);
-  }, [layout]);
+  }, [layout, layoutConfig]);
   
   // Widget row spans - tracks how many rows each widget occupies
   const getInitialRowSpans = () => {
@@ -285,6 +309,9 @@ export function Canvas({ widgets }) {
     });
     return directions;
   });
+  
+  // Track recently dropped widget for success animation
+  const [recentlyDroppedWidget, setRecentlyDroppedWidget] = useState(null);
 
   // Save layout and rowSpans to localStorage whenever they change
   useEffect(() => {
@@ -367,10 +394,15 @@ export function Canvas({ widgets }) {
       // Sort widgets in column by startRow
       newLayout[targetCol].sort((a, b) => a.startRow - b.startRow);
       
-      // Refresh page after successful drop to ensure synchronization
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
+      // Immediately update layout config to ensure synchronization
+      // This replaces the page reload approach with instant state updates
+      const updatedConfig = createLayoutConfig(newLayout);
+      setLayoutConfig(updatedConfig);
+      saveLayoutConfig(updatedConfig);
+      
+      // Add success animation feedback
+      setRecentlyDroppedWidget(widgetId);
+      setTimeout(() => setRecentlyDroppedWidget(null), 600);
       
       return newLayout;
     });
@@ -535,10 +567,15 @@ export function Canvas({ widgets }) {
         if (cell.type === 'widget-start') {
           // Render widget with grid-row span
           const widget = cell.widget;
+          const isRecentlyDropped = recentlyDroppedWidget === widget.id;
+          // Use widget ID in key to force re-render when widgets swap positions
+          const uniqueKey = `${widget.id}-${cellKey}`;
           cells.push(
             <div
-              key={cellKey}
-              className="h-full overflow-hidden"
+              key={uniqueKey}
+              className={`h-full overflow-hidden transition-all duration-300 ${
+                isRecentlyDropped ? 'animate-pulse' : ''
+              }`}
               style={{ gridRow: `span ${widget.rowSpan}` }}
             >
               <DropZone
@@ -552,6 +589,7 @@ export function Canvas({ widgets }) {
                   widget={getWidgetById(widget.id)}
                   rowSpan={widget.rowSpan}
                   onResize={handleResize}
+                  currentLayout={layout}
                 />
               </DropZone>
             </div>

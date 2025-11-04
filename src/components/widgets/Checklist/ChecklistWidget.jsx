@@ -49,7 +49,6 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
       try {
         const parsed = JSON.parse(savedItems);
         setItems(parsed);
-        console.log('📂 Loaded checklist items:', parsed.length);
       } catch (e) {
         console.error('Failed to load checklist items:', e);
       }
@@ -61,7 +60,6 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
         const parsed = JSON.parse(savedSettings);
         setSettings(parsed);
         setTempSettings(parsed);
-        console.log('📂 Loaded checklist settings');
       } catch (e) {
         console.error('Failed to load checklist settings:', e);
       }
@@ -77,9 +75,8 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
     
     try {
       localStorage.setItem('checklistItems', JSON.stringify(items));
-      console.log('✅ Saved checklist items:', items.length);
     } catch (error) {
-      console.error('❌ Failed to save checklist items:', error);
+      console.error('Failed to save checklist items:', error);
     }
   }, [items, isInitialized]);
   
@@ -89,9 +86,8 @@ export function ChecklistWidget({ rowSpan = 2, dragRef }) {
     
     try {
       localStorage.setItem('checklistSettings', JSON.stringify(settings));
-      console.log('✅ Saved checklist settings');
     } catch (error) {
-      console.error('❌ Failed to save checklist settings:', error);
+      console.error('Failed to save checklist settings:', error);
     }
   }, [settings, isInitialized]);
   

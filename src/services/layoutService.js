@@ -246,10 +246,6 @@ export function getSmartNextRowSpan(currentRowSpan, availableSpaceBelow, lastDir
 export function saveLayoutConfig(config) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-    console.log('💾 Layout configuration saved:', {
-      widgets: Object.keys(config.widgets).length,
-      occupiedDropzones: config.occupiedDropzones.length
-    });
   } catch (error) {
     console.error('Failed to save layout configuration:', error);
   }
@@ -279,7 +275,6 @@ export function loadLayoutConfig() {
       config.occupiedDropzones = new Set(config.occupiedDropzones);
     } else {
       // Rebuild from widgets if corrupted or missing
-      console.warn('⚠️ Rebuilding occupiedDropzones from widget data...');
       config.occupiedDropzones = new Set();
       Object.values(config.widgets).forEach(widgetData => {
         if (widgetData.dropzones && Array.isArray(widgetData.dropzones)) {
@@ -287,12 +282,6 @@ export function loadLayoutConfig() {
         }
       });
     }
-    
-    console.log('📂 Layout configuration loaded:', {
-      version: config.version,
-      widgets: Object.keys(config.widgets).length,
-      occupiedDropzones: config.occupiedDropzones.size
-    });
     
     return config;
   } catch (error) {
@@ -307,7 +296,6 @@ export function loadLayoutConfig() {
  */
 export function clearLayoutConfig() {
   localStorage.removeItem(STORAGE_KEY);
-  console.log('🗑️ Layout configuration cleared');
 }
 
 /**

@@ -1,4 +1,5 @@
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { ChevronLeft, ChevronRight, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -90,7 +91,7 @@ const Explorer = ({
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop Overlay */}
       <div
@@ -185,7 +186,8 @@ const Explorer = ({
           </div>
         )}
       </div>
-    </>
+    </>,
+    document.body
   )
 }
 

@@ -10,14 +10,16 @@ import {
 
 const WIDGET_TYPE = 'WIDGET';
 
-export function DraggableWidget({ widgetId, widget, rowSpan = 1, onResize }) {
+export function DraggableWidget({ widgetId, widget, rowSpan = 1, onResize, currentLayout }) {
   const [{ isDragging }, drag, dragPreview] = useDrag(() => ({
     type: WIDGET_TYPE,
-    item: { widgetId },
+    item: () => {
+      return { widgetId };
+    },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-  }));
+  }), [currentLayout, widgetId]);
 
   if (!widget) return null;
 
@@ -31,8 +33,8 @@ export function DraggableWidget({ widgetId, widget, rowSpan = 1, onResize }) {
   return (
     <div
       ref={dragPreview}
-      className={`relative h-full transition-opacity ${
-        isDragging ? 'opacity-50' : 'opacity-100'
+      className={`relative h-full transition-all duration-300 ease-in-out ${
+        isDragging ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
       }`}
     >
       {/* Smart Resize Icon in Bottom Right Corner */}

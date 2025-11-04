@@ -225,7 +225,6 @@ async function fetchErrorsWithErrorTrackingApi(projectId, maxErrors, filterTestA
     } else if (response.status === 400) {
       // 400 might mean the query format is wrong or API changed
       // Fall back to EventsQuery
-      console.warn('ErrorTrackingQuery returned 400, falling back to EventsQuery');
       return await fetchErrorsWithEventsQuery(projectId, maxErrors, filterHosts, lastSeenDays);
     }
     throw new Error(`PostHog API error: ${response.status}`);
@@ -622,7 +621,6 @@ export async function fetchIssueIdFromFingerprint(projectId, fingerprint) {
     });
 
     if (!response.ok) {
-      console.warn(`Failed to fetch issue ID for fingerprint: ${response.status}`);
       return null;
     }
 
@@ -657,7 +655,6 @@ export async function fetchStackFrames(projectId, rawIds) {
   }
 
   try {
-    console.log('Fetching stack frames for raw_ids:', rawIds);
     const response = await fetch(`${POSTHOG_API_BASE}/api/environments/${projectId}/error_tracking/stack_frames/batch_get/`, {
       method: 'POST',
       headers: {
@@ -668,14 +665,10 @@ export async function fetchStackFrames(projectId, rawIds) {
     });
 
     if (!response.ok) {
-      console.warn(`Failed to fetch stack frames: ${response.status}`);
-      const errorText = await response.text();
-      console.warn('Stack frames error response:', errorText);
       return [];
     }
 
     const data = await response.json();
-    console.log('Stack frames response:', data);
     return data.results || [];
   } catch (error) {
     console.error('Error fetching stack frames:', error);
@@ -913,7 +906,6 @@ export async function fetchSurveyStats(projectId, surveyId, options = {}) {
     });
 
     if (!response.ok) {
-      console.warn(`Failed to fetch survey stats: ${response.status}`);
       return null;
     }
 
@@ -953,7 +945,6 @@ export async function fetchAllSurveyResponsesCount(projectId) {
     );
 
     if (!response.ok) {
-      console.warn(`Failed to fetch survey responses count: ${response.status}`);
       return {};
     }
 
@@ -1018,7 +1009,6 @@ export async function fetchSurveyResponses(projectId, surveyId, limit = 100) {
     );
 
     if (!response.ok) {
-      console.warn(`Failed to fetch survey responses: ${response.status}`);
       return { count: 0, results: [] };
     }
 
