@@ -5,6 +5,23 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hashbase - Your Command Center For Everything That Matters</title>
+    <script>
+      // Apply theme immediately to prevent white flash during reload
+      (function() {
+        const savedTheme = localStorage.getItem('hashbase-theme') || 'light';
+        document.documentElement.classList.add(savedTheme);
+      })();
+    </script>
+    <style>
+      /* Prevent white flash by setting background immediately */
+      body {
+        background-color: #f8fafc;
+        margin: 0;
+      }
+      html.dark body {
+        background-color: #000000;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
