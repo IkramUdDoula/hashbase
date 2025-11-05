@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { BaseWidgetV2 } from '../../BaseWidgetV2';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Mail, LogIn, ExternalLink, Loader2, MailCheck, MailWarning } from 'lucide-react';
+import { Mail, LogIn, LogOut, ExternalLink, Loader2, MailCheck, MailWarning } from 'lucide-react';
 import { SiGmail } from 'react-icons/si';
-import { fetchUnreadEmails, getAuthUrl, checkAuthStatus, getGmailUrl } from '@/services/gmailService';
+import { fetchUnreadEmails, getAuthUrl, checkAuthStatus, getGmailUrl, clearGmailToken } from '@/services/gmailService';
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { GmailExplorer } from './GmailExplorer';
 
@@ -53,6 +53,14 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
       setError('Failed to get authentication URL');
       setAuthenticating(false);
     }
+  };
+
+  const handleLogout = () => {
+    clearGmailToken();
+    setIsAuthenticated(false);
+    setEmails([]);
+    setCurrentState('error');
+    setError('Not authenticated with Gmail');
   };
 
   const handleOpenEmail = (emailId) => {
@@ -123,19 +131,30 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
     <Badge variant="secondary">{filteredEmails.length}</Badge>
   ) : null;
 
-  // Custom action: Authenticate button
-  const customActions = !isAuthenticated && (
+  // Custom actions: Authenticate or Logout button
+  const customActions = isAuthenticated ? (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={handleLogout}
+      title="Logout from Gmail"
+      className="hover:bg-white/20 h-6 w-6"
+    >
+      <LogOut className="h-3 w-3" />
+    </Button>
+  ) : (
     <Button
       variant="ghost"
       size="icon"
       onClick={handleAuthenticate}
       disabled={authenticating}
       title="Authenticate with Gmail"
+      className="hover:bg-white/20 h-6 w-6"
     >
       {authenticating ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <Loader2 className="h-3 w-3 animate-spin" />
       ) : (
-        <LogIn className="h-4 w-4" />
+        <LogIn className="h-3 w-3" />
       )}
     </Button>
   );
