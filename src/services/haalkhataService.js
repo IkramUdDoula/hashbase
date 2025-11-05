@@ -4,8 +4,8 @@
 import { getSecret, SECRET_KEYS } from './secretsService';
 
 // API Configuration
-// Default to localhost:9002 in development, or use environment variable
-const API_BASE_URL = import.meta.env.VITE_HAALKHATA_API_URL || 'http://localhost:9002/api/v1';
+// Default to production Haalkhata API, or use environment variable
+const API_BASE_URL = import.meta.env.VITE_HAALKHATA_API_URL || 'https://haalkhata.netlify.app/api/v1';
 
 console.log('🔧 Haalkhata Service Initialized');
 console.log('   - API Base URL:', API_BASE_URL);
@@ -65,6 +65,9 @@ export async function createReceipt(data) {
     const cleanedData = Object.fromEntries(
       Object.entries(data).filter(([_, value]) => value !== null && value !== undefined)
     );
+    
+    // Add is_complete flag to mark receipt as complete
+    cleanedData.is_complete = true;
     
     console.log('🧹 Cleaned data (null values removed):', JSON.stringify(cleanedData, null, 2));
     
