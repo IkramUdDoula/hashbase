@@ -25,6 +25,7 @@ export function getDashboardKeys() {
     'hashbase_widget_preferences',            // Widget enable/disable
     'hashbase_widget_canvas_assignments',     // Widget-to-canvas assignments
     'hashbase-theme',                         // Light/dark mode
+    'hashbase_storage_settings',              // Storage settings (auto-sync, encryption, interval)
     
     // Canvas management
     'hashbase_canvases',                      // Array of canvas objects
@@ -104,15 +105,16 @@ export function getSecretKeys() {
  * Keys that are intentionally excluded from backups/sync
  * 
  * These keys contain:
- * - Storage configuration (not user data)
  * - OAuth tokens (security - require re-authentication)
  * - Local encryption keys (device-specific)
+ * 
+ * NOTE: hashbase_storage_settings is now INCLUDED in backups so settings
+ * like auto-sync, encryption preference, and sync interval are restored.
  * 
  * @returns {string[]} Array of excluded keys
  */
 export function getExcludedKeys() {
   return [
-    'hashbase_storage_settings',              // Storage configuration
     'hashbase_storage_encryption_key',        // Local encryption key (device-specific)
     'gmail_tokens',                           // Gmail OAuth tokens (EXCLUDED - security)
     // PostHog tokens are stored in hashbase_secrets, not separately

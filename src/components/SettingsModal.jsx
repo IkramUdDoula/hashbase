@@ -34,8 +34,8 @@ import {
   startAutoSync,
   stopAutoSync,
   isAutoSyncRunning,
-  listHistoryFiles,
-  readHistoryFile,
+  listBackupFiles,
+  readBackupFile,
   importDataToLocalStorage
 } from '@/services/storageService';
 
@@ -61,8 +61,8 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
   const [syncStatus, setSyncStatus] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [isAutoSyncActive, setIsAutoSyncActive] = useState(false);
-  const [historyFiles, setHistoryFiles] = useState([]);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [backupFiles, setBackupFiles] = useState([]);
+  const [showBackupsModal, setShowBackupsModal] = useState(false);
 
   // Load data on mount
   useEffect(() => {
@@ -86,12 +86,12 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
           if (handle) {
             setFolderHandle(handle);
             
-            // Load history files count
+            // Load backup files count
             try {
-              const files = await listHistoryFiles(handle);
-              setHistoryFiles(files);
+              const files = await listBackupFiles(handle);
+              setBackupFiles(files);
             } catch (error) {
-              console.error('Error loading history files:', error);
+              console.error('Error loading backup files:', error);
             }
             
             // Start auto-sync if enabled
@@ -353,12 +353,12 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
       await storeFolderHandle(dirHandle);
       setFolderHandle(dirHandle);
       
-      // Load history files count
+      // Load backup files count
       try {
-        const files = await listHistoryFiles(dirHandle);
-        setHistoryFiles(files);
+        const files = await listBackupFiles(dirHandle);
+        setBackupFiles(files);
       } catch (error) {
-        console.error('Error loading history files:', error);
+        console.error('Error loading backup files:', error);
       }
       
       // Update settings
@@ -417,12 +417,12 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
       if (result.success) {
         setSyncStatus(`✅ ${result.message} (${result.itemCount} items)`);
         
-        // Reload history files count
+        // Reload backup files count
         try {
-          const files = await listHistoryFiles(folderHandle);
-          setHistoryFiles(files);
+          const files = await listBackupFiles(folderHandle);
+          setBackupFiles(files);
         } catch (error) {
-          console.error('Error reloading history files:', error);
+          console.error('Error reloading backup files:', error);
         }
       } else {
         setSyncStatus(`❌ ${result.message}`);
@@ -447,7 +447,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
 
     try {
       setIsSyncing(true);
-      setSyncStatus('Syncing from file...');
+      setSyncStatus('Loading from latest backup...');
       
       // Verify we still have access
       const hasAccess = await verifyFolderAccess(folderHandle);
@@ -462,7 +462,9 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
       const result = await syncFromFile(folderHandle);
       
       if (result.success) {
-        setSyncStatus(`✅ ${result.message}. Refreshing in 2 seconds...`);
+        // Check if storage settings were included in the backup
+        const settingsIncluded = result.imported > 0;
+        setSyncStatus(`✅ ${result.message}${settingsIncluded ? ' (including storage settings)' : ''}. Refreshing in 2 seconds...`);
         setTimeout(() => {
           window.location.reload();
         }, 2000);
@@ -471,7 +473,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
         setTimeout(() => setSyncStatus(''), 5000);
       }
     } catch (error) {
-      console.error('Error syncing from file:', error);
+      console.error('Error loading from backup:', error);
       setSyncStatus(`Error: ${error.message}`);
       setTimeout(() => setSyncStatus(''), 5000);
     } finally {
@@ -588,37 +590,41 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
     setTimeout(() => setSyncStatus(''), 3000);
   };
 
-  const handleViewHistory = async () => {
+  const handleViewBackups = async () => {
     if (!folderHandle) return;
     
     try {
-      const files = await listHistoryFiles(folderHandle);
-      setHistoryFiles(files);
-      setShowHistoryModal(true);
+      const files = await listBackupFiles(folderHandle);
+      setBackupFiles(files);
+      setShowBackupsModal(true);
     } catch (error) {
-      console.error('Error loading history:', error);
-      setSyncStatus(`Error loading history: ${error.message}`);
+      console.error('Error loading backups:', error);
+      setSyncStatus(`Error loading backups: ${error.message}`);
       setTimeout(() => setSyncStatus(''), 5000);
     }
   };
 
-  const handleRestoreFromHistory = async (fileHandle) => {
+  const handleRestoreFromBackup = async (fileHandle) => {
     try {
-      setSyncStatus('Restoring from history...');
-      const data = await readHistoryFile(fileHandle);
+      setSyncStatus('Restoring from backup...');
+      const data = await readBackupFile(fileHandle);
       const result = importDataToLocalStorage(data);
       
       if (result.success) {
-        setSyncStatus(`✅ Restored ${result.imported} items. Refreshing in 2 seconds...`);
+        // Check if storage settings were restored
+        const restoredSettings = getStorageSettings();
+        const settingsRestored = result.imported > 0 && data.data.hashbase_storage_settings;
+        
+        setSyncStatus(`✅ Restored ${result.imported} items${settingsRestored ? ' (including storage settings)' : ''}. Refreshing in 2 seconds...`);
         setTimeout(() => {
           window.location.reload();
         }, 2000);
       } else {
-        setSyncStatus(`❌ Failed to restore from history`);
+        setSyncStatus(`❌ Failed to restore from backup`);
         setTimeout(() => setSyncStatus(''), 5000);
       }
     } catch (error) {
-      console.error('Error restoring from history:', error);
+      console.error('Error restoring from backup:', error);
       setSyncStatus(`Error: ${error.message}`);
       setTimeout(() => setSyncStatus(''), 5000);
     }
@@ -1046,7 +1052,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
             <div id="storage-panel" role="tabpanel" aria-labelledby="storage-tab" className="space-y-4">
               {/* Tab Description */}
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Manage how your data is stored. Choose between browser-only storage or sync with a local folder.
+                Save your dashboard data to a local folder. Each save creates a timestamped backup file. Load from folder restores the most recent backup.
               </p>
 
               {/* File System API Support Check */}
@@ -1077,15 +1083,14 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                 </div>
               )}
 
-              {/* Local Folder Sync Section */}
+              {/* Periodic Backups Section */}
               <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                 <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-2">
                   <FolderOpen className="h-4 w-4" />
-                  Local Folder Sync
+                  Periodic Backups to Folder
                 </h3>
                 <p className="text-xs text-blue-800 dark:text-blue-200 mb-3">
-                  Sync all your dashboard data to a local folder as a single JSON file. This allows you to backup, 
-                  version control, or share your configuration across devices.
+                  Automatically save timestamped backups to a folder. Each save creates a new backup file. Load from folder restores the most recent backup.
                 </p>
 
                 {/* Folder Selection */}
@@ -1100,7 +1105,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                               {getFolderName(folderHandle)}
                             </p>
                             <p className="text-xs text-gray-600 dark:text-gray-400">
-                              File: hashbase-data.json
+                              Backups: {backupFiles.length} files
                             </p>
                           </div>
                         </div>
@@ -1215,7 +1220,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                         ) : (
                           <Upload className="h-4 w-4 mr-2" />
                         )}
-                        Save to File
+                        Save Backup
                       </Button>
                       <Button
                         onClick={handleSyncFromFile}
@@ -1229,7 +1234,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                         ) : (
                           <Download className="h-4 w-4 mr-2" />
                         )}
-                        Load from File
+                        Load Latest Backup
                       </Button>
                     </div>
                   )}
@@ -1246,7 +1251,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                   )}
                 </div>
 
-                {/* Encryption & History Settings */}
+                {/* Encryption & Backup Settings */}
                 {folderHandle && (
                   <div className="space-y-2 mt-3 pt-3 border-t border-blue-200 dark:border-blue-800">
                     {/* Encryption Toggle */}
@@ -1273,73 +1278,42 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                       </button>
                     </div>
 
-                    {/* History Toggle */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Download className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                        <span className="text-xs text-blue-700 dark:text-blue-300">
-                          Save version history
-                        </span>
-                      </div>
-                      <button
-                        onClick={handleToggleHistory}
-                        role="switch"
-                        aria-checked={storageSettings.saveHistory !== false}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          storageSettings.saveHistory !== false ? 'bg-gray-900 dark:bg-gray-100' : 'bg-gray-300 dark:bg-gray-700'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
-                            storageSettings.saveHistory !== false ? 'bg-white dark:bg-gray-900 translate-x-6' : 'bg-white translate-x-1'
-                          }`}
+                    {/* Maximum Backup Files Setting */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                          Maximum Backup Files
+                        </Label>
+                        <Input
+                          min="1"
+                          max="1000"
+                          value={storageSettings.maxBackupFiles || 50}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value) || 50;
+                            const newSettings = {
+                              ...storageSettings,
+                              maxBackupFiles: value
+                            };
+                            setStorageSettingsState(newSettings);
+                            saveStorageSettings(newSettings);
+                          }}
+                          className="w-20 h-7 text-xs border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-800"
                         />
-                      </button>
+                      </div>
+                      <p className="text-xs text-blue-600 dark:text-blue-400">
+                        Oldest backups are automatically deleted when limit is exceeded
+                      </p>
                     </div>
 
-                    {/* Maximum History Setting */}
-                    {storageSettings.saveHistory !== false && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                            Maximum History Versions
-                          </Label>
-                          <Input
-                            min="1"
-                            max="1000"
-                            value={storageSettings.maxHistoryVersions || 50}
-                            onChange={(e) => {
-                              const value = parseInt(e.target.value) || 50;
-                              const newSettings = {
-                                ...storageSettings,
-                                maxHistoryVersions: value
-                              };
-                              setStorageSettingsState(newSettings);
-                              saveStorageSettings(newSettings);
-                            }}
-                            className="w-20 h-7 text-xs border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-800"
-                          />
-                        </div>
-                        <p className="text-xs text-blue-600 dark:text-blue-400">
-                          Est. size: {((storageSettings.maxHistoryVersions || 50) * 7.5).toFixed(0)} KB
-                          {((storageSettings.maxHistoryVersions || 50) * 7.5 / 1024 >= 1) && 
-                            ` (~${((storageSettings.maxHistoryVersions || 50) * 7.5 / 1024).toFixed(1)} MB)`
-                          }
-                        </p>
-                      </div>
-                    )}
-
-                    {/* View History Button */}
-                    {storageSettings.saveHistory !== false && (
-                      <Button
-                        onClick={handleViewHistory}
-                        variant="ghost"
-                        size="sm"
-                        className="w-full text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20"
-                      >
-                        View History ({historyFiles.length} versions)
-                      </Button>
-                    )}
+                    {/* View Backups Button */}
+                    <Button
+                      onClick={handleViewBackups}
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                    >
+                      View Backups ({backupFiles.length} versions)
+                    </Button>
                   </div>
                 )}
 
@@ -1423,29 +1397,29 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                 </div>
               </div>
 
-              {/* History Modal */}
-              {showHistoryModal && (
+              {/* Backups Modal */}
+              {showBackupsModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                   <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border-2 border-gray-200 dark:border-gray-800">
                     <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Version History</h3>
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Periodic Backups</h3>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setShowHistoryModal(false)}
+                        onClick={() => setShowBackupsModal(false)}
                         className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
                       >
                         <X className="h-5 w-5" />
                       </Button>
                     </div>
                     <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                      {historyFiles.length === 0 ? (
+                      {backupFiles.length === 0 ? (
                         <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
-                          No history files found
+                          No backup files found
                         </p>
                       ) : (
                         <div className="space-y-2">
-                          {historyFiles.map((file, index) => (
+                          {backupFiles.map((file, index) => (
                             <div
                               key={file.name}
                               className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors"
@@ -1457,7 +1431,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                                   </p>
                                   {index === 0 && (
                                     <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">
-                                      Current
+                                      Latest
                                     </span>
                                   )}
                                 </div>
@@ -1467,8 +1441,8 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
                               </div>
                               <Button
                                 onClick={() => {
-                                  setShowHistoryModal(false);
-                                  handleRestoreFromHistory(file.handle);
+                                  setShowBackupsModal(false);
+                                  handleRestoreFromBackup(file.handle);
                                 }}
                                 variant="outline"
                                 size="sm"

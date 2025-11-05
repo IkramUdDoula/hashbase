@@ -23,7 +23,7 @@ Complete guide to Hashbase's configuration export/import and storage systems.
 Hashbase provides two complementary systems for data persistence:
 
 1. **Config Export/Import** - Download/upload configuration as JSON files
-2. **Folder Sync** - Automatic synchronization with a local folder
+2. **Folder Storage** - Automatic synchronization with a local folder using a root config file and periodic backups
 
 Both systems use the same data structure and support encryption for sensitive data.
 
@@ -32,8 +32,9 @@ Both systems use the same data structure and support encryption for sensitive da
 - ✅ **Complete State Preservation** - All canvases, widgets, and settings
 - ✅ **AES-256-GCM Encryption** - Secrets encrypted with environment key
 - ✅ **Multi-Canvas Support** - Each canvas layout preserved independently
-- ✅ **Auto-Sync** - Configurable automatic folder synchronization
-- ✅ **Version History** - Optional timestamped backups
+- ✅ **Auto-Sync** - Configurable automatic folder synchronization (default: 5 minutes)
+- ✅ **Periodic Backups** - Automatic timestamped backups on each save
+- ✅ **Automatic Cleanup** - Old backups deleted when limit exceeded (default: 50 files)
 - ✅ **Cross-Device** - Transfer settings between browsers/devices
 
 ---
@@ -110,27 +111,34 @@ export function getDashboardKeys() {
 ```
 
 ### Understanding the System
-
 **Single Source of Truth:** `src/lib/dashboardKeys.js`
 
 This file defines ALL localStorage keys that get backed up. Both `configService.js` and `storageService.js` import from this file to ensure 100% consistency.
 
 **What Gets Stored:**
-1. **Secrets** - API keys (encrypted)
-2. **Widgets** - Enable/disable state
-3. **Canvas Layout** - Widget positions and row spans
-4. **Widget Settings** - All widget configurations
-5. **Widget Data** - Timer, Checklist, AI Chat data, etc.
+1. **Secrets** - API keys (encrypted with AES-256-GCM)
+2. **Widget Preferences** - Which widgets are enabled
+3. **Canvas Configuration** - All canvas layouts and assignments
+4. **Theme** - Light/dark mode preference
+5. **Storage Settings** - Auto-sync, encryption, interval, max backups
+6. **Widget Data** - Timer, Checklist, AI Chat data, etc.
 
 **What's Excluded:**
 - OAuth tokens (security - users re-authenticate)
 - Storage configuration (not user data)
 
+{{ ... }}
 **Storage Methods:**
 All three methods use the **same keys** and are **100% synchronized**:
 1. Browser localStorage (automatic)
-2. Config Download/Upload (manual JSON backup)
-3. Folder Sync (auto-sync to local folder, Chrome/Edge only)
+2. Config Download/Upload (manual JSON backup, includes storage settings)
+3. Folder Storage (auto-sync to local folder with periodic backups, Chrome/Edge only)
+
+**Storage Settings Synced:**
+- ✅ Auto-sync enabled/disabled
+- ✅ Sync interval (1m-30d)
+- ✅ Encryption preference
+- ✅ Maximum backup files (1-1000)
 
 ### Common Mistakes
 
@@ -415,16 +423,17 @@ const result = await uploadConfig();
 3. System validates and imports data
 4. Page refreshes to apply changes
 
-### 2. Folder Sync
+### 2. Folder Storage
 
-**Location:** Settings → Storage Tab → Local Folder Sync
+**Location:** Settings → Storage Tab → Local Folder Storage
 
 #### Features
 
-- **Auto-Sync** - Automatic periodic synchronization
-- **Manual Sync** - On-demand save/load
-- **Version History** - Timestamped backup files
-- **Encryption** - Optional file encryption
+- **Auto-Sync** - Automatic periodic synchronization (default: 5 minutes)
+- **Manual Sync** - On-demand save/load with "Save Backup" and "Load Latest Backup" buttons
+- **Periodic Backups** - Automatic timestamped backup files in `/backups` folder
+- **Automatic Cleanup** - Old backups deleted when max limit exceeded (default: 50)
+- **Encryption** - Optional file encryption (AES-256-GCM)
 
 #### Setup
 
@@ -448,33 +457,39 @@ const dirHandle = await requestFolderAccess();
 
 ```
 your-selected-folder/
-├── hashbase-data.json          # Current data
-└── history/                    # Version history (if enabled)
-    ├── hashbase-data-2025-11-04T08-52-52.json
-    ├── hashbase-data-2025-11-04T09-22-52.json
+├── hashbase-config.json        # Root file - always synced with current app state
+└── backups/                    # Periodic backups (automatic)
+    ├── hashbase-backup-2025-11-04T08-52-52.json
+    ├── hashbase-backup-2025-11-04T09-22-52.json
     └── ...
 ```
+
+**Important:** 
+- Each save creates a new timestamped backup file
+- Loading from folder reads the most recent backup
+- Old backups are automatically deleted when max limit is exceeded
+- Maximum backup files setting is synced across devices
 
 #### API Usage
 
 ```javascript
 import { 
-  syncToFile,      // Save to file
-  syncFromFile,    // Load from file
+  syncToFile,      // Save to folder (root file + backup)
+  syncFromFile,    // Load from folder (reads root file)
   startAutoSync,   // Start auto-sync
   stopAutoSync     // Stop auto-sync
 } from '@/services/storageService';
 
-// Manual sync to file
+// Manual save to folder (creates backup + updates root file)
 const result = await syncToFile(folderHandle);
-// Returns: { success, message, itemCount }
+// Returns: { success, message, itemCount, encrypted }
 
-// Manual sync from file
+// Manual load from folder (reads root file)
 const result = await syncFromFile(folderHandle);
-// Returns: { success, message }
+// Returns: { success, message, imported, errors }
 
-// Start auto-sync (30 minute interval)
-startAutoSync(folderHandle, 30, (result) => {
+// Start auto-sync (5 minute interval - default)
+startAutoSync(folderHandle, 5, (result) => {
   console.log('Auto-sync completed:', result);
 });
 
@@ -482,16 +497,23 @@ startAutoSync(folderHandle, 30, (result) => {
 stopAutoSync();
 ```
 
-#### Version History
+#### Periodic Backups
 
-**Settings:**
-- **Save History:** Toggle on/off
-- **Max Versions:** 1-1000 (default: 50)
-- **Estimated Size:** ~7.5 KB per version
+**Automatic Behavior:**
+- Backups are created automatically on each save (both manual and auto-sync)
+- Stored in `/backups` subfolder with timestamps
+- Estimated Size: ~7.5 KB per backup
+- **Automatic Cleanup:** Old backups deleted when max limit exceeded (default: 50)
 
-**Restore from History:**
-1. Click "View History"
-2. Browse timestamped backups
+**Maximum Backup Files:**
+- Default: 50 files
+- Range: 1-1000
+- Configurable in Settings → Storage
+- Synced across devices in backup files
+
+**Restore from Backup:**
+1. Click "View Backups"
+2. Browse timestamped backups (sorted newest first)
 3. Click "Restore" on desired version
 4. Page refreshes with restored data
 
@@ -922,26 +944,31 @@ const dirHandle = await requestFolderAccess();
 
 **Throws:** Error if user cancels or permission denied
 
-#### `syncToFile(folderHandle)`
+#### `syncToFile(folderHandle, saveBackup?)`
 
-Save data to file in folder.
+Save data to folder (updates root file + creates periodic backup).
 
 ```javascript
-const result = await syncToFile(folderHandle);
+const result = await syncToFile(folderHandle, true);
 ```
+
+**Parameters:**
+- `folderHandle` (FileSystemDirectoryHandle) - Folder handle
+- `saveBackup` (boolean, optional) - Whether to create a backup (default: true)
 
 **Returns:** `Promise<Object>`
 ```javascript
 {
   success: true,
-  message: "Data synced to file",
-  itemCount: 42
+  message: "Data saved to folder successfully",
+  itemCount: 42,
+  encrypted: true
 }
 ```
 
 #### `syncFromFile(folderHandle)`
 
-Load data from file in folder.
+Load data from folder (reads from root file).
 
 ```javascript
 const result = await syncFromFile(folderHandle);
@@ -951,7 +978,9 @@ const result = await syncFromFile(folderHandle);
 ```javascript
 {
   success: true,
-  message: "Data loaded from file"
+  message: "Successfully loaded 42 items from folder",
+  imported: 42,
+  errors: []
 }
 ```
 
@@ -978,19 +1007,19 @@ Stop automatic synchronization.
 stopAutoSync();
 ```
 
-#### `listHistoryFiles(folderHandle)`
+#### `listBackupFiles(folderHandle)`
 
-List version history files.
+List periodic backup files.
 
 ```javascript
-const files = await listHistoryFiles(folderHandle);
+const files = await listBackupFiles(folderHandle);
 ```
 
 **Returns:** `Promise<Array>`
 ```javascript
 [
   {
-    name: "hashbase-data-2025-11-04T08-52-52.json",
+    name: "hashbase-backup-2025-11-04T08-52-52.json",
     lastModified: Date,
     size: 7542,
     handle: FileSystemFileHandle
@@ -998,12 +1027,12 @@ const files = await listHistoryFiles(folderHandle);
 ]
 ```
 
-#### `readHistoryFile(fileHandle)`
+#### `readBackupFile(fileHandle)`
 
-Read a history file.
+Read a backup file.
 
 ```javascript
-const data = await readHistoryFile(fileHandle);
+const data = await readBackupFile(fileHandle);
 ```
 
 **Returns:** `Promise<Object>` - Configuration data
@@ -1130,26 +1159,29 @@ console.log(validateConfig(config));
 - ✅ **Same key everywhere** - Use same key on all devices
 - ✅ **Backup the key** - Store encryption key securely
 
-### 3. Folder Sync
+### 3. Folder Storage
 
 - **Dedicated folder** - Create `hashbase-sync` folder
 - **Cloud sync** - Use Dropbox/OneDrive for cross-device sync
-- **Reasonable intervals** - 30 minutes to 1 hour for most users
-- **Enable history** - Keep 50-100 versions for safety
+- **Settings preserved** - Auto-sync, encryption, and interval settings sync across devices
+- **Automatic backups** - Backups created automatically on each save
+- **Automatic cleanup** - Old backups deleted when max limit exceeded
 
 ### 4. Multi-Device Setup
 
-**Option 1: Folder Sync (Recommended)**
-1. Setup folder sync on Device A
+**Option 1: Folder Storage (Recommended)**
+1. Setup folder storage on Device A (configure auto-sync, interval, etc.)
 2. Use cloud storage (Dropbox, OneDrive)
 3. On Device B, select same cloud folder
-4. Auto-sync keeps both devices in sync
+4. Load latest backup - all settings are restored automatically
+5. Both devices now have identical configuration
 
 **Option 2: Manual Transfer**
-1. Download config on Device A
+1. Download config on Device A (includes all storage settings)
 2. Transfer file to Device B
 3. Upload config on Device B
-4. Repeat when changes made
+4. All settings (including auto-sync preferences) are restored
+5. Repeat when changes made
 
 ### 5. Widget Development
 

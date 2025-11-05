@@ -7,8 +7,7 @@
 import { getDashboardKeys, shouldEncryptKey } from '@/lib/dashboardKeys';
 
 const STORAGE_SETTINGS_KEY = 'hashbase_storage_settings';
-const STORAGE_FILE_NAME = 'hashbase-data.json';
-const HISTORY_FOLDER_NAME = 'history';
+const BACKUPS_FOLDER_NAME = 'backups';
 
 /**
  * Get storage settings from localStorage
@@ -28,10 +27,9 @@ export function getStorageSettings() {
     folderHandle: null,
     lastSync: null,
     autoSync: true, // Auto-sync enabled by default
-    syncInterval: 30, // Sync interval in minutes (default: 30 minutes)
-    saveHistory: true, // Save versioned history
+    syncInterval: 5, // Sync interval in minutes (default: 5 minutes for automatic periodic saves)
     encryptData: true, // Encrypt data files
-    maxHistoryVersions: 50 // Maximum number of history versions to keep (default: 50)
+    maxBackupFiles: 50 // Maximum number of backup files to keep (default: 50)
   };
 }
 
@@ -104,6 +102,9 @@ export async function getAllDashboardData(encryptSecrets = false) {
   const secretsData = {};
   const regularData = {};
   
+  console.log('📦 Collecting data from localStorage...');
+  console.log('   Total keys to check:', keys.length);
+  
   keys.forEach(key => {
     const value = localStorage.getItem(key);
     if (value !== null) {
@@ -114,6 +115,7 @@ export async function getAllDashboardData(encryptSecrets = false) {
         // OAuth tokens (gmail_tokens) are excluded from backups for security
         if (shouldEncryptKey(key)) {
           secretsData[key] = parsed;
+          console.log('   🔑 Found secret key:', key);
         } else {
           regularData[key] = parsed;
         }
@@ -122,6 +124,9 @@ export async function getAllDashboardData(encryptSecrets = false) {
       }
     }
   });
+  
+  console.log('   Secrets found:', Object.keys(secretsData).length);
+  console.log('   Regular data items:', Object.keys(regularData).length);
 
   // Encrypt the secrets if encryption is requested and key is configured
   if (encryptSecrets && hasEncryptionKey && Object.keys(secretsData).length > 0) {
@@ -129,7 +134,7 @@ export async function getAllDashboardData(encryptSecrets = false) {
       const secretsJson = JSON.stringify(secretsData);
       const encryptedSecrets = await encryptFileData(secretsJson);
       config.data.encrypted_secrets = encryptedSecrets;
-      console.log('🔐 Secrets encrypted');
+      console.log('🔐 Secrets encrypted successfully');
     } catch (error) {
       console.error('❌ Failed to encrypt secrets:', error);
       // Fall back to unencrypted if encryption fails
@@ -138,7 +143,12 @@ export async function getAllDashboardData(encryptSecrets = false) {
     }
   } else {
     // No encryption or no key configured, include secrets unencrypted
-    Object.assign(config.data, secretsData);
+    if (Object.keys(secretsData).length > 0) {
+      console.log('⚠️ Secrets found but NOT encrypted (encryptSecrets:', encryptSecrets, ', hasKey:', hasEncryptionKey, ')');
+      Object.assign(config.data, secretsData);
+    } else {
+      console.log('⚠️ No secrets found in localStorage');
+    }
   }
   
   // Add regular data (not encrypted)
@@ -252,118 +262,82 @@ async function decryptFileData(encryptedData, ivBase64) {
 }
 
 /**
- * Write data to file in the selected folder
+ * Save periodic backup file to backups folder
+ * Each save creates a new timestamped backup file
+ * Automatically cleans up old backups if max limit is exceeded
  * @param {FileSystemDirectoryHandle} dirHandle - Directory handle
  * @param {Object} data - Data to write (already in config format)
- * @returns {Promise<void>}
+ * @returns {Promise<string>} Filename of saved backup
  */
 export async function writeDataToFile(dirHandle, data) {
   try {
-    // Get or create the file
-    const fileHandle = await dirHandle.getFileHandle(STORAGE_FILE_NAME, { create: true });
-    
-    // Create a writable stream
-    const writable = await fileHandle.createWritable();
-    
-    // Write the data (data is already in the correct format from getAllDashboardData)
-    await writable.write(JSON.stringify(data, null, 2));
-    
-    // Close the file
-    await writable.close();
-    
-    console.log('✅ Data written to file successfully');
-  } catch (error) {
-    console.error('❌ Error writing data to file:', error);
-    throw error;
-  }
-}
-
-/**
- * Save versioned history file
- * @param {FileSystemDirectoryHandle} dirHandle - Directory handle
- * @param {Object} data - Data to save (already in config format)
- * @returns {Promise<string>} Filename of saved history
- */
-export async function saveHistoryFile(dirHandle, data) {
-  try {
-    // Create history folder if it doesn't exist
-    const historyDir = await dirHandle.getDirectoryHandle(HISTORY_FOLDER_NAME, { create: true });
+    // Create backups folder if it doesn't exist
+    const backupsDir = await dirHandle.getDirectoryHandle(BACKUPS_FOLDER_NAME, { create: true });
     
     // Generate filename with timestamp
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `hashbase-${timestamp}.json`;
+    const filename = `hashbase-backup-${timestamp}.json`;
     
-    // Create the history file (data is already in the correct format)
-    const fileHandle = await historyDir.getFileHandle(filename, { create: true });
+    // Create the backup file
+    const fileHandle = await backupsDir.getFileHandle(filename, { create: true });
     const writable = await fileHandle.createWritable();
     await writable.write(JSON.stringify(data, null, 2));
     await writable.close();
     
-    console.log(`📜 History saved: ${filename}`);
+    console.log(`📦 Backup saved: ${filename}`);
+    
+    // Clean up old backups if limit exceeded
+    await cleanupOldBackups(dirHandle);
+    
     return filename;
   } catch (error) {
-    console.error('❌ Error saving history file:', error);
+    console.error('❌ Error saving backup file:', error);
     throw error;
   }
 }
 
+
 /**
- * Read data from file in the selected folder (matching configService structure)
+ * Read data from the most recent backup file
  * @param {FileSystemDirectoryHandle} dirHandle - Directory handle
- * @returns {Promise<Object>} Data from file
+ * @returns {Promise<Object>} Data from most recent backup
  */
 export async function readDataFromFile(dirHandle) {
   try {
-    // Get the file handle
-    const fileHandle = await dirHandle.getFileHandle(STORAGE_FILE_NAME);
+    // Get all backup files
+    const files = await listBackupFiles(dirHandle);
     
-    // Get the file
-    const file = await fileHandle.getFile();
-    
-    // Read the contents
-    const text = await file.text();
-    
-    // Parse the config
-    const config = JSON.parse(text);
-    
-    // Check if secrets are encrypted separately (matching configService)
-    if (config.encrypted && config.data.encrypted_secrets) {
-      console.log('🔐 Decrypting secrets...');
-      const { encrypted, iv } = config.data.encrypted_secrets;
-      const decryptedJson = await decryptFileData(encrypted, iv);
-      const secretsData = JSON.parse(decryptedJson);
-      
-      // Replace encrypted_secrets with decrypted data
-      delete config.data.encrypted_secrets;
-      Object.assign(config.data, secretsData);
-      console.log('✅ Secrets decrypted successfully');
-    }
-    
-    console.log('✅ Data read from file successfully');
-    return config;
-  } catch (error) {
-    if (error.name === 'NotFoundError') {
-      console.log('ℹ️ Data file not found, will create on first sync');
+    if (files.length === 0) {
+      console.log('ℹ️ No backup files found');
       return null;
     }
-    console.error('❌ Error reading data from file:', error);
+    
+    // Get the most recent backup (files are sorted newest first)
+    const latestBackup = files[0];
+    console.log(`📂 Loading from latest backup: ${latestBackup.name}`);
+    
+    const data = await readBackupFile(latestBackup.handle);
+    console.log('✅ Data loaded from backup successfully');
+    return data;
+  } catch (error) {
+    console.error('❌ Error reading backup file:', error);
     throw error;
   }
 }
 
 /**
- * List all history files
+ * List all backup files
  * @param {FileSystemDirectoryHandle} dirHandle - Directory handle
- * @returns {Promise<Array>} List of history files with metadata
+ * @returns {Promise<Array>} List of backup files with metadata
  */
-export async function listHistoryFiles(dirHandle) {
+export async function listBackupFiles(dirHandle) {
   try {
-    const historyDir = await dirHandle.getDirectoryHandle(HISTORY_FOLDER_NAME);
+    const backupsDir = await dirHandle.getDirectoryHandle(BACKUPS_FOLDER_NAME);
     const files = [];
     
-    for await (const entry of historyDir.values()) {
+    for await (const entry of backupsDir.values()) {
       if (entry.kind === 'file' && entry.name.endsWith('.json')) {
-        const fileHandle = await historyDir.getFileHandle(entry.name);
+        const fileHandle = await backupsDir.getFileHandle(entry.name);
         const file = await fileHandle.getFile();
         
         files.push({
@@ -383,17 +357,17 @@ export async function listHistoryFiles(dirHandle) {
     if (error.name === 'NotFoundError') {
       return [];
     }
-    console.error('❌ Error listing history files:', error);
+    console.error('❌ Error listing backup files:', error);
     throw error;
   }
 }
 
 /**
- * Read a specific history file (matching configService structure)
+ * Read a specific backup file (matching configService structure)
  * @param {FileSystemFileHandle} fileHandle - File handle
- * @returns {Promise<Object>} Data from history file
+ * @returns {Promise<Object>} Data from backup file
  */
-export async function readHistoryFile(fileHandle) {
+export async function readBackupFile(fileHandle) {
   try {
     const file = await fileHandle.getFile();
     const text = await file.text();
@@ -412,8 +386,55 @@ export async function readHistoryFile(fileHandle) {
     
     return config;
   } catch (error) {
-    console.error('❌ Error reading history file:', error);
+    console.error('❌ Error reading backup file:', error);
     throw error;
+  }
+}
+
+/**
+ * Clean up old backup files if max limit is exceeded
+ * Keeps the most recent backups and deletes the oldest ones
+ * @param {FileSystemDirectoryHandle} dirHandle - Directory handle
+ * @returns {Promise<number>} Number of files deleted
+ */
+export async function cleanupOldBackups(dirHandle) {
+  try {
+    const settings = getStorageSettings();
+    const maxBackups = settings.maxBackupFiles || 50;
+    
+    // Get all backup files
+    const files = await listBackupFiles(dirHandle);
+    
+    if (files.length <= maxBackups) {
+      return 0; // No cleanup needed
+    }
+    
+    // Calculate how many to delete
+    const filesToDelete = files.length - maxBackups;
+    
+    // Get backups folder
+    const backupsDir = await dirHandle.getDirectoryHandle(BACKUPS_FOLDER_NAME);
+    
+    // Delete oldest files (files are sorted newest first, so delete from the end)
+    let deletedCount = 0;
+    for (let i = files.length - 1; i >= maxBackups; i--) {
+      try {
+        await backupsDir.removeEntry(files[i].name);
+        deletedCount++;
+        console.log(`🗑️ Deleted old backup: ${files[i].name}`);
+      } catch (error) {
+        console.warn(`⚠️ Failed to delete backup ${files[i].name}:`, error);
+      }
+    }
+    
+    if (deletedCount > 0) {
+      console.log(`✅ Cleaned up ${deletedCount} old backup(s). Keeping ${maxBackups} most recent.`);
+    }
+    
+    return deletedCount;
+  } catch (error) {
+    console.error('❌ Error cleaning up old backups:', error);
+    return 0; // Don't throw, just log and continue
   }
 }
 
@@ -452,12 +473,12 @@ export function importDataToLocalStorage(data) {
 }
 
 /**
- * Sync data from localStorage to file (matching configService structure)
+ * Save data to folder as a new timestamped backup
+ * Each save creates a new backup file in the backups folder
  * @param {FileSystemDirectoryHandle} dirHandle - Directory handle
- * @param {boolean} saveHistory - Whether to save a history version
  * @returns {Promise<Object>} Sync result
  */
-export async function syncToFile(dirHandle, saveHistory = true) {
+export async function syncToFile(dirHandle) {
   try {
     const settings = getStorageSettings();
     const encryptSecrets = settings.encryptData !== false;
@@ -465,17 +486,8 @@ export async function syncToFile(dirHandle, saveHistory = true) {
     // Get data in configService format
     const data = await getAllDashboardData(encryptSecrets);
     
-    // Save history file if enabled
-    if (saveHistory && settings.saveHistory !== false) {
-      try {
-        await saveHistoryFile(dirHandle, data);
-      } catch (historyError) {
-        console.warn('⚠️ Failed to save history, continuing with main sync:', historyError);
-      }
-    }
-    
-    // Write main data file
-    await writeDataToFile(dirHandle, data);
+    // Save as timestamped backup
+    const filename = await writeDataToFile(dirHandle, data);
     
     settings.lastSync = new Date().toISOString();
     settings.syncDirection = 'to-file';
@@ -483,21 +495,22 @@ export async function syncToFile(dirHandle, saveHistory = true) {
     
     return {
       success: true,
-      message: 'Data synced to file successfully',
+      message: 'Backup saved successfully',
+      filename: filename,
       itemCount: Object.keys(data.data).length,
       encrypted: data.encrypted
     };
   } catch (error) {
     return {
       success: false,
-      message: `Sync to file failed: ${error.message}`,
+      message: `Save backup failed: ${error.message}`,
       error: error.message
     };
   }
 }
 
 /**
- * Sync data from file to localStorage
+ * Load data from the most recent backup in the folder
  * @param {FileSystemDirectoryHandle} dirHandle - Directory handle
  * @returns {Promise<Object>} Sync result
  */
@@ -508,7 +521,7 @@ export async function syncFromFile(dirHandle) {
     if (!data) {
       return {
         success: false,
-        message: 'No data file found in the selected folder'
+        message: 'No backup files found in the selected folder'
       };
     }
     
@@ -522,15 +535,15 @@ export async function syncFromFile(dirHandle) {
     return {
       success: importResult.success,
       message: importResult.success 
-        ? `Successfully synced ${importResult.imported} items from file`
-        : 'Failed to sync from file',
+        ? `Successfully loaded ${importResult.imported} items from latest backup`
+        : 'Failed to load from backup',
       imported: importResult.imported,
       errors: importResult.errors
     };
   } catch (error) {
     return {
       success: false,
-      message: `Sync from file failed: ${error.message}`,
+      message: `Load from backup failed: ${error.message}`,
       error: error.message
     };
   }
