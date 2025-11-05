@@ -270,13 +270,13 @@ export function PostHogSurveysWidget({ rowSpan = 2, dragRef }) {
                     {survey.questions && (
                       <div className="flex items-center gap-1">
                         <MessageSquare className="h-3 w-3" />
-                        <span>{survey.questions.length} question{survey.questions.length !== 1 ? 's' : ''}</span>
+                        <span>{survey.questions.length}</span>
                       </div>
                     )}
                     {responseCounts[survey.id] !== undefined && (
                       <div className="flex items-center gap-1">
                         <ClipboardList className="h-3 w-3" />
-                        <span>{responseCounts[survey.id] || 0} response{responseCounts[survey.id] !== 1 ? 's' : ''}</span>
+                        <span>{responseCounts[survey.id] || 0}</span>
                       </div>
                     )}
                   </div>

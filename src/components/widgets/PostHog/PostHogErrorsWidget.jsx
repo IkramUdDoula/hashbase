@@ -394,13 +394,13 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
                       {error.occurrences && (
                         <div className="flex items-center gap-1">
                           <Hash className="h-3 w-3" />
-                          <span>{error.occurrences} occurrence{error.occurrences !== 1 ? 's' : ''}</span>
+                          <span>{error.occurrences}</span>
                         </div>
                       )}
                       {error.affectedUsers && (
                         <div className="flex items-center gap-1">
                           <Users className="h-3 w-3" />
-                          <span>{error.affectedUsers} user{error.affectedUsers !== 1 ? 's' : ''}</span>
+                          <span>{error.affectedUsers}</span>
                         </div>
                       )}
                     </div>

@@ -17,9 +17,10 @@ import {
   Calendar,
   Loader2,
   Link,
-  Code
+  Code,
+  MailCheck
 } from 'lucide-react';
-import { getGmailUrl, fetchEmailDetails } from '@/services/gmailService';
+import { getGmailUrl, fetchEmailDetails, markAsRead } from '@/services/gmailService';
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { parseEmailHTML, extractKeyValuePairs } from '@/lib/emailParser';
 import { isHaalkhataConfigured, processEmailWithAI, createReceipt } from '@/services/haalkhataService';
@@ -59,6 +60,7 @@ export function GmailExplorer({
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [detailsError, setDetailsError] = useState(null);
   const [sendingToHaalkhata, setSendingToHaalkhata] = useState(false);
+  const [markingAsRead, setMarkingAsRead] = useState(false);
   
   // Check if Haalkhata is configured
   const haalkhataConfigured = isHaalkhataConfigured();
@@ -119,6 +121,29 @@ export function GmailExplorer({
       setTimeout(() => setCopiedEmail(null), 2000);
     } catch (err) {
       console.error('Failed to copy email:', err);
+    }
+  };
+
+  const handleMarkAsRead = async () => {
+    if (!emailId) return;
+    
+    setMarkingAsRead(true);
+    try {
+      await markAsRead(emailId);
+      addToast('Email marked as read', 'success');
+      
+      // Refresh the email list after marking as read
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+      // Close the explorer after marking as read
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Failed to mark email as read:', error);
+      addToast(`Failed to mark as read: ${error.message}`, 'error');
+    } finally {
+      setMarkingAsRead(false);
     }
   };
 
@@ -435,7 +460,7 @@ export function GmailExplorer({
 
           {/* Actions Footer - Sticky at bottom */}
           <ExplorerFooter>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${2 + (haalkhataConfigured ? 1 : 0)}, 1fr)` }}>
               <Button
                 onClick={handleOpenInGmail}
                 variant="outline"
@@ -445,7 +470,21 @@ export function GmailExplorer({
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Open in Gmail
               </Button>
-              {haalkhataConfigured ? (
+              <Button
+                onClick={handleMarkAsRead}
+                disabled={markingAsRead}
+                variant="outline"
+                size="sm"
+                className="bg-transparent border-white/30 hover:bg-white/10 hover:border-white dark:border-white/30 dark:hover:bg-white/10 dark:hover:border-white"
+              >
+                {markingAsRead ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <MailCheck className="h-4 w-4 mr-2" />
+                )}
+                {markingAsRead ? 'Marking...' : 'Mark as Read'}
+              </Button>
+              {haalkhataConfigured && (
                 <Button
                   onClick={handleSendToHaalkhata}
                   disabled={sendingToHaalkhata}
@@ -464,7 +503,7 @@ export function GmailExplorer({
                   )}
                   {sendingToHaalkhata ? 'Processing...' : 'Send to Haalkhata'}
                 </Button>
-              ) : null}
+              )}
             </div>
           </ExplorerFooter>
         </>
