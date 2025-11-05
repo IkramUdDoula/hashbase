@@ -156,7 +156,7 @@ const Explorer = ({
         </div>
         
         {/* Body - Dynamic Content Zone - Scrollable with custom scrollbar */}
-        <div className="flex-1 overflow-y-auto min-h-0 explorer-scrollbar">
+        <div className="flex-1 overflow-y-auto min-h-0 explorer-scrollbar relative">
           {children}
         </div>
         
@@ -219,12 +219,12 @@ const ExplorerBody = ({ className, children, ...props }) => (
 )
 
 /**
- * ExplorerFooter - Sticky footer section for actions
+ * ExplorerFooter - Sticky footer section for actions (fixed at bottom)
  */
 const ExplorerFooter = ({ className, children, ...props }) => (
   <div
     className={cn(
-      "flex-shrink-0 px-4 py-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900",
+      "sticky bottom-0 flex-shrink-0 px-4 py-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 z-10",
       className
     )}
     {...props}

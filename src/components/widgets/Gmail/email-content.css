@@ -1,0 +1,121 @@
+/* Email content styling for proper HTML email rendering */
+.email-content-wrapper {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  overflow-x: auto;
+  color: #1f2937;
+}
+
+.dark .email-content-wrapper {
+  background: #111827;
+  border-color: #374151;
+  color: #f3f4f6;
+}
+
+/* Minimal table resets - let email design show through */
+.email-content-wrapper table {
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+
+.email-content-wrapper td,
+.email-content-wrapper th {
+  padding: 8px;
+}
+
+.email-content-wrapper img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.email-content-wrapper a {
+  color: #2563eb !important;
+  text-decoration: underline;
+}
+
+.dark .email-content-wrapper a {
+  color: #60a5fa !important;
+}
+
+/* Ensure proper text wrapping */
+.email-content-wrapper {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Style for email tables */
+.email-content-wrapper table[border] {
+  border: 1px solid #d1d5db;
+}
+
+.dark .email-content-wrapper table[border] {
+  border-color: #6b7280;
+}
+
+.email-content-wrapper table[border] td,
+.email-content-wrapper table[border] th {
+  border: 1px solid #d1d5db;
+}
+
+.dark .email-content-wrapper table[border] td,
+.dark .email-content-wrapper table[border] th {
+  border-color: #6b7280;
+}
+
+/* Enhanced table styling for better structure */
+.email-content-wrapper table {
+  width: 100%;
+  table-layout: auto;
+}
+
+.email-content-wrapper table td,
+.email-content-wrapper table th {
+  vertical-align: top;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.email-content-wrapper table th {
+  font-weight: 600;
+  background-color: #f9fafb;
+}
+
+.dark .email-content-wrapper table th {
+  background-color: #1f2937;
+}
+
+/* Preserve email structure and design - minimal interference */
+
+/* Preserve email formatting */
+.email-content-wrapper pre {
+  white-space: pre-wrap;
+  font-family: monospace;
+  background: #f3f4f6 !important;
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+  color: #1f2937 !important;
+}
+
+.dark .email-content-wrapper pre {
+  background: #374151 !important;
+  color: #f3f4f6 !important;
+}
+
+/* Handle blockquotes (common in email replies) */
+.email-content-wrapper blockquote {
+  border-left: 4px solid #d1d5db;
+  padding-left: 16px;
+  margin: 8px 0;
+  color: #6b7280 !important;
+}
+
+.dark .email-content-wrapper blockquote {
+  border-left-color: #4b5563;
+  color: #9ca3af !important;
+}
+
+/* Let email colors show through - they're usually designed well */

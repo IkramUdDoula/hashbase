@@ -206,6 +206,129 @@ function createApiServer() {
     }
   })
 
+  // Get full email details with body
+  app.get('/api/gmail/email/:messageId', async (req, res) => {
+    try {
+      const { messageId } = req.params
+      const auth = loadCredentialsFromHeader(req)
+      
+      if (!auth) {
+        return res.status(401).json({ error: 'Not authenticated' })
+      }
+
+      console.log(`📧 Gmail: Fetching full details for message ${messageId}`)
+      const gmail = google.gmail({ version: 'v1', auth })
+      
+      const details = await gmail.users.messages.get({
+        userId: 'me',
+        id: messageId,
+        format: 'full',
+      })
+
+      const headers = details.data.payload.headers
+      const subject = headers.find(h => h.name === 'Subject')?.value || 'No Subject'
+      const from = headers.find(h => h.name === 'From')?.value || 'Unknown'
+      const to = headers.find(h => h.name === 'To')?.value || ''
+      const cc = headers.find(h => h.name === 'Cc')?.value || ''
+      const bcc = headers.find(h => h.name === 'Bcc')?.value || ''
+      const date = headers.find(h => h.name === 'Date')?.value || new Date().toISOString()
+
+      // Function to decode base64url
+      const decodeBase64 = (data) => {
+        if (!data) return ''
+        try {
+          // Replace URL-safe characters and add padding
+          const base64 = data.replace(/-/g, '+').replace(/_/g, '/')
+          const padding = base64.length % 4
+          const paddedBase64 = padding ? base64 + '='.repeat(4 - padding) : base64
+          return Buffer.from(paddedBase64, 'base64').toString('utf-8')
+        } catch (error) {
+          console.error('Error decoding base64:', error)
+          return ''
+        }
+      }
+
+      // Function to extract email body
+      const getEmailBody = (payload) => {
+        let htmlBody = ''
+        let textBody = ''
+
+        const extractParts = (part) => {
+          if (part.mimeType === 'text/html' && part.body?.data) {
+            htmlBody = decodeBase64(part.body.data)
+          } else if (part.mimeType === 'text/plain' && part.body?.data) {
+            textBody = decodeBase64(part.body.data)
+          }
+
+          // Recursively check parts
+          if (part.parts) {
+            part.parts.forEach(extractParts)
+          }
+        }
+
+        // Start extraction
+        if (payload.body?.data) {
+          if (payload.mimeType === 'text/html') {
+            htmlBody = decodeBase64(payload.body.data)
+          } else if (payload.mimeType === 'text/plain') {
+            textBody = decodeBase64(payload.body.data)
+          }
+        }
+
+        if (payload.parts) {
+          payload.parts.forEach(extractParts)
+        }
+
+        return { htmlBody, textBody }
+      }
+
+      const { htmlBody, textBody } = getEmailBody(details.data.payload)
+
+      // Get attachments info
+      const attachments = []
+      const extractAttachments = (part) => {
+        if (part.filename && part.body?.attachmentId) {
+          attachments.push({
+            filename: part.filename,
+            mimeType: part.mimeType,
+            size: part.body.size,
+            attachmentId: part.body.attachmentId
+          })
+        }
+        if (part.parts) {
+          part.parts.forEach(extractAttachments)
+        }
+      }
+      if (details.data.payload.parts) {
+        details.data.payload.parts.forEach(extractAttachments)
+      }
+
+      const email = {
+        id: messageId,
+        subject,
+        from,
+        to: to ? to.split(',').map(e => e.trim()) : [],
+        cc: cc ? cc.split(',').map(e => e.trim()) : [],
+        bcc: bcc ? bcc.split(',').map(e => e.trim()) : [],
+        date: new Date(date).toISOString(),
+        snippet: details.data.snippet,
+        htmlBody,
+        textBody,
+        attachments,
+        labels: details.data.labelIds || []
+      }
+
+      console.log(`✅ Gmail: Successfully fetched email details`)
+      res.json({ email })
+    } catch (error) {
+      console.error('❌ Gmail API Error:', error.message)
+      res.status(500).json({ 
+        error: 'Failed to fetch email details',
+        message: error.message 
+      })
+    }
+  })
+
   // ===== Netlify API Endpoints =====
 
   // Check if Netlify is configured
