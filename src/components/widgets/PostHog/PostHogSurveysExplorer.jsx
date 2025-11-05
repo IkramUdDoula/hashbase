@@ -9,13 +9,16 @@ import {
 } from '@/components/ui/explorer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Archive, ArchiveRestore, Loader2 } from 'lucide-react';
+import { ExternalLink, Archive, ArchiveRestore, Loader2, BarChart3 } from 'lucide-react';
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { 
   fetchSurveyDetails,
   fetchSurveyResponses,
+  fetchDetailedSurveyResponses,
+  aggregateSurveyResponses,
   getSurveyStatus,
-  updateSurvey
+  updateSurvey,
+  fetchAllSurveyResponsesCount
 } from '@/services/posthogService';
 
 export function PostHogSurveysExplorer({ 
@@ -35,6 +38,8 @@ export function PostHogSurveysExplorer({
   
   const [detailedSurvey, setDetailedSurvey] = useState(null);
   const [responses, setResponses] = useState(null);
+  const [responseCount, setResponseCount] = useState(null);
+  const [detailedStats, setDetailedStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   
@@ -43,17 +48,36 @@ export function PostHogSurveysExplorer({
       if (!survey || !projectId || !open) {
         setDetailedSurvey(null);
         setResponses(null);
+        setDetailedStats(null);
         return;
       }
       
       setLoading(true);
       try {
-        const [details, responsesData] = await Promise.all([
+        const [details, responsesData, counts] = await Promise.all([
           fetchSurveyDetails(projectId, survey.id),
-          fetchSurveyResponses(projectId, survey.id, 100)
+          fetchSurveyResponses(projectId, survey.id, 100),
+          fetchAllSurveyResponsesCount(projectId, projectUrl)
         ]);
         setDetailedSurvey(details);
         setResponses(responsesData);
+        setResponseCount(counts[survey.id] || 0);
+        
+        // Fetch detailed stats if we have questions
+        if (details?.questions && details.questions.length > 0) {
+          const detailedResponseData = await fetchDetailedSurveyResponses(
+            projectId,
+            projectUrl,
+            survey.id,
+            details,
+            { limit: 1000 }
+          );
+          
+          if (detailedResponseData) {
+            const stats = aggregateSurveyResponses(detailedResponseData, details);
+            setDetailedStats(stats);
+          }
+        }
       } catch (err) {
         console.error('Failed to load survey details:', err);
       } finally {
@@ -278,12 +302,39 @@ export function PostHogSurveysExplorer({
                 )}
 
                 <ExplorerSection title="Statistics">
-                  <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20">
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Survey Received by</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {responses?.count || 0}
-                    </p>
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Responses</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                        {detailedStats?.totalResponses || responseCount || responses?.count || 0}
+                      </p>
+                    </div>
+                    {detailedStats?.uniqueUsers !== undefined && (
+                      <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/20">
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Unique Users</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                          {detailedStats.uniqueUsers}
+                        </p>
+                      </div>
+                    )}
                   </div>
+                  
+                  {detailedStats?.responsesByDate && Object.keys(detailedStats.responsesByDate).length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Responses by Date</p>
+                      <div className="space-y-1">
+                        {Object.entries(detailedStats.responsesByDate)
+                          .sort(([a], [b]) => b.localeCompare(a))
+                          .slice(0, 7)
+                          .map(([date, count]) => (
+                            <div key={date} className="flex items-center justify-between text-xs">
+                              <span className="text-gray-600 dark:text-gray-400">{date}</span>
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{count} response{count !== 1 ? 's' : ''}</span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
                 </ExplorerSection>
 
               </>

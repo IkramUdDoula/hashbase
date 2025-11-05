@@ -8,6 +8,24 @@ import { getSecrets, SECRET_KEYS } from './secretsService';
 const POSTHOG_API_BASE = 'https://app.posthog.com';
 
 /**
+ * Get the PostHog API base URL from settings or use default
+ * @param {string} projectUrl - Optional project URL from settings
+ * @returns {string} API base URL
+ */
+function getPostHogApiBase(projectUrl = null) {
+  if (projectUrl) {
+    // Ensure URL has protocol
+    let url = projectUrl;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `https://${url}`;
+    }
+    // Remove trailing slash
+    return url.replace(/\/$/, '');
+  }
+  return POSTHOG_API_BASE;
+}
+
+/**
  * Check if PostHog is configured with an access token
  * @returns {boolean}
  */
@@ -920,9 +938,10 @@ export async function fetchSurveyStats(projectId, surveyId, options = {}) {
 /**
  * Fetch all survey responses count
  * @param {string} projectId - PostHog project ID
+ * @param {string} projectUrl - Optional PostHog instance URL
  * @returns {Promise<Object>} Response counts for all surveys
  */
-export async function fetchAllSurveyResponsesCount(projectId) {
+export async function fetchAllSurveyResponsesCount(projectId, projectUrl = null) {
   const token = getAccessToken();
   if (!token) {
     throw new Error('PostHog access token not configured');
@@ -933,8 +952,9 @@ export async function fetchAllSurveyResponsesCount(projectId) {
   }
 
   try {
+    const apiBase = getPostHogApiBase(projectUrl);
     const response = await fetch(
-      `${POSTHOG_API_BASE}/api/projects/${projectId}/surveys/responses_count`, 
+      `${apiBase}/api/projects/${projectId}/surveys/responses_count/`, 
       {
         method: 'GET',
         headers: {
@@ -945,6 +965,7 @@ export async function fetchAllSurveyResponsesCount(projectId) {
     );
 
     if (!response.ok) {
+      console.warn(`Failed to fetch survey responses count: ${response.status}`);
       return {};
     }
 
@@ -1024,6 +1045,131 @@ export async function fetchSurveyResponses(projectId, surveyId, limit = 100) {
 }
 
 /**
+ * Fetch detailed survey responses using HogQL query
+ * This provides more comprehensive data including user info and all response fields
+ * @param {string} projectId - PostHog project ID
+ * @param {string} projectUrl - PostHog instance URL
+ * @param {string} surveyId - Survey UUID
+ * @param {Object} survey - Survey object with questions
+ * @param {Object} options - Query options
+ * @param {string} options.date_from - Start date (ISO format)
+ * @param {string} options.date_to - End date (ISO format)
+ * @param {number} options.limit - Maximum responses to fetch
+ * @returns {Promise<Object>} Detailed survey responses with user info
+ */
+export async function fetchDetailedSurveyResponses(projectId, projectUrl, surveyId, survey, options = {}) {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('PostHog access token not configured');
+  }
+
+  if (!projectId || !surveyId) {
+    throw new Error('Project ID and Survey ID are required');
+  }
+
+  const { date_from, date_to, limit = 100 } = options;
+  const apiBase = getPostHogApiBase(projectUrl);
+
+  try {
+    // Build dynamic HogQL query based on survey questions
+    const questionSelects = [];
+    if (survey?.questions) {
+      survey.questions.forEach((question, index) => {
+        const questionId = question.id || `question_${index}`;
+        const responseProperty = `$survey_response${index === 0 ? '' : '_' + index}`;
+        
+        if (question.type === 'multiple_choice' || question.type === 'single_choice') {
+          // For choice questions, extract as array
+          questionSelects.push(`
+            if(
+                JSONHas(events.properties, '${responseProperty}') AND length(JSONExtractArrayRaw(events.properties, '${responseProperty}')) > 0,
+                JSONExtractArrayRaw(events.properties, '${responseProperty}'),
+                JSONExtractArrayRaw(events.properties, '$survey_response_${index}')
+            ) AS q${index}_response`);
+        } else {
+          // For other types (rating, text, etc.), extract as string
+          questionSelects.push(`
+            COALESCE(
+                NULLIF(JSONExtractString(events.properties, '${responseProperty}'), ''),
+                NULLIF(JSONExtractString(events.properties, '$survey_response_${index}'), '')
+            ) AS q${index}_response`);
+        }
+      });
+    }
+
+    const hogqlQuery = `
+      SELECT
+        ${questionSelects.join(',')},
+        person.properties.email,
+        person.properties.Email,
+        person.properties.$email,
+        person.properties.name,
+        person.properties.Name,
+        person.properties.username,
+        person.properties.Username,
+        person.properties.UserName,
+        events.distinct_id,
+        events.timestamp
+      FROM events
+      WHERE event = 'survey sent'
+        AND properties.$survey_id = '${surveyId}'
+        ${date_from ? `AND timestamp >= '${date_from}'` : ''}
+        ${date_to ? `AND timestamp <= '${date_to}'` : ''}
+        AND uuid in (
+          SELECT
+            argMax(uuid, timestamp)
+          FROM events
+          WHERE and(
+            equals(event, 'survey sent'),
+            equals(JSONExtractString(properties, '$survey_id'), '${surveyId}'),
+            ${date_from ? `greaterOrEquals(timestamp, '${date_from}'),` : ''}
+            ${date_to ? `lessOrEquals(timestamp, '${date_to}')` : 'true'}
+          )
+          GROUP BY
+            if(
+              JSONHas(properties, '$survey_submission_id'),
+              JSONExtractString(properties, '$survey_submission_id'),
+              toString(uuid)
+            )
+        )
+      ORDER BY events.timestamp DESC
+      LIMIT ${limit}
+    `;
+
+    const query = {
+      kind: 'HogQLQuery',
+      query: hogqlQuery.trim(),
+      filters: {
+        properties: []
+      }
+    };
+
+    const response = await fetch(
+      `${apiBase}/api/environments/${projectId}/query/`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query })
+      }
+    );
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch detailed survey responses: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching detailed survey responses:', error);
+    return null;
+  }
+}
+
+/**
  * Fetch aggregated survey question results
  * @param {string} projectId - PostHog project ID
  * @param {string} surveyId - Survey UUID
@@ -1067,6 +1213,113 @@ export async function fetchSurveyQuestionResults(projectId, surveyId, questions 
   });
 
   return questionResults;
+}
+
+/**
+ * Parse and aggregate detailed survey responses
+ * @param {Object} responseData - Raw response data from HogQL query
+ * @param {Object} survey - Survey object with questions
+ * @returns {Object} Aggregated statistics per question
+ */
+export function aggregateSurveyResponses(responseData, survey) {
+  if (!responseData?.results || responseData.results.length === 0) {
+    return null;
+  }
+
+  const stats = {
+    totalResponses: responseData.results.length,
+    uniqueUsers: new Set(),
+    questions: {},
+    responsesByDate: {},
+    userEmails: []
+  };
+
+  responseData.results.forEach(result => {
+    // Extract user info (last few columns)
+    const numQuestions = survey?.questions?.length || 0;
+    const distinctId = result[numQuestions + 8]; // distinct_id position
+    const timestamp = result[numQuestions + 9]; // timestamp position
+    const email = result[numQuestions] || result[numQuestions + 1] || result[numQuestions + 2];
+    
+    if (distinctId) {
+      stats.uniqueUsers.add(distinctId);
+    }
+    
+    if (email) {
+      stats.userEmails.push(email);
+    }
+
+    // Track responses by date
+    if (timestamp) {
+      const date = new Date(timestamp).toISOString().split('T')[0];
+      stats.responsesByDate[date] = (stats.responsesByDate[date] || 0) + 1;
+    }
+
+    // Process each question's responses
+    survey?.questions?.forEach((question, index) => {
+      if (!stats.questions[index]) {
+        stats.questions[index] = {
+          question: question.question,
+          type: question.type,
+          responses: {},
+          total: 0,
+          sum: 0,
+          values: []
+        };
+      }
+
+      const response = result[index];
+      
+      if (response !== null && response !== undefined && response !== '') {
+        stats.questions[index].total++;
+        
+        // Handle array responses (multiple choice)
+        if (Array.isArray(response)) {
+          response.forEach(choice => {
+            const cleanChoice = choice.replace(/^"|"$/g, ''); // Remove quotes
+            stats.questions[index].responses[cleanChoice] = 
+              (stats.questions[index].responses[cleanChoice] || 0) + 1;
+          });
+        } else {
+          // Handle single value responses
+          const cleanResponse = typeof response === 'string' 
+            ? response.replace(/^"|"$/g, '') 
+            : response;
+          
+          stats.questions[index].responses[cleanResponse] = 
+            (stats.questions[index].responses[cleanResponse] || 0) + 1;
+          
+          // For rating questions, track numeric values
+          if (question.type === 'rating' && !isNaN(cleanResponse)) {
+            const numValue = Number(cleanResponse);
+            stats.questions[index].sum += numValue;
+            stats.questions[index].values.push(numValue);
+          }
+        }
+      }
+    });
+  });
+
+  // Calculate averages and percentages
+  Object.keys(stats.questions).forEach(qIndex => {
+    const q = stats.questions[qIndex];
+    
+    if (q.type === 'rating' && q.values.length > 0) {
+      q.average = q.sum / q.values.length;
+      q.min = Math.min(...q.values);
+      q.max = Math.max(...q.values);
+    }
+    
+    // Calculate percentages
+    q.percentages = {};
+    Object.keys(q.responses).forEach(response => {
+      q.percentages[response] = (q.responses[response] / q.total) * 100;
+    });
+  });
+
+  stats.uniqueUsers = stats.uniqueUsers.size;
+  
+  return stats;
 }
 
 /**

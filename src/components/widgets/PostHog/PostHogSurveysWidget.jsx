@@ -14,7 +14,8 @@ import {
   fetchSurveys,
   isPostHogConfigured,
   getSurveyStatus,
-  updateSurvey
+  updateSurvey,
+  fetchAllSurveyResponsesCount
 } from '@/services/posthogService';
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { WidgetModal, WidgetModalFooter } from '@/components/ui/widget-modal';
@@ -23,6 +24,7 @@ import { PostHogSurveysExplorer } from './PostHogSurveysExplorer';
 
 export function PostHogSurveysWidget({ rowSpan = 2, dragRef }) {
   const [surveys, setSurveys] = useState([]);
+  const [responseCounts, setResponseCounts] = useState({});
   const [currentState, setCurrentState] = useState('loading');
   const [errorMessage, setErrorMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,10 +88,15 @@ export function PostHogSurveysWidget({ rowSpan = 2, dragRef }) {
         return;
       }
 
-      const data = await fetchSurveys(settings.projectId, {
-        limit: settings.maxSurveys,
-        offset: 0
-      });
+      const [data, counts] = await Promise.all([
+        fetchSurveys(settings.projectId, {
+          limit: settings.maxSurveys,
+          offset: 0
+        }),
+        fetchAllSurveyResponsesCount(settings.projectId, settings.projectUrl)
+      ]);
+      
+      setResponseCounts(counts);
       
       if (data.results.length === 0) {
         setSurveys([]);
@@ -266,10 +273,12 @@ export function PostHogSurveysWidget({ rowSpan = 2, dragRef }) {
                         <span>{survey.questions.length} question{survey.questions.length !== 1 ? 's' : ''}</span>
                       </div>
                     )}
-                    {/* <div className="flex items-center gap-1">
-                      <ClipboardList className="h-3 w-3" />
-                      <span>{survey.response_count || 0} response{survey.response_count !== 1 ? 's' : ''}</span>
-                    </div> */}
+                    {responseCounts[survey.id] !== undefined && (
+                      <div className="flex items-center gap-1">
+                        <ClipboardList className="h-3 w-3" />
+                        <span>{responseCounts[survey.id] || 0} response{responseCounts[survey.id] !== 1 ? 's' : ''}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />

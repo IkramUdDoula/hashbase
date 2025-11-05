@@ -5,7 +5,8 @@ import {
   Settings as SettingsIcon,
   Clock,
   Hash,
-  CheckSquare2
+  CheckSquare2,
+  Users
 } from 'lucide-react';
 import { SiPosthog } from 'react-icons/si';
 import { 
@@ -397,7 +398,10 @@ export function PostHogErrorsWidget({ rowSpan = 2, dragRef }) {
                         </div>
                       )}
                       {error.affectedUsers && (
-                        <span>{error.affectedUsers} user{error.affectedUsers !== 1 ? 's' : ''}</span>
+                        <div className="flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          <span>{error.affectedUsers} user{error.affectedUsers !== 1 ? 's' : ''}</span>
+                        </div>
                       )}
                     </div>
                     <div className="flex items-center gap-1">
