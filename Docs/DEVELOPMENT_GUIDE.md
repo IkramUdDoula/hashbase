@@ -5,14 +5,15 @@ Complete guide for creating widgets and explorers in the Hashbase dashboard.
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Widget Development](#widget-development)
-4. [Explorer Development](#explorer-development)
-5. [Integration Guide](#integration-guide)
-6. [Best Practices](#best-practices)
-7. [Examples & Patterns](#examples--patterns)
-8. [API Reference](#api-reference)
-9. [Troubleshooting](#troubleshooting)
+2. [Quick Start Setup](#quick-start-setup)
+3. [Architecture](#architecture)
+4. [Widget Development](#widget-development)
+5. [Explorer Development](#explorer-development)
+6. [Integration Guide](#integration-guide)
+7. [Best Practices](#best-practices)
+8. [Examples & Patterns](#examples--patterns)
+9. [API Reference](#api-reference)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -29,6 +30,117 @@ Hashbase is a customizable dashboard system with modular widgets. Each widget ca
 - **ExplorerContext**: Global state management for explorers
 - **localStorage**: Persistent data storage
 - **Config Service**: Backup/restore functionality
+
+---
+
+## Quick Start Setup
+
+### For New Contributors
+
+Follow these steps to set up your development environment:
+
+#### 1. Clone and Install
+
+```bash
+git clone <repository-url>
+cd hashbase
+npm install
+```
+
+#### 2. Configure Encryption Key (REQUIRED)
+
+Hashbase uses AES-256-GCM encryption for API secrets. You **must** configure an encryption key:
+
+```bash
+# Generate a secure encryption key
+node generate-encryption-key.js
+```
+
+This will output a 64-character hex key. Copy it.
+
+#### 3. Create .env File
+
+Create a `.env` file in the project root:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your encryption key:
+
+```env
+VITE_CONFIG_ENCRYPTION_KEY=your_64_character_hex_key_here
+```
+
+⚠️ **IMPORTANT:** Never commit your `.env` file to version control!
+
+#### 4. Start Development Server
+
+```bash
+npm run dev
+```
+
+The app will open at `http://localhost:5173`
+
+#### 5. Understanding Config & Storage
+
+Hashbase has a unified configuration system that backs up:
+
+**What Gets Stored:**
+- ✅ API secrets (encrypted)
+- ✅ Widget enable/disable state
+- ✅ Canvas layouts and widget positions
+- ✅ All widget settings
+- ✅ Widget data (Timer, Checklist, AI Chat, etc.)
+
+**What's Excluded:**
+- ❌ OAuth tokens (security - users re-authenticate)
+- ❌ Storage configuration
+
+**Storage Methods:**
+1. **Browser localStorage** - Automatic, always active
+2. **Config Download** - Manual backup as JSON file
+3. **Folder Sync** - Auto-sync to local folder (Chrome/Edge only)
+
+All three methods use the **same keys** and are **100% synchronized**.
+
+#### 6. Adding localStorage Keys (CRITICAL)
+
+When creating a widget that stores data, you **MUST** add your keys to the shared utility:
+
+**File:** `src/lib/dashboardKeys.js`
+
+```javascript
+export function getDashboardKeys() {
+  const baseKeys = [
+    // ... existing keys
+    
+    // Your widget (add here)
+    'yourWidget_data',      // Widget data
+    'yourWidget_settings',  // Widget settings
+  ];
+  // ...
+}
+```
+
+**Why?** This ensures your widget data is:
+- ✅ Backed up in config downloads
+- ✅ Synced in folder sync
+- ✅ Restored when importing configs
+
+**Encryption:** Only add keys to `getSecretKeys()` if they contain API keys/tokens.
+
+#### 7. Testing Your Setup
+
+```bash
+# 1. Configure some widgets
+# 2. Add API keys in Settings → Secrets
+# 3. Download config (Settings → Storage → Download Config)
+# 4. Check the JSON file contains your data
+# 5. Clear localStorage (DevTools → Application → Clear)
+# 6. Upload config (Settings → Storage → Upload Config)
+# 7. Verify everything restored
+```
 
 ---
 
@@ -360,19 +472,55 @@ const defaultPreferences = {
 };
 ```
 
-### Step 5: Add to Config Service
+### Step 5: Add to Dashboard Keys (REQUIRED)
 
-**Edit `src/services/configService.js`:**
+⚠️ **CRITICAL STEP** - Without this, your widget data won't be backed up!
+
+**Edit `src/lib/dashboardKeys.js`:**
 
 ```javascript
-function getDashboardKeys() {
-  return [
+export function getDashboardKeys() {
+  const baseKeys = [
     // ... existing keys
-    'yourWidget_data',
-    'yourWidget_settings',
+    
+    // Your widget - ADD YOUR KEYS HERE
+    'yourWidget_data',        // Widget data (if storing data)
+    'yourWidget_settings',    // Widget settings (if has settings)
+  ];
+  
+  // ... rest of function
+}
+```
+
+**What to add:**
+- **Data keys**: If your widget stores data (like Timer, Checklist)
+- **Settings keys**: If your widget has configurable settings
+- **Both**: If your widget has both data and settings
+
+**Encryption:**
+Only add to `getSecretKeys()` if storing API keys/tokens:
+
+```javascript
+export function getSecretKeys() {
+  return [
+    'hashbase_secrets',  // Only this should be encrypted
+    // DON'T add your widget keys here unless they contain API keys
   ];
 }
 ```
+
+**Verification:**
+1. Add your widget
+2. Store some data
+3. Download config (Settings → Storage)
+4. Open JSON file
+5. Verify your keys are present
+
+**Common Mistakes:**
+- ❌ Forgetting to add keys → Data not backed up
+- ❌ Adding to wrong file (old: configService.js, correct: dashboardKeys.js)
+- ❌ Encrypting non-secret data → Unnecessary overhead
+- ❌ Using generic key names → Conflicts with other widgets
 
 ---
 
@@ -721,12 +869,16 @@ export function YourWidget({ rowSpan = 2, dragRef }) {
 - Use descriptive, namespaced keys (e.g., `yourWidget_data`)
 - Use consistent naming conventions
 - Document all keys in your README
-- Add keys to configService for backup support
+- **Add keys to `src/lib/dashboardKeys.js` for backup support** ⚠️ CRITICAL
+- Wrap localStorage operations in try-catch
+- Use `isInitialized` flag to prevent saving on mount
 
 ❌ **DON'T:**
-- Use generic keys that might conflict
+- Use generic keys that might conflict (e.g., 'data', 'settings')
 - Store sensitive data without encryption
 - Forget to handle JSON parse errors
+- Add keys to old `configService.js` (use `dashboardKeys.js` instead)
+- Forget to add keys to `dashboardKeys.js` (data won't be backed up!)
 
 ### UI/UX
 
@@ -1042,7 +1194,7 @@ Use this checklist when creating a new widget:
 ### Registration
 - [ ] Registered widget in App.jsx
 - [ ] Added to default preferences
-- [ ] Added localStorage keys to configService.js
+- [ ] **Added localStorage keys to `src/lib/dashboardKeys.js`** ⚠️ CRITICAL
 
 ### Explorer (if applicable)
 - [ ] Created explorer component
@@ -1080,5 +1232,224 @@ For questions or issues:
 
 ---
 
-**Last Updated:** 2025-11-03  
-**Version:** 2.0.0
+## Configuration & Storage System
+
+### Overview
+
+Hashbase uses a unified configuration system with three storage methods:
+
+1. **Browser localStorage** - Automatic, always active
+2. **Config Download/Upload** - Manual JSON file backup
+3. **Folder Sync** - Auto-sync to local folder (Chrome/Edge)
+
+All three methods are **100% synchronized** and use the same keys.
+
+### Single Source of Truth
+
+**File:** `src/lib/dashboardKeys.js`
+
+This file defines ALL localStorage keys that get backed up:
+
+```javascript
+export function getDashboardKeys() {
+  const baseKeys = [
+    // Core (4 keys)
+    'hashbase_secrets',                    // API keys (ENCRYPTED)
+    'hashbase_widget_preferences',         // Widget enable/disable
+    'hashbase_widget_canvas_assignments',  // Widget-to-canvas mapping
+    'hashbase-theme',                      // Light/dark mode
+    
+    // Canvas (2 + dynamic)
+    'hashbase_canvases',                   // Canvas list
+    'hashbase_active_canvas',              // Active canvas
+    
+    // Widget settings (10 keys)
+    'hashbase_ai_chat_settings',
+    'hashbase_ai_llm_settings',
+    'news_country',
+    'news_category',
+    'github_widget_owner',
+    'github_widget_repo',
+    'checklistSettings',
+    'posthog_errors_settings',
+    'posthog_surveys_settings',
+    'haalkhata_widget_settings',
+    
+    // Widget data (8 keys)
+    'timerMode',
+    'stopwatchTime',
+    'stopwatchLaps',
+    'countdownInitial',
+    'checklistItems',
+    'hashbase_ai_conversations',
+    'hashbase_ai_current_conversation',
+    
+    // YOUR WIDGET KEYS GO HERE
+  ];
+  
+  // Dynamic canvas layout keys
+  const canvasKeys = [];
+  const canvasesJson = localStorage.getItem('hashbase_canvases');
+  if (canvasesJson) {
+    const canvases = JSON.parse(canvasesJson);
+    canvases.forEach(canvas => {
+      canvasKeys.push(`widgetLayout_${canvas.id}`);
+      canvasKeys.push(`widgetRowSpans_${canvas.id}`);
+    });
+  }
+  
+  return [...baseKeys, ...canvasKeys];
+}
+```
+
+### What Gets Stored
+
+**Category 1: Secrets (Encrypted)**
+- `hashbase_secrets` - All API keys (OpenAI, News, GitHub, PostHog, etc.)
+- Encrypted with AES-256-GCM using `.env` key
+
+**Category 2: Widgets**
+- `hashbase_widget_preferences` - Which widgets are enabled/disabled
+
+**Category 3: Canvas Layout**
+- `hashbase_canvases` - List of canvases
+- `hashbase_active_canvas` - Currently active canvas
+- `hashbase_widget_canvas_assignments` - Which widget on which canvas
+- `widgetLayout_{canvasId}` - Widget positions (dynamic)
+- `widgetRowSpans_{canvasId}` - Row spans (dynamic)
+
+**Category 4: Widget Settings**
+- All widget configuration (project IDs, URLs, preferences, etc.)
+- Stored as JSON objects
+- NOT encrypted (only secrets are encrypted)
+
+**Category 5: Widget Data**
+- Timer: mode, time, laps, countdown
+- Checklist: items, settings
+- AI Chat: conversations, current conversation
+- Any other widget data
+
+### What's Excluded
+
+```javascript
+export function getExcludedKeys() {
+  return [
+    'hashbase_storage_settings',        // Storage config (not user data)
+    'hashbase_storage_encryption_key',  // Local key (deprecated)
+    'gmail_tokens',                     // OAuth tokens (SECURITY)
+  ];
+}
+```
+
+**Why exclude OAuth tokens?**
+- Security: Prevents token theft if backup files are compromised
+- Best practice: Users re-authenticate after restore
+- Tokens expire anyway
+
+### Adding Your Widget Keys
+
+**Step 1:** Identify what your widget stores
+
+```javascript
+// Example: Your widget stores data and settings
+localStorage.setItem('myWidget_data', JSON.stringify(data));
+localStorage.setItem('myWidget_settings', JSON.stringify(settings));
+```
+
+**Step 2:** Add to `dashboardKeys.js`
+
+```javascript
+export function getDashboardKeys() {
+  const baseKeys = [
+    // ... existing keys
+    
+    // My Widget
+    'myWidget_data',      // Widget data
+    'myWidget_settings',  // Widget settings
+  ];
+  // ...
+}
+```
+
+**Step 3:** Test backup/restore
+
+```bash
+1. Add data to your widget
+2. Download config (Settings → Storage → Download Config)
+3. Open JSON file, verify your keys are present
+4. Clear localStorage
+5. Upload config
+6. Verify your widget data is restored
+```
+
+### Encryption
+
+**Only encrypt API keys/tokens:**
+
+```javascript
+export function getSecretKeys() {
+  return [
+    'hashbase_secrets',  // ONLY this
+  ];
+}
+```
+
+**Don't encrypt:**
+- Widget settings (project IDs, preferences)
+- Widget data (timer, checklist items)
+- Canvas layouts
+- Theme preferences
+
+### Cross-Device Sync
+
+**Same encryption key required:**
+
+```bash
+# Device A
+VITE_CONFIG_ENCRYPTION_KEY=abc123...
+
+# Device B (must use SAME key)
+VITE_CONFIG_ENCRYPTION_KEY=abc123...
+```
+
+**Without same key:**
+- ❌ Config import will fail
+- ❌ "Encryption key mismatch" error
+- ❌ Cannot decrypt secrets
+
+**Solution:**
+- Use same `.env` file on all devices
+- Or share encryption key securely
+- Or use folder sync with cloud storage (Dropbox, OneDrive)
+
+### Troubleshooting
+
+**Data not backed up:**
+- ✅ Check keys are in `dashboardKeys.js`
+- ✅ Check spelling matches exactly
+- ✅ Download config and inspect JSON
+
+**Import fails:**
+- ✅ Check encryption key matches
+- ✅ Check `.env` file exists
+- ✅ Restart dev server after changing `.env`
+
+**Data lost after restore:**
+- ✅ Verify keys were in `dashboardKeys.js` before export
+- ✅ Check console for errors
+- ✅ Verify localStorage keys match exactly
+
+### Best Practices
+
+1. **Always add keys to `dashboardKeys.js`** - Critical for backups
+2. **Use namespaced keys** - Prevent conflicts (`myWidget_data`, not `data`)
+3. **Only encrypt secrets** - Don't encrypt regular data
+4. **Test backup/restore** - Verify your widget data is preserved
+5. **Document your keys** - Add comments explaining what each key stores
+6. **Handle errors** - Wrap localStorage in try-catch
+7. **Use isInitialized** - Prevent saving on initial mount
+
+---
+
+**Last Updated:** 2025-11-06  
+**Version:** 2.1.0

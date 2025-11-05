@@ -4,6 +4,8 @@
  * Uses File System Access API for folder-based storage
  */
 
+import { getDashboardKeys, shouldEncryptKey } from '@/lib/dashboardKeys';
+
 const STORAGE_SETTINGS_KEY = 'hashbase_storage_settings';
 const STORAGE_FILE_NAME = 'hashbase-data.json';
 const HISTORY_FOLDER_NAME = 'history';
@@ -79,59 +81,8 @@ export async function requestFolderAccess() {
   }
 }
 
-/**
- * Get all localStorage keys related to the dashboard (matching configService)
- * @returns {string[]} Array of localStorage keys
- */
-function getDashboardKeys() {
-  const baseKeys = [
-    'hashbase_secrets',
-    'hashbase_widget_preferences',
-    'widgetLayout',
-    'widgetRowSpans',
-    'widgetLayoutConfig',
-    'hashbase-theme',
-    // Canvas management
-    'hashbase_canvases',
-    'hashbase_active_canvas',
-    // AI Chat widget related keys
-    'hashbase_ai_conversations',
-    'hashbase_ai_current_conversation',
-    'hashbase_ai_chat_settings',
-    'hashbase_ai_llm_settings',
-    // News widget settings
-    'news_country',
-    'news_category',
-    // GitHub widget settings
-    'github_widget_owner',
-    'github_widget_repo',
-    // Checklist widget data
-    'checklistItems',
-    'checklistSettings',
-    // Timer widget data
-    'timerMode',
-    'stopwatchTime',
-    'stopwatchLaps',
-    'countdownInitial',
-  ];
-  
-  // Add per-canvas layout keys dynamically
-  const canvasKeys = [];
-  try {
-    const canvasesJson = localStorage.getItem('hashbase_canvases');
-    if (canvasesJson) {
-      const canvases = JSON.parse(canvasesJson);
-      canvases.forEach(canvas => {
-        canvasKeys.push(`widgetLayout_${canvas.id}`);
-        canvasKeys.push(`widgetRowSpans_${canvas.id}`);
-      });
-    }
-  } catch (e) {
-    console.warn('Error reading canvas keys:', e);
-  }
-  
-  return [...baseKeys, ...canvasKeys];
-}
+// getDashboardKeys() is now imported from @/lib/dashboardKeys.js
+// This ensures consistency across configService and storageService
 
 /**
  * Get all localStorage data that should be synced (matching configService structure)
@@ -159,7 +110,9 @@ export async function getAllDashboardData(encryptSecrets = false) {
       try {
         const parsed = JSON.parse(value);
         // Separate secrets from other data
-        if (key === 'hashbase_secrets') {
+        // Only encrypt hashbase_secrets (API keys)
+        // OAuth tokens (gmail_tokens) are excluded from backups for security
+        if (shouldEncryptKey(key)) {
           secretsData[key] = parsed;
         } else {
           regularData[key] = parsed;
@@ -195,41 +148,30 @@ export async function getAllDashboardData(encryptSecrets = false) {
 }
 
 /**
- * Get encryption key from environment variable or generate one
- * @returns {Uint8Array} Encryption key bytes
+ * Get encryption key from environment variable (matching configService)
+ * @returns {Uint8Array|null} Encryption key or null if not configured
  */
 function getEncryptionKey() {
   const keyHex = import.meta.env.VITE_CONFIG_ENCRYPTION_KEY;
   
-  // Try to use the same key as configService
-  if (keyHex && keyHex !== 'your_32_byte_hex_key_here') {
-    try {
-      const keyBytes = new Uint8Array(keyHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-      if (keyBytes.length === 32) {
-        console.log('✅ Using encryption key from .env');
-        return keyBytes;
-      }
-    } catch (error) {
-      console.warn('⚠️ Failed to parse VITE_CONFIG_ENCRYPTION_KEY, generating local key');
-    }
-  }
-  
-  // Fall back to generating/retrieving a local key
-  const ENCRYPTION_KEY_STORAGE = 'hashbase_storage_encryption_key';
-  let storedKey = localStorage.getItem(ENCRYPTION_KEY_STORAGE);
-  
-  if (!storedKey) {
-    // Generate a random 32-byte key
-    const keyBytes = new Uint8Array(32);
-    crypto.getRandomValues(keyBytes);
-    // Store as hex string
-    storedKey = Array.from(keyBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-    localStorage.setItem(ENCRYPTION_KEY_STORAGE, storedKey);
-    console.log('🔐 Generated new local encryption key');
+  if (!keyHex || keyHex === 'your_32_byte_hex_key_here') {
+    console.warn('⚠️ VITE_CONFIG_ENCRYPTION_KEY not configured. Secrets will not be encrypted.');
+    console.warn('   Run: node generate-encryption-key.js');
+    console.warn('   Then add the key to your .env file and restart the dev server.');
+    return null;
   }
   
   // Convert hex string to Uint8Array
-  return new Uint8Array(storedKey.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+  const keyBytes = new Uint8Array(keyHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+  
+  if (keyBytes.length !== 32) {
+    console.error('❌ VITE_CONFIG_ENCRYPTION_KEY must be 32 bytes (64 hex characters)');
+    console.error(`   Current length: ${keyBytes.length} bytes (${keyHex.length} hex characters)`);
+    return null;
+  }
+  
+  console.log('✅ Encryption key loaded successfully');
+  return keyBytes;
 }
 
 /**
@@ -239,6 +181,9 @@ function getEncryptionKey() {
  */
 async function encryptFileData(data) {
   const keyBytes = getEncryptionKey();
+  if (!keyBytes) {
+    throw new Error('Encryption key not configured');
+  }
   
   const encoder = new TextEncoder();
   const dataBuffer = encoder.encode(data);
@@ -277,6 +222,9 @@ async function encryptFileData(data) {
  */
 async function decryptFileData(encryptedData, ivBase64) {
   const keyBytes = getEncryptionKey();
+  if (!keyBytes) {
+    throw new Error('Encryption key not configured');
+  }
   
   const decoder = new TextDecoder();
   

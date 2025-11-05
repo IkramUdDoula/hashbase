@@ -5,15 +5,16 @@ Complete guide to Hashbase's configuration export/import and storage systems.
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Configuration File Structure](#configuration-file-structure)
-3. [What Gets Exported](#what-gets-exported)
-4. [Encryption](#encryption)
-5. [Storage Methods](#storage-methods)
-6. [Local Storage Keys](#local-storage-keys)
-7. [Multi-Canvas Support](#multi-canvas-support)
-8. [Usage Guide](#usage-guide)
-9. [API Reference](#api-reference)
-10. [Troubleshooting](#troubleshooting)
+2. [Quick Start for Developers](#quick-start-for-developers)
+3. [Configuration File Structure](#configuration-file-structure)
+4. [What Gets Exported](#what-gets-exported)
+5. [Encryption](#encryption)
+6. [Storage Methods](#storage-methods)
+7. [Local Storage Keys](#local-storage-keys)
+8. [Multi-Canvas Support](#multi-canvas-support)
+9. [Usage Guide](#usage-guide)
+10. [API Reference](#api-reference)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -34,6 +35,124 @@ Both systems use the same data structure and support encryption for sensitive da
 - ✅ **Auto-Sync** - Configurable automatic folder synchronization
 - ✅ **Version History** - Optional timestamped backups
 - ✅ **Cross-Device** - Transfer settings between browsers/devices
+
+---
+
+## Quick Start for Developers
+
+### Setting Up Config & Storage
+
+If you're contributing to Hashbase, follow these steps to set up the configuration system:
+
+#### 1. Generate Encryption Key (REQUIRED)
+
+```bash
+node generate-encryption-key.js
+```
+
+This outputs a 64-character hex key. Copy it.
+
+#### 2. Create .env File
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your key:
+
+```env
+VITE_CONFIG_ENCRYPTION_KEY=your_64_character_hex_key_here
+```
+
+⚠️ **Never commit `.env` to git!**
+
+#### 3. Restart Dev Server
+
+```bash
+npm run dev
+```
+
+#### 4. Adding Widget localStorage Keys
+
+**CRITICAL:** When creating a widget that stores data, you **MUST** add your keys to the shared utility.
+
+**File:** `src/lib/dashboardKeys.js`
+
+```javascript
+export function getDashboardKeys() {
+  const baseKeys = [
+    // ... existing keys
+    
+    // Your widget
+    'yourWidget_data',      // Widget data
+    'yourWidget_settings',  // Widget settings
+  ];
+  // ...
+}
+```
+
+**Why?** This ensures your widget data is:
+- ✅ Backed up in config downloads
+- ✅ Synced in folder sync
+- ✅ Restored when importing configs
+
+**Encryption:** Only add to `getSecretKeys()` if storing API keys/tokens.
+
+#### 5. Test Your Widget
+
+```bash
+1. Add data to your widget
+2. Download config (Settings → Storage → Download Config)
+3. Open JSON file, verify your keys are present
+4. Clear localStorage (DevTools → Application → Clear)
+5. Upload config
+6. Verify your widget data is restored
+```
+
+### Understanding the System
+
+**Single Source of Truth:** `src/lib/dashboardKeys.js`
+
+This file defines ALL localStorage keys that get backed up. Both `configService.js` and `storageService.js` import from this file to ensure 100% consistency.
+
+**What Gets Stored:**
+1. **Secrets** - API keys (encrypted)
+2. **Widgets** - Enable/disable state
+3. **Canvas Layout** - Widget positions and row spans
+4. **Widget Settings** - All widget configurations
+5. **Widget Data** - Timer, Checklist, AI Chat data, etc.
+
+**What's Excluded:**
+- OAuth tokens (security - users re-authenticate)
+- Storage configuration (not user data)
+
+**Storage Methods:**
+All three methods use the **same keys** and are **100% synchronized**:
+1. Browser localStorage (automatic)
+2. Config Download/Upload (manual JSON backup)
+3. Folder Sync (auto-sync to local folder, Chrome/Edge only)
+
+### Common Mistakes
+
+❌ **Forgetting to add keys to `dashboardKeys.js`**
+- Result: Widget data not backed up
+- Fix: Add keys to `src/lib/dashboardKeys.js`
+
+❌ **Adding keys to old `configService.js`**
+- Result: Keys not synced across all methods
+- Fix: Use `src/lib/dashboardKeys.js` instead
+
+❌ **Using generic key names**
+- Result: Conflicts with other widgets
+- Fix: Use namespaced keys (`myWidget_data`, not `data`)
+
+❌ **Encrypting non-secret data**
+- Result: Unnecessary overhead
+- Fix: Only encrypt `hashbase_secrets`
+
+❌ **Different encryption keys on devices**
+- Result: Import fails with "encryption key mismatch"
+- Fix: Use same `.env` key on all devices
 
 ---
 
@@ -167,8 +286,10 @@ Both systems use the same data structure and support encryption for sensitive da
 | Key | Reason |
 |-----|--------|
 | `hashbase_storage_settings` | Storage configuration (not user data) |
+| `hashbase_storage_encryption_key` | Local encryption key (device-specific, deprecated) |
+| `gmail_tokens` | **OAuth tokens (SECURITY)** - Excluded for security, users must re-authenticate |
 
-**Note:** `gmail_tokens` is now **included** in exports and encrypted for persistent authentication across devices and sessions.
+**Security Note:** OAuth tokens like `gmail_tokens` are intentionally **EXCLUDED** from backups for security reasons. Users will need to re-authenticate after restoring a backup. This prevents token theft if backup files are compromised.
 
 ---
 
@@ -439,8 +560,8 @@ stopAutoSync();
 // Storage settings (not exported)
 'hashbase_storage_settings'           // Folder sync config
 
-// OAuth tokens (encrypted in exports)
-'gmail_tokens'                        // Gmail OAuth tokens (encrypted with secrets)
+// OAuth tokens (EXCLUDED from exports for security)
+// 'gmail_tokens'                     // Gmail OAuth tokens (EXCLUDED - security, re-auth required)
 ```
 
 ### Widget Layout Structure
@@ -1154,5 +1275,151 @@ Planned features:
 
 ---
 
-**Last Updated:** 2025-11-04  
-**Version:** 1.0.0
+## For Developers: Adding New Widget Keys
+
+### Step-by-Step Guide
+
+When you create a widget that uses localStorage, follow these steps:
+
+#### Step 1: Identify Your Keys
+
+Determine what your widget stores:
+
+```javascript
+// Example widget
+localStorage.setItem('myWidget_items', JSON.stringify(items));
+localStorage.setItem('myWidget_settings', JSON.stringify(settings));
+```
+
+Keys: `myWidget_items`, `myWidget_settings`
+
+#### Step 2: Add to dashboardKeys.js
+
+**File:** `src/lib/dashboardKeys.js`
+
+```javascript
+export function getDashboardKeys() {
+  const baseKeys = [
+    // Core configuration
+    'hashbase_secrets',
+    'hashbase_widget_preferences',
+    // ... other keys
+    
+    // PostHog widgets
+    'posthog_errors_settings',
+    'posthog_surveys_settings',
+    
+    // Haalkhata widget
+    'haalkhata_widget_settings',
+    
+    // YOUR WIDGET - ADD HERE
+    'myWidget_items',      // Widget items/data
+    'myWidget_settings',   // Widget settings
+  ];
+  
+  // ... rest of function
+}
+```
+
+#### Step 3: Determine Encryption
+
+**Only encrypt if storing API keys/tokens:**
+
+```javascript
+// DON'T add to getSecretKeys() unless storing API keys
+export function getSecretKeys() {
+  return [
+    'hashbase_secrets',  // ONLY this
+  ];
+}
+```
+
+**Most widgets should NOT be encrypted.**
+
+#### Step 4: Test
+
+```bash
+# 1. Add data to your widget
+# 2. Download config
+npm run dev
+# Go to Settings → Storage → Download Config
+
+# 3. Verify keys in JSON
+# Open the downloaded file, search for your keys
+
+# 4. Test restore
+# Clear localStorage (DevTools → Application → Clear Storage)
+# Upload config (Settings → Storage → Upload Config)
+# Verify your widget data is restored
+```
+
+#### Step 5: Document
+
+Add to your widget's README:
+
+```markdown
+## localStorage Keys
+
+This widget uses the following localStorage keys:
+
+- `myWidget_items` - Stores widget items/data
+- `myWidget_settings` - Stores widget settings
+
+These keys are automatically backed up via the config system.
+```
+
+### Checklist
+
+- [ ] Identified all localStorage keys used by widget
+- [ ] Added keys to `src/lib/dashboardKeys.js`
+- [ ] Did NOT add to `getSecretKeys()` (unless storing API keys)
+- [ ] Tested config download includes keys
+- [ ] Tested config upload restores data
+- [ ] Documented keys in widget README
+
+### Common Patterns
+
+**Pattern 1: Data Only**
+```javascript
+// Widget stores data but no settings
+'myWidget_data'
+```
+
+**Pattern 2: Settings Only**
+```javascript
+// Widget has settings but no persistent data
+'myWidget_settings'
+```
+
+**Pattern 3: Both Data and Settings**
+```javascript
+// Widget has both
+'myWidget_data',
+'myWidget_settings'
+```
+
+**Pattern 4: Multiple Data Keys**
+```javascript
+// Widget stores different types of data
+'myWidget_items',
+'myWidget_history',
+'myWidget_preferences'
+```
+
+### Verification
+
+After adding keys, verify they're being backed up:
+
+```javascript
+// In browser console
+import { getDashboardKeys } from './src/lib/dashboardKeys.js';
+const keys = getDashboardKeys();
+console.log(keys.includes('myWidget_data')); // Should be true
+```
+
+Or download a config and search for your keys in the JSON file.
+
+---
+
+**Last Updated:** 2025-11-06  
+**Version:** 1.1.0
