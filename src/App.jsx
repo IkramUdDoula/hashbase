@@ -10,6 +10,7 @@ import { BD24LiveWidgetV2 } from './components/widgets/BD24Live/BD24LiveWidgetV2
 import { ChecklistWidget } from './components/widgets/Checklist/ChecklistWidget';
 import { TimerWidget } from './components/widgets/Timer/TimerWidget';
 import { PostHogErrorsWidget, PostHogSurveysWidget } from './components/widgets/PostHog';
+// import { HaalkhataWidget } from './components/widgets/Haalkhata'; // Disabled for now
 import { LandingPage } from './components/LandingPage';
 import { SettingsButton } from './components/SettingsButton';
 import { Canvas } from './components/Canvas';
@@ -119,6 +120,15 @@ function AppContent() {
       description: 'Manage and view PostHog surveys with response statistics and controls',
       icon: ClipboardList
     },
+    // Haalkhata widget disabled for now - integration code remains intact
+    // { 
+    //   id: 'haalkhata-receipts', 
+    //   component: HaalkhataWidget, 
+    //   rowSpan: 2,
+    //   name: 'Haalkhata Receipts',
+    //   description: 'Manage receipts with Haalkhata - create manually, upload images, or send from Gmail with AI processing',
+    //   icon: Receipt
+    // },
   ];
 
   // Set default widget preferences and layout - MUST run before first render
@@ -147,7 +157,8 @@ function AppContent() {
         'checklist': true,
         'timer': false,
         'posthog-errors': false,
-        'posthog-surveys': false
+        'posthog-surveys': false,
+        // 'haalkhata-receipts': false // Widget disabled
       };
       setWidgetPreferences(defaultPreferences);
     }

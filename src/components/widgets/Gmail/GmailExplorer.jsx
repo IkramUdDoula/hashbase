@@ -22,6 +22,9 @@ import {
 import { getGmailUrl, fetchEmailDetails } from '@/services/gmailService';
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { parseEmailHTML, extractKeyValuePairs } from '@/lib/emailParser';
+import { isHaalkhataConfigured, processEmailWithAI, createReceipt } from '@/services/haalkhataService';
+import { getSecret, SECRET_KEYS } from '@/services/secretsService';
+import { useToast } from '@/components/ui/toast';
 import './email-content.css';
 
 /**
@@ -50,10 +53,15 @@ export function GmailExplorer({
   onEmailChange,
   onRefresh
 }) {
+  const { addToast } = useToast();
   const [copiedEmail, setCopiedEmail] = useState(null);
   const [fullEmail, setFullEmail] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [detailsError, setDetailsError] = useState(null);
+  const [sendingToHaalkhata, setSendingToHaalkhata] = useState(false);
+  
+  // Check if Haalkhata is configured
+  const haalkhataConfigured = isHaalkhataConfigured();
 
   // Find current email from the list
   const currentIndex = emailList.findIndex(e => e.id === emailId);
@@ -111,6 +119,98 @@ export function GmailExplorer({
       setTimeout(() => setCopiedEmail(null), 2000);
     } catch (err) {
       console.error('Failed to copy email:', err);
+    }
+  };
+
+  const handleSendToHaalkhata = async () => {
+    console.log('\n========================================');
+    console.log('🚀 SEND TO HAALKHATA - PROCESS STARTED');
+    console.log('========================================');
+    console.log('📧 Email ID:', emailId);
+    console.log('📝 Email Subject:', email?.subject || 'N/A');
+    
+    if (!haalkhataConfigured) {
+      console.log('❌ FAILED: Haalkhata access token not configured');
+      console.log('========================================\n');
+      addToast('Haalkhata access token not configured', 'error');
+      return;
+    }
+    console.log('✅ Haalkhata token: Configured');
+
+    const openaiKey = getSecret(SECRET_KEYS.OPENAI_API_KEY);
+    if (!openaiKey) {
+      console.log('❌ FAILED: OpenAI API key not configured');
+      console.log('========================================\n');
+      addToast('OpenAI API key required for AI processing. Please add it in Settings > Secrets.', 'error');
+      return;
+    }
+    console.log('✅ OpenAI API key: Configured');
+
+    if (!fullEmail?.htmlBody && !fullEmail?.textBody) {
+      console.log('❌ FAILED: No email content available');
+      console.log('========================================\n');
+      addToast('No email content available to process', 'error');
+      return;
+    }
+    
+    const content = fullEmail.htmlBody || fullEmail.textBody;
+    const contentType = fullEmail.htmlBody ? 'HTML' : 'Text';
+    console.log(`✅ Email content: ${contentType} (${content.length} characters)`);
+
+    setSendingToHaalkhata(true);
+    try {
+      // Process email with AI to extract receipt data
+      console.log('\n📊 STEP 1: AI Processing');
+      console.log('─────────────────────────');
+      console.log('🤖 Sending to OpenAI for extraction...');
+      addToast('Processing email with AI...', 'info');
+      
+      const startTime = Date.now();
+      const extractedData = await processEmailWithAI(content, openaiKey);
+      const aiTime = Date.now() - startTime;
+      
+      console.log(`✅ AI extraction completed in ${aiTime}ms`);
+      console.log('📋 Extracted data:', JSON.stringify(extractedData, null, 2));
+      
+      // Create receipt in Haalkhata
+      console.log('\n💾 STEP 2: Creating Receipt in Haalkhata');
+      console.log('─────────────────────────────────────────');
+      console.log('📤 Sending to Haalkhata API...');
+      addToast('Creating receipt in Haalkhata...', 'info');
+      
+      const createStartTime = Date.now();
+      const receipt = await createReceipt(extractedData);
+      const createTime = Date.now() - createStartTime;
+      
+      console.log(`✅ Receipt created in ${createTime}ms`);
+      console.log('🧾 Receipt details:');
+      console.log('   - Invoice Code:', receipt.invoice_code);
+      console.log('   - Amount:', receipt.amount, receipt.currency);
+      console.log('   - Purpose:', receipt.purpose);
+      console.log('   - Type:', receipt.transaction_type);
+      console.log('   - Date:', receipt.transaction_date);
+      
+      const totalTime = Date.now() - startTime;
+      console.log('\n========================================');
+      console.log('✅ SUCCESS - Receipt Created!');
+      console.log(`⏱️  Total time: ${totalTime}ms`);
+      console.log(`   - AI Processing: ${aiTime}ms`);
+      console.log(`   - API Creation: ${createTime}ms`);
+      console.log('========================================\n');
+      
+      addToast(`Receipt created successfully! Invoice: ${receipt.invoice_code}`, 'success');
+    } catch (error) {
+      console.log('\n========================================');
+      console.log('❌ ERROR - Process Failed');
+      console.log('========================================');
+      console.error('Error details:', error);
+      console.log('Error message:', error.message);
+      console.log('Error stack:', error.stack);
+      console.log('========================================\n');
+      
+      addToast(`Failed to create receipt: ${error.message}`, 'error');
+    } finally {
+      setSendingToHaalkhata(false);
     }
   };
 
@@ -345,23 +445,26 @@ export function GmailExplorer({
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Open in Gmail
               </Button>
-              <Button
-                disabled
-                variant="outline"
-                size="sm"
-                className="bg-transparent border-white/30 opacity-50 cursor-not-allowed relative"
-                title="Coming Soon"
-              >
-                <img 
-                  src="/icon-192x192-en.png" 
-                  alt="Haalkhata" 
-                  className="h-4 w-4 mr-2"
-                />
-                Send to Haalkhata
-                <span className="ml-2 text-[10px] bg-blue-500/20 dark:bg-blue-500/20 text-blue-900 dark:text-blue-100 px-1.5 py-0.5 rounded">
-                  Coming Soon
-                </span>
-              </Button>
+              {haalkhataConfigured ? (
+                <Button
+                  onClick={handleSendToHaalkhata}
+                  disabled={sendingToHaalkhata}
+                  variant="outline"
+                  size="sm"
+                  className="bg-transparent border-white/30 hover:bg-white/10 hover:border-white dark:border-white/30 dark:hover:bg-white/10 dark:hover:border-white"
+                >
+                  {sendingToHaalkhata ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <img 
+                      src="/icon-192x192-en.png" 
+                      alt="Haalkhata" 
+                      className="h-4 w-4 mr-2"
+                    />
+                  )}
+                  {sendingToHaalkhata ? 'Processing...' : 'Send to Haalkhata'}
+                </Button>
+              ) : null}
             </div>
           </ExplorerFooter>
         </>
