@@ -433,7 +433,7 @@ export function GmailExplorer({
                   <>
                     {/* Render parsed email content */}
                     {fullEmail.htmlBody ? (
-                      <EmailContentRenderer htmlBody={fullEmail.htmlBody} textBody={fullEmail.textBody} />
+                      <EmailContentRenderer htmlBody={fullEmail.htmlBody} textBody={fullEmail.textBody} addToast={addToast} />
                     ) : fullEmail.textBody ? (
                       <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words font-mono bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                         {fullEmail.textBody}
@@ -519,7 +519,7 @@ export function GmailExplorer({
  * 2. Links
  * 3. Raw HTML Content (source code)
  */
-function EmailContentRenderer({ htmlBody, textBody }) {
+function EmailContentRenderer({ htmlBody, textBody, addToast }) {
   const [parsedContent, setParsedContent] = useState(null);
   const [showRawHTML, setShowRawHTML] = useState(false);
 
@@ -709,14 +709,32 @@ function EmailContentRenderer({ htmlBody, textBody }) {
             <p className="text-xs text-gray-500 dark:text-gray-400">
               View the raw HTML source of the email
             </p>
-            <Button
-              onClick={() => setShowRawHTML(!showRawHTML)}
-              variant="outline"
-              size="sm"
-              className="text-xs bg-transparent border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"
-            >
-              {showRawHTML ? 'Hide' : 'Show'} HTML
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setShowRawHTML(!showRawHTML)}
+                variant="outline"
+                size="sm"
+                className="text-xs bg-transparent border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"
+              >
+                {showRawHTML ? 'Hide' : 'Show'} HTML
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(htmlBody);
+                    addToast('HTML copied to clipboard', 'success');
+                  } catch (err) {
+                    console.error('Failed to copy HTML:', err);
+                    addToast('Failed to copy HTML', 'error');
+                  }
+                }}
+                variant="outline"
+                size="sm"
+                className="text-xs bg-transparent border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"
+              >
+                Copy HTML
+              </Button>
+            </div>
           </div>
           
           {showRawHTML && (
@@ -724,16 +742,6 @@ function EmailContentRenderer({ htmlBody, textBody }) {
               <pre className="text-xs text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700 overflow-x-auto max-h-96 overflow-y-auto font-mono">
                 {htmlBody}
               </pre>
-              <Button
-                onClick={() => {
-                  navigator.clipboard.writeText(htmlBody);
-                }}
-                variant="outline"
-                size="sm"
-                className="absolute top-2 right-2 text-xs"
-              >
-                Copy HTML
-              </Button>
             </div>
           )}
         </div>
