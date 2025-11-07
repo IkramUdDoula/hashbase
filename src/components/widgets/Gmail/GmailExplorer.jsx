@@ -137,8 +137,15 @@ export function GmailExplorer({
         onRefresh();
       }
       
-      // Close the explorer after marking as read
-      onOpenChange(false);
+      // Navigate to next email, or previous if this is the last one
+      if (hasNext) {
+        handleNext();
+      } else if (hasPrevious) {
+        handlePrevious();
+      } else {
+        // If no more emails, close the explorer
+        onOpenChange(false);
+      }
     } catch (error) {
       console.error('Failed to mark email as read:', error);
       addToast(`Failed to mark as read: ${error.message}`, 'error');

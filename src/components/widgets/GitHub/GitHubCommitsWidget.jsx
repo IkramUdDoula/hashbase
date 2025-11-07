@@ -55,6 +55,7 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
     refreshInterval: 5, // minutes
     showStatus: true,
     showRepoName: true,
+    showBranch: true,
   });
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   
@@ -235,7 +236,8 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
       commit.message.toLowerCase().includes(query) ||
       commit.author.username.toLowerCase().includes(query) ||
       commit.repo.name.toLowerCase().includes(query) ||
-      commit.sha.toLowerCase().includes(query)
+      commit.sha.toLowerCase().includes(query) ||
+      (commit.branch && commit.branch.toLowerCase().includes(query))
     );
   });
   
@@ -277,7 +279,7 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
         searchEnabled={true}
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="Search commits, repos, authors..."
+        searchPlaceholder="Search commits, repos, branches, authors..."
         
         // Layout
         rowSpan={rowSpan}
@@ -297,13 +299,23 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
                 className="p-3 rounded-lg bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/40 dark:to-slate-900/40 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all cursor-pointer group"
                 onClick={() => handleCommitClick(commit)}
               >
-                {/* Repository name */}
+                {/* Repository name and Branch */}
                 {settings.showRepoName && (
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <GitBranch className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                    <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">
-                      {commit.repo.name}
-                    </span>
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <GitBranch className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                      <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">
+                        {commit.repo.name}
+                      </span>
+                    </div>
+                    {settings.showBranch && commit.branch && (
+                      <div className="flex items-center gap-1.5">
+                        <GitBranch className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                        <code className="text-xs font-mono font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded">
+                          {commit.branch}
+                        </code>
+                      </div>
+                    )}
                   </div>
                 )}
                 
@@ -525,6 +537,28 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
             </label>
           </div>
           
+          {/* Show Branch Name Toggle */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Show Branch Name
+            </label>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Display the branch name for each commit
+            </p>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={tempSettings.showBranch}
+                onChange={(e) => setTempSettings({ ...tempSettings, showBranch: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900 dark:peer-checked:bg-gray-100 peer-checked:after:bg-white dark:peer-checked:after:bg-gray-900"></div>
+              <span className="ml-3 text-sm text-gray-900 dark:text-gray-100">
+                {tempSettings.showBranch ? 'Enabled' : 'Disabled'}
+              </span>
+            </label>
+          </div>
+          
           {/* Reset to Defaults */}
           <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-800">
             <button
@@ -537,6 +571,7 @@ export function GitHubCommitsWidget({ rowSpan = 3, dragRef }) {
                   refreshInterval: 5,
                   showStatus: true,
                   showRepoName: true,
+                  showBranch: true,
                 });
               }}
               className="w-full px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
