@@ -18,12 +18,12 @@ import {
   Loader2,
   Link,
   Code,
-  MailCheck
+  MailCheck,
+  Receipt
 } from 'lucide-react';
 import { getGmailUrl, fetchEmailDetails, markAsRead } from '@/services/gmailService';
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { parseEmailHTML, extractKeyValuePairs } from '@/lib/emailParser';
-import { isHaalkhataConfigured, processEmailWithAI, createReceipt } from '@/services/haalkhataService';
 import { getSecret, SECRET_KEYS } from '@/services/secretsService';
 import { useToast } from '@/components/ui/toast';
 import './email-content.css';
@@ -59,11 +59,8 @@ export function GmailExplorer({
   const [fullEmail, setFullEmail] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [detailsError, setDetailsError] = useState(null);
-  const [sendingToHaalkhata, setSendingToHaalkhata] = useState(false);
+  const [creatingReceipt, setCreatingReceipt] = useState(false);
   const [markingAsRead, setMarkingAsRead] = useState(false);
-  
-  // Check if Haalkhata is configured
-  const haalkhataConfigured = isHaalkhataConfigured();
 
   // Find current email from the list
   const currentIndex = emailList.findIndex(e => e.id === emailId);
@@ -154,20 +151,12 @@ export function GmailExplorer({
     }
   };
 
-  const handleSendToHaalkhata = async () => {
+  const handleCreateReceipt = async () => {
     console.log('\n========================================');
-    console.log('🚀 SEND TO HAALKHATA - PROCESS STARTED');
+    console.log('🚀 CREATE RECEIPT - PROCESS STARTED');
     console.log('========================================');
     console.log('📧 Email ID:', emailId);
     console.log('📝 Email Subject:', email?.subject || 'N/A');
-    
-    if (!haalkhataConfigured) {
-      console.log('❌ FAILED: Haalkhata access token not configured');
-      console.log('========================================\n');
-      addToast('Haalkhata access token not configured', 'error');
-      return;
-    }
-    console.log('✅ Haalkhata token: Configured');
 
     const openaiKey = getSecret(SECRET_KEYS.OPENAI_API_KEY);
     if (!openaiKey) {
@@ -189,7 +178,7 @@ export function GmailExplorer({
     const contentType = fullEmail.htmlBody ? 'HTML' : 'Text';
     console.log(`✅ Email content: ${contentType} (${content.length} characters)`);
 
-    setSendingToHaalkhata(true);
+    setCreatingReceipt(true);
     try {
       // Process email with AI to extract receipt data
       console.log('\n📊 STEP 1: AI Processing');
@@ -204,33 +193,42 @@ export function GmailExplorer({
       console.log(`✅ AI extraction completed in ${aiTime}ms`);
       console.log('📋 Extracted data:', JSON.stringify(extractedData, null, 2));
       
-      // Create receipt in Haalkhata
-      console.log('\n💾 STEP 2: Creating Receipt in Haalkhata');
-      console.log('─────────────────────────────────────────');
-      console.log('📤 Sending to Haalkhata API...');
-      addToast('Creating receipt in Haalkhata...', 'info');
+      // Validate required fields
+      if (!extractedData.transaction_date || !extractedData.purpose || !extractedData.amount) {
+        console.log('❌ FAILED: Missing required fields');
+        console.log('   - Date:', extractedData.transaction_date || 'MISSING');
+        console.log('   - Purpose:', extractedData.purpose || 'MISSING');
+        console.log('   - Amount:', extractedData.amount || 'MISSING');
+        addToast('Cannot create receipt: Missing transaction date, purpose, or amount', 'error');
+        return;
+      }
       
-      const createStartTime = Date.now();
-      const receipt = await createReceipt(extractedData);
-      const createTime = Date.now() - createStartTime;
+      // Create receipt image
+      console.log('\n🖼️  STEP 2: Creating Receipt Image');
+      console.log('─────────────────────────────────────');
+      addToast('Creating receipt image...', 'info');
       
-      console.log(`✅ Receipt created in ${createTime}ms`);
-      console.log('🧾 Receipt details:');
-      console.log('   - Invoice Code:', receipt.invoice_code);
-      console.log('   - Amount:', receipt.amount, receipt.currency);
-      console.log('   - Purpose:', receipt.purpose);
-      console.log('   - Type:', receipt.transaction_type);
-      console.log('   - Date:', receipt.transaction_date);
+      const imageStartTime = Date.now();
+      const imageDataUrl = await generateReceiptImage(extractedData);
+      const imageTime = Date.now() - imageStartTime;
+      
+      console.log(`✅ Receipt image created in ${imageTime}ms`);
+      
+      // Download the image
+      const link = document.createElement('a');
+      link.download = `receipt-${Date.now()}.jpg`;
+      link.href = imageDataUrl;
+      link.click();
       
       const totalTime = Date.now() - startTime;
       console.log('\n========================================');
       console.log('✅ SUCCESS - Receipt Created!');
       console.log(`⏱️  Total time: ${totalTime}ms`);
       console.log(`   - AI Processing: ${aiTime}ms`);
-      console.log(`   - API Creation: ${createTime}ms`);
+      console.log(`   - Image Creation: ${imageTime}ms`);
       console.log('========================================\n');
       
-      addToast(`Receipt created successfully! Invoice: ${receipt.invoice_code}`, 'success');
+      addToast('Receipt image created and downloaded!', 'success');
     } catch (error) {
       console.log('\n========================================');
       console.log('❌ ERROR - Process Failed');
@@ -242,7 +240,7 @@ export function GmailExplorer({
       
       addToast(`Failed to create receipt: ${error.message}`, 'error');
     } finally {
-      setSendingToHaalkhata(false);
+      setCreatingReceipt(false);
     }
   };
 
@@ -467,7 +465,7 @@ export function GmailExplorer({
 
           {/* Actions Footer - Sticky at bottom */}
           <ExplorerFooter>
-            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${2 + (haalkhataConfigured ? 1 : 0)}, 1fr)` }}>
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 onClick={handleOpenInGmail}
                 variant="outline"
@@ -491,32 +489,302 @@ export function GmailExplorer({
                 )}
                 {markingAsRead ? 'Marking...' : 'Mark as Read'}
               </Button>
-              {haalkhataConfigured && (
-                <Button
-                  onClick={handleSendToHaalkhata}
-                  disabled={sendingToHaalkhata}
-                  variant="outline"
-                  size="sm"
-                  className="bg-transparent border-white/30 hover:bg-white/10 hover:border-white dark:border-white/30 dark:hover:bg-white/10 dark:hover:border-white"
-                >
-                  {sendingToHaalkhata ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <img 
-                      src="/icon-192x192-en.png" 
-                      alt="Haalkhata" 
-                      className="h-4 w-4 mr-2"
-                    />
-                  )}
-                  {sendingToHaalkhata ? 'Processing...' : 'Send to Haalkhata'}
-                </Button>
-              )}
+              <Button
+                onClick={handleCreateReceipt}
+                disabled={creatingReceipt}
+                variant="outline"
+                size="sm"
+                className="bg-transparent border-white/30 hover:bg-white/10 hover:border-white dark:border-white/30 dark:hover:bg-white/10 dark:hover:border-white"
+              >
+                {creatingReceipt ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Receipt className="h-4 w-4 mr-2" />
+                )}
+                {creatingReceipt ? 'Creating...' : 'Create Receipt'}
+              </Button>
             </div>
           </ExplorerFooter>
         </>
       )}
     </Explorer>
   );
+}
+
+/**
+ * Process email HTML content with AI to extract receipt data
+ * This uses OpenAI to extract structured data from email HTML
+ */
+async function processEmailWithAI(htmlContent, openaiApiKey) {
+  console.log('🔧 processEmailWithAI() called');
+  console.log('   - Content length:', htmlContent.length, 'characters');
+  console.log('   - API Key present:', !!openaiApiKey);
+  
+  if (!openaiApiKey) {
+    console.log('❌ OpenAI API key not configured');
+    throw new Error('OpenAI API key not configured. Please add it in Settings > Secrets.');
+  }
+
+  const AI_PROMPT = `You are an intelligent financial document analyzer. Extract structured receipt/transaction data from this email HTML.
+
+The email may contain: receipts, invoices, payment confirmations, transaction notifications from services like Stripe, PayPal, bKash, Nagad, etc.
+
+EXTRACT THESE FIELDS (return as JSON):
+
+REQUIRED:
+- amount: Transaction amount as number (NOT balance/fees/charges)
+- purpose: Transaction category or description
+- transaction_type: "income" (credits/received) or "expense" (debits/payments) or "savings"
+- transaction_date: ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+
+OPTIONAL:
+- sender: Person/entity who sent money
+- from_account: Sender's account number (may be masked)
+- to_account: Recipient's account number
+- receiver: Person/entity who received money
+- currency: Infer from symbols/text (৳/Tk/BDT → BDT, $ → USD, € → EUR)
+- platform: Service used (bKash, Nagad, Stripe, PayPal, bank name)
+- transaction_id: Reference/tracking number
+- details: Additional info (fees, merchant address, notes)
+
+PURPOSE CATEGORIES (choose best fit):
+Food, Clothing, Essentials, Accommodation, Fuel, Transportation, Electricity, Gas, Water, Phone, Internet, Subscription, Education, Salary, Tax, Gift, or "Any Other Expenses"
+
+EXTRACTION RULES:
+1. Return ONLY valid JSON, no commentary
+2. amount must be a number (extract from "Amount:", "Total:", currency symbols)
+3. Ignore service charges, VAT, balance - only extract transaction amount
+4. Use context clues: green/plus = income, red/minus = expense
+5. Handle various date formats and convert to ISO 8601
+6. Extract transaction IDs from any reference/confirmation numbers
+7. Use null for fields that cannot be determined
+8. Verify amount is transaction value, not account balance
+
+EXAMPLE OUTPUT:
+{
+  "sender": "John Doe",
+  "from_account": "****1234",
+  "to_account": "****5678",
+  "receiver": "Acme Corp",
+  "amount": 150.50,
+  "currency": "USD",
+  "transaction_type": "expense",
+  "platform": "Stripe",
+  "transaction_id": "TXN-12345",
+  "transaction_date": "2025-01-05T10:30:00Z",
+  "purpose": "Office Supplies",
+  "details": "Purchased office supplies"
+}
+
+Now analyze this email and return extracted data as JSON:`;
+
+  try {
+    console.log('📡 Making request to OpenAI API...');
+    console.log('   - Model: gpt-4o-mini');
+    console.log('   - Temperature: 0.1');
+    console.log('   - Response format: JSON');
+    
+    const requestBody = {
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'user',
+          content: `${AI_PROMPT}\n\nEmail HTML:\n${htmlContent}`
+        }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.1
+    };
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    console.log('📥 OpenAI API response received');
+    console.log('   - Status:', response.status, response.statusText);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
+      console.log('❌ OpenAI API error:', error);
+      throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('📊 OpenAI response data:', {
+      model: result.model,
+      usage: result.usage,
+      finish_reason: result.choices[0].finish_reason
+    });
+    
+    const extracted = JSON.parse(result.choices[0].message.content);
+    console.log('🔍 Raw extracted data:', extracted);
+
+    // Post-process: ensure amount is number
+    if (typeof extracted.amount === 'string') {
+      console.log('🔧 Converting amount from string to number:', extracted.amount);
+      extracted.amount = parseFloat(extracted.amount.replace(/[^0-9.-]/g, ''));
+      console.log('   - Converted to:', extracted.amount);
+    }
+
+    // Validate required fields
+    console.log('✓ Validating required fields...');
+    
+    if (!extracted.amount || typeof extracted.amount !== 'number') {
+      console.log('❌ Validation failed: Invalid amount');
+      throw new Error('Failed to extract amount from email');
+    }
+    console.log('   ✓ Amount:', extracted.amount);
+    
+    if (!extracted.purpose || typeof extracted.purpose !== 'string') {
+      console.log('❌ Validation failed: Invalid purpose');
+      throw new Error('Failed to extract purpose from email');
+    }
+    console.log('   ✓ Purpose:', extracted.purpose);
+    
+    if (!extracted.transaction_type || !['income', 'expense', 'savings'].includes(extracted.transaction_type.toLowerCase())) {
+      console.log('❌ Validation failed: Invalid transaction_type');
+      throw new Error('Failed to extract valid transaction_type from email');
+    }
+    console.log('   ✓ Transaction Type:', extracted.transaction_type);
+    
+    if (!extracted.transaction_date) {
+      console.log('⚠️  Transaction date not found, using current date');
+      extracted.transaction_date = new Date().toISOString();
+    }
+    console.log('   ✓ Transaction Date:', extracted.transaction_date);
+    
+    console.log('✅ All validations passed');
+    return extracted;
+  } catch (error) {
+    console.error('❌ Error in processEmailWithAI:', error);
+    throw error;
+  }
+}
+
+/**
+ * Generate a receipt image from extracted data
+ * Creates a professional-looking receipt as a JPG image
+ */
+async function generateReceiptImage(data) {
+  return new Promise((resolve, reject) => {
+    try {
+      // Create canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = 800;
+      canvas.height = 1000;
+      const ctx = canvas.getContext('2d');
+
+      // Background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Header
+      ctx.fillStyle = '#1e40af';
+      ctx.fillRect(0, 0, canvas.width, 120);
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 48px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('TRANSACTION RECEIPT', canvas.width / 2, 75);
+
+      // Transaction Type Badge
+      const typeY = 160;
+      const typeColor = data.transaction_type === 'income' ? '#10b981' : 
+                        data.transaction_type === 'expense' ? '#ef4444' : '#3b82f6';
+      ctx.fillStyle = typeColor;
+      ctx.fillRect(250, typeY, 300, 50);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 24px Arial';
+      ctx.fillText(data.transaction_type.toUpperCase(), canvas.width / 2, typeY + 35);
+
+      // Main content area
+      let y = 250;
+      const leftMargin = 80;
+      const rightMargin = canvas.width - 80;
+      const lineHeight = 60;
+
+      // Helper function to draw a row
+      const drawRow = (label, value, isBold = false) => {
+        // Background for alternating rows
+        if (Math.floor((y - 250) / lineHeight) % 2 === 0) {
+          ctx.fillStyle = '#f9fafb';
+          ctx.fillRect(40, y - 40, canvas.width - 80, lineHeight);
+        }
+
+        // Label
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '20px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(label, leftMargin, y);
+
+        // Value
+        ctx.fillStyle = '#111827';
+        ctx.font = isBold ? 'bold 24px Arial' : '22px Arial';
+        ctx.textAlign = 'right';
+        
+        // Wrap text if too long
+        const maxWidth = rightMargin - leftMargin - 200;
+        const valueStr = String(value || 'N/A');
+        if (ctx.measureText(valueStr).width > maxWidth) {
+          const words = valueStr.split(' ');
+          let line = '';
+          for (let word of words) {
+            const testLine = line + word + ' ';
+            if (ctx.measureText(testLine).width > maxWidth) {
+              ctx.fillText(line, rightMargin, y);
+              y += 30;
+              line = word + ' ';
+            } else {
+              line = testLine;
+            }
+          }
+          ctx.fillText(line, rightMargin, y);
+        } else {
+          ctx.fillText(valueStr, rightMargin, y);
+        }
+        
+        y += lineHeight;
+      };
+
+      // Draw all fields
+      drawRow('Amount:', `${data.currency || 'USD'} ${data.amount.toFixed(2)}`, true);
+      drawRow('Purpose:', data.purpose);
+      drawRow('Date:', new Date(data.transaction_date).toLocaleString());
+      
+      if (data.sender) drawRow('Sender:', data.sender);
+      if (data.receiver) drawRow('Receiver:', data.receiver);
+      if (data.platform) drawRow('Platform:', data.platform);
+      if (data.transaction_id) drawRow('Transaction ID:', data.transaction_id);
+      if (data.from_account) drawRow('From Account:', data.from_account);
+      if (data.to_account) drawRow('To Account:', data.to_account);
+      if (data.details) drawRow('Details:', data.details);
+
+      // Footer
+      y += 40;
+      ctx.fillStyle = '#e5e7eb';
+      ctx.fillRect(0, y, canvas.width, 2);
+      
+      y += 40;
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '16px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Generated on ' + new Date().toLocaleString(), canvas.width / 2, y);
+      
+      y += 30;
+      ctx.fillText('This is a computer-generated receipt', canvas.width / 2, y);
+
+      // Convert to JPG
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      resolve(dataUrl);
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
 
 /**

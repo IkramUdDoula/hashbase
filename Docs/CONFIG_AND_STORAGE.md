@@ -1341,9 +1341,6 @@ export function getDashboardKeys() {
     'posthog_errors_settings',
     'posthog_surveys_settings',
     
-    // Haalkhata widget
-    'haalkhata_widget_settings',
-    
     // YOUR WIDGET - ADD HERE
     'myWidget_items',      // Widget items/data
     'myWidget_settings',   // Widget settings

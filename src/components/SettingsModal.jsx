@@ -666,12 +666,6 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
       label: 'PostHog Personal API Key',
       description: 'Get from PostHog Settings > Personal API Keys (requires project:read scope)',
       placeholder: 'phx_xxxxxxxxxxxxx'
-    },
-    {
-      key: SECRET_KEYS.HAALKHATA_ACCESS_TOKEN,
-      label: 'Haalkhata Access Token',
-      description: 'Get from Haalkhata Settings > API Tokens > Create Token',
-      placeholder: 'hk_live_xxxxxxxxxxxxx'
     }
   ];
 

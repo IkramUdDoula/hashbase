@@ -1273,7 +1273,6 @@ export function getDashboardKeys() {
     'checklistSettings',
     'posthog_errors_settings',
     'posthog_surveys_settings',
-    'haalkhata_widget_settings',
     
     // Widget data (8 keys)
     'timerMode',

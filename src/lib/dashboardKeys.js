@@ -63,9 +63,6 @@ export function getDashboardKeys() {
     // PostHog widget settings (non-sensitive configuration only)
     'posthog_errors_settings',                // PostHog Errors widget config
     'posthog_surveys_settings',               // PostHog Surveys widget config
-    
-    // Haalkhata widget
-    'haalkhata_widget_settings',              // Haalkhata widget config
   ];
   
   // Add per-canvas layout keys dynamically
