@@ -23,8 +23,8 @@ function getOAuth2Client() {
   )
 }
 
-// Load credentials from request header
-function loadCredentialsFromHeader(req) {
+// Load credentials from request header and auto-refresh if needed
+async function loadCredentialsFromHeader(req) {
   try {
     const tokenHeader = req.headers['x-gmail-token']
     if (!tokenHeader) {
@@ -33,7 +33,30 @@ function loadCredentialsFromHeader(req) {
     const credentials = JSON.parse(tokenHeader)
     const oauth2Client = getOAuth2Client()
     oauth2Client.setCredentials(credentials)
-    return oauth2Client
+    
+    // Check if token is expired or about to expire (within 5 minutes)
+    const expiryDate = credentials.expiry_date
+    const now = Date.now()
+    const fiveMinutes = 5 * 60 * 1000
+    
+    if (expiryDate && (now >= expiryDate - fiveMinutes)) {
+      console.log('🔄 Gmail: Access token expired or expiring soon, refreshing...')
+      try {
+        // Refresh the token
+        const { credentials: newCredentials } = await oauth2Client.refreshAccessToken()
+        oauth2Client.setCredentials(newCredentials)
+        console.log('✅ Gmail: Token refreshed successfully')
+        
+        // Return both the client and the new credentials so they can be sent back to frontend
+        return { oauth2Client, newCredentials }
+      } catch (refreshError) {
+        console.error('❌ Gmail: Failed to refresh token:', refreshError.message)
+        // If refresh fails, return null to force re-authentication
+        return null
+      }
+    }
+    
+    return { oauth2Client, newCredentials: null }
   } catch (err) {
     console.error('Error loading credentials from header:', err)
     return null
@@ -112,18 +135,37 @@ function createApiServer() {
     }
   })
 
-  // Check if authenticated (checks if token is provided in header)
-  app.get('/api/auth/status', (req, res) => {
-    const tokenHeader = req.headers['x-gmail-token']
-    res.json({ authenticated: !!tokenHeader })
+  // Check if authenticated and refresh token if needed
+  app.get('/api/auth/status', async (req, res) => {
+    try {
+      const result = await loadCredentialsFromHeader(req)
+      
+      if (!result) {
+        return res.json({ authenticated: false })
+      }
+      
+      // If token was refreshed, return the new credentials
+      if (result.newCredentials) {
+        return res.json({ 
+          authenticated: true, 
+          refreshed: true,
+          tokens: result.newCredentials 
+        })
+      }
+      
+      res.json({ authenticated: true })
+    } catch (error) {
+      console.error('Error checking auth status:', error)
+      res.json({ authenticated: false })
+    }
   })
 
   // Fetch unread emails
   app.get('/api/gmail/unread', async (req, res) => {
     try {
-      const auth = loadCredentialsFromHeader(req)
+      const result = await loadCredentialsFromHeader(req)
       
-      if (!auth) {
+      if (!result) {
         console.log('❌ Gmail: Not authenticated - no token provided in header')
         return res.status(401).json({ 
           error: 'Not authenticated',
@@ -132,7 +174,13 @@ function createApiServer() {
       }
 
       console.log('✅ Gmail: Credentials loaded, fetching emails...')
-      const gmail = google.gmail({ version: 'v1', auth })
+      const gmail = google.gmail({ version: 'v1', auth: result.oauth2Client })
+      
+      // If token was refreshed, include new credentials in response
+      const responseHeaders = {}
+      if (result.newCredentials) {
+        responseHeaders['x-gmail-token-refreshed'] = JSON.stringify(result.newCredentials)
+      }
       
       // Get list of unread messages
       const response = await gmail.users.messages.list({
@@ -168,6 +216,11 @@ function createApiServer() {
 
       const emails = await Promise.all(emailPromises)
       
+      // Set refresh header if token was refreshed
+      if (result.newCredentials) {
+        res.set('x-gmail-token-refreshed', JSON.stringify(result.newCredentials))
+      }
+      
       res.json({ emails })
     } catch (error) {
       console.error('❌ Gmail API Error:', error.message)
@@ -183,13 +236,13 @@ function createApiServer() {
   app.post('/api/gmail/mark-read', async (req, res) => {
     try {
       const { messageId } = req.body
-      const auth = loadCredentialsFromHeader(req)
+      const result = await loadCredentialsFromHeader(req)
       
-      if (!auth) {
+      if (!result) {
         return res.status(401).json({ error: 'Not authenticated' })
       }
 
-      const gmail = google.gmail({ version: 'v1', auth })
+      const gmail = google.gmail({ version: 'v1', auth: result.oauth2Client })
       
       await gmail.users.messages.modify({
         userId: 'me',
@@ -213,14 +266,14 @@ function createApiServer() {
   app.get('/api/gmail/email/:messageId', async (req, res) => {
     try {
       const { messageId } = req.params
-      const auth = loadCredentialsFromHeader(req)
+      const result = await loadCredentialsFromHeader(req)
       
-      if (!auth) {
+      if (!result) {
         return res.status(401).json({ error: 'Not authenticated' })
       }
 
       console.log(`📧 Gmail: Fetching full details for message ${messageId}`)
-      const gmail = google.gmail({ version: 'v1', auth })
+      const gmail = google.gmail({ version: 'v1', auth: result.oauth2Client })
       
       const details = await gmail.users.messages.get({
         userId: 'me',
@@ -322,6 +375,12 @@ function createApiServer() {
       }
 
       console.log(`✅ Gmail: Successfully fetched email details`)
+      
+      // Set refresh header if token was refreshed
+      if (result.newCredentials) {
+        res.set('x-gmail-token-refreshed', JSON.stringify(result.newCredentials))
+      }
+      
       res.json({ email })
     } catch (error) {
       console.error('❌ Gmail API Error:', error.message)
@@ -336,14 +395,14 @@ function createApiServer() {
   app.get('/api/gmail/attachment/:messageId/:attachmentId', async (req, res) => {
     try {
       const { messageId, attachmentId } = req.params
-      const auth = loadCredentialsFromHeader(req)
+      const result = await loadCredentialsFromHeader(req)
       
-      if (!auth) {
+      if (!result) {
         return res.status(401).json({ error: 'Not authenticated' })
       }
 
       console.log(`📎 Gmail: Downloading attachment ${attachmentId} from message ${messageId}`)
-      const gmail = google.gmail({ version: 'v1', auth })
+      const gmail = google.gmail({ version: 'v1', auth: result.oauth2Client })
       
       const attachment = await gmail.users.messages.attachments.get({
         userId: 'me',

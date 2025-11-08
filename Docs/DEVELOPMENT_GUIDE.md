@@ -14,6 +14,7 @@ Complete guide for creating widgets and explorers in the Hashbase dashboard.
 8. [Examples & Patterns](#examples--patterns)
 9. [API Reference](#api-reference)
 10. [Troubleshooting](#troubleshooting)
+11. [Advanced Features](#advanced-features)
 
 ---
 
@@ -1450,5 +1451,35 @@ VITE_CONFIG_ENCRYPTION_KEY=abc123...
 
 ---
 
-**Last Updated:** 2025-11-06  
-**Version:** 2.1.0
+## Advanced Features
+
+### Gmail Persistent Login with Token Refresh
+
+The Gmail widget implements automatic token refresh to keep users logged in indefinitely. See the complete documentation:
+
+📖 **[Gmail Persistent Login Guide](./GMAIL_PERSISTENT_LOGIN.md)**
+
+**Key Features:**
+- ✅ Users authenticate **once** with Google OAuth
+- ✅ Access tokens automatically refresh in the background
+- ✅ Refresh tokens stored securely in localStorage
+- ✅ No re-authentication required (unless token revoked)
+- ✅ Works across browser sessions
+- ✅ Encrypted in config exports for cross-device persistence
+
+**Implementation Pattern:**
+This pattern can be adapted for other OAuth-based widgets (Twitter, LinkedIn, etc.):
+
+1. **Backend**: Check token expiry before API calls, auto-refresh if needed
+2. **Frontend**: Handle refreshed tokens via response headers
+3. **Storage**: Update localStorage automatically with new tokens
+
+**Related Files:**
+- Backend: `vite.config.js` - OAuth and token refresh logic
+- Frontend: `src/services/gmailService.js` - Token handling
+- Documentation: `Docs/GMAIL_PERSISTENT_LOGIN.md` - Complete guide
+
+---
+
+**Last Updated:** 2025-11-09  
+**Version:** 2.2.0
