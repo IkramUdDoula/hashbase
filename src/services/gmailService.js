@@ -151,6 +151,23 @@ export async function markAsRead(messageId) {
   }
 }
 
+export async function downloadAttachment(messageId, attachmentId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/gmail/attachment/${messageId}/${attachmentId}`, {
+      headers: getHeaders()
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to download attachment: ${response.statusText}`);
+    }
+    
+    return response.blob();
+  } catch (error) {
+    console.error('Error downloading attachment:', error);
+    throw error;
+  }
+}
+
 export function getGmailUrl(messageId) {
   return `https://mail.google.com/mail/u/0/#inbox/${messageId}`;
 }

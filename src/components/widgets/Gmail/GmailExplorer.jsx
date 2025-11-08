@@ -19,9 +19,13 @@ import {
   Link,
   Code,
   MailCheck,
-  Receipt
+  Receipt,
+  Download,
+  FileImage,
+  FileText,
+  File
 } from 'lucide-react';
-import { getGmailUrl, fetchEmailDetails, markAsRead } from '@/services/gmailService';
+import { getGmailUrl, fetchEmailDetails, markAsRead, downloadAttachment } from '@/services/gmailService';
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { parseEmailHTML, extractKeyValuePairs } from '@/lib/emailParser';
 import { getSecret, SECRET_KEYS } from '@/services/secretsService';
@@ -151,6 +155,27 @@ export function GmailExplorer({
     }
   };
 
+  const handleDownloadAttachment = async (attachment, messageId) => {
+    try {
+      addToast('Downloading attachment...', 'info');
+      
+      const blob = await downloadAttachment(messageId, attachment.attachmentId);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachment.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      addToast('Attachment downloaded successfully', 'success');
+    } catch (error) {
+      console.error('Failed to download attachment:', error);
+      addToast(`Failed to download: ${error.message}`, 'error');
+    }
+  };
+
   const handleCreateReceipt = async () => {
     console.log('\n========================================');
     console.log('🚀 CREATE RECEIPT - PROCESS STARTED');
@@ -252,6 +277,14 @@ export function GmailExplorer({
       name: match[1].trim(),
       email: match[2].trim() || emailStr
     };
+  };
+
+  // Format file size helper
+  const formatFileSize = (bytes) => {
+    if (!bytes) return 'Unknown size';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
@@ -394,32 +427,6 @@ export function GmailExplorer({
               </ExplorerSection>
             )}
 
-            {/* Attachments */}
-            {email.attachments && email.attachments.length > 0 && (
-              <ExplorerSection title="Attachments">
-                <div className="space-y-2">
-                  {email.attachments.map((attachment, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-                    >
-                      <Paperclip className="h-4 w-4 text-gray-500" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                          {attachment.filename}
-                        </p>
-                        {attachment.size && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {(attachment.size / 1024).toFixed(1)} KB
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ExplorerSection>
-            )}
-
             {/* Email Body/Snippet */}
             <ExplorerSection title="Message">
               <div className="space-y-4">
@@ -460,6 +467,59 @@ export function GmailExplorer({
                 )}
               </div>
             </ExplorerSection>
+
+            {/* Attachments */}
+            {fullEmail?.attachments && fullEmail.attachments.length > 0 && (
+              <ExplorerSection 
+                title={
+                  <div className="flex items-center gap-2">
+                    <Paperclip className="h-4 w-4" />
+                    <span>Attachments ({fullEmail.attachments.length})</span>
+                  </div>
+                }
+              >
+                <div className="space-y-2">
+                  {fullEmail.attachments.map((attachment, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between w-full p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {/* File icon based on type */}
+                        {attachment.mimeType?.startsWith('image/') ? (
+                          <FileImage className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                        ) : attachment.mimeType?.includes('pdf') || attachment.mimeType?.includes('document') ? (
+                          <FileText className="h-5 w-5 text-red-500 flex-shrink-0" />
+                        ) : (
+                          <File className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                        )}
+                        
+                        {/* Filename */}
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                          {attachment.filename}
+                        </span>
+                      </div>
+
+                      {/* File size */}
+                      <span className="text-xs text-gray-500 dark:text-gray-400 mx-4 flex-shrink-0">
+                        {formatFileSize(attachment.size)}
+                      </span>
+
+                      {/* Download button */}
+                      <Button
+                        onClick={() => handleDownloadAttachment(attachment, emailId)}
+                        variant="ghost"
+                        size="sm"
+                        className="flex-shrink-0 h-8 w-8 p-0"
+                        title="Download attachment"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </ExplorerSection>
+            )}
 
           </ExplorerBody>
 
@@ -908,13 +968,20 @@ function EmailContentRenderer({ htmlBody, textBody, addToast }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {parsedContent.images.map((img, idx) => (
                   <div key={idx} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                    <div className="relative w-full h-32 bg-gray-100 dark:bg-gray-900 flex items-center justify-center p-3">
+                    <div 
+                      className="relative w-full h-32 bg-gray-100 dark:bg-gray-900 flex items-center justify-center p-3 cursor-pointer group"
+                      onClick={() => window.open(img.src, '_blank')}
+                      title="Click to open in new tab"
+                    >
                       <img
                         src={img.src}
                         alt={img.alt}
-                        className="max-w-full max-h-full w-auto h-auto object-contain rounded"
+                        className="max-w-full max-h-full w-auto h-auto object-contain rounded group-hover:opacity-80 transition-opacity"
                         loading="lazy"
                       />
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded">
+                        <ExternalLink className="h-6 w-6 text-white" />
+                      </div>
                     </div>
                     {img.alt && (
                       <div className="px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700">

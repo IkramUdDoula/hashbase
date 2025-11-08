@@ -332,6 +332,47 @@ function createApiServer() {
     }
   })
 
+  // Download attachment
+  app.get('/api/gmail/attachment/:messageId/:attachmentId', async (req, res) => {
+    try {
+      const { messageId, attachmentId } = req.params
+      const auth = loadCredentialsFromHeader(req)
+      
+      if (!auth) {
+        return res.status(401).json({ error: 'Not authenticated' })
+      }
+
+      console.log(`📎 Gmail: Downloading attachment ${attachmentId} from message ${messageId}`)
+      const gmail = google.gmail({ version: 'v1', auth })
+      
+      const attachment = await gmail.users.messages.attachments.get({
+        userId: 'me',
+        messageId: messageId,
+        id: attachmentId
+      })
+
+      // Decode base64url data
+      const data = attachment.data.data
+      const base64 = data.replace(/-/g, '+').replace(/_/g, '/')
+      const padding = base64.length % 4
+      const paddedBase64 = padding ? base64 + '='.repeat(4 - padding) : base64
+      const buffer = Buffer.from(paddedBase64, 'base64')
+
+      // Set appropriate headers
+      res.setHeader('Content-Type', 'application/octet-stream')
+      res.setHeader('Content-Length', buffer.length)
+      res.send(buffer)
+      
+      console.log(`✅ Gmail: Successfully downloaded attachment`)
+    } catch (error) {
+      console.error('❌ Gmail Attachment Error:', error.message)
+      res.status(500).json({ 
+        error: 'Failed to download attachment',
+        message: error.message 
+      })
+    }
+  })
+
   // ===== Netlify API Endpoints =====
 
   // Check if Netlify is configured
