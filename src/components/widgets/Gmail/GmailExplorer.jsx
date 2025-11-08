@@ -510,7 +510,7 @@ export function GmailExplorer({
                         onClick={() => handleDownloadAttachment(attachment, emailId)}
                         variant="ghost"
                         size="sm"
-                        className="flex-shrink-0 h-8 w-8 p-0"
+                        className="flex-shrink-0 h-8 w-8 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
                         title="Download attachment"
                       >
                         <Download className="h-4 w-4" />
