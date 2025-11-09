@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { getGmailUrl, fetchEmailDetails, markAsRead, downloadAttachment } from '@/services/gmailService';
 import { formatRelativeDate } from '@/lib/dateUtils';
-import { parseEmailHTML, extractKeyValuePairs } from '@/lib/emailParser';
+import { parseEmailHTML, parseEmailText, extractKeyValuePairs } from '@/lib/emailParser';
 import { getSecret, SECRET_KEYS } from '@/services/secretsService';
 import { useToast } from '@/components/ui/toast';
 import './email-content.css';
@@ -848,22 +848,32 @@ async function generateReceiptImage(data) {
 }
 
 /**
- * EmailContentRenderer - Parses and displays email HTML in a clean, structured format
+ * EmailContentRenderer - Parses and displays email content in a clean, structured format
  * For HTML emails, shows 3 sections:
  * 1. Key Data Points (tables and key-value pairs)
  * 2. Links
  * 3. Raw HTML Content (source code)
+ * 
+ * For plain text emails, shows:
+ * 1. Structured content (headings, paragraphs, lists)
+ * 2. Links
  */
 function EmailContentRenderer({ htmlBody, textBody, addToast }) {
   const [parsedContent, setParsedContent] = useState(null);
   const [showRawHTML, setShowRawHTML] = useState(false);
+  const [isPlainText, setIsPlainText] = useState(false);
 
   useEffect(() => {
     if (htmlBody) {
       const parsed = parseEmailHTML(htmlBody);
       setParsedContent(parsed);
+      setIsPlainText(false);
+    } else if (textBody) {
+      const parsed = parseEmailText(textBody);
+      setParsedContent(parsed);
+      setIsPlainText(true);
     }
-  }, [htmlBody]);
+  }, [htmlBody, textBody]);
 
   if (!parsedContent) {
     return (
@@ -952,8 +962,22 @@ function EmailContentRenderer({ htmlBody, textBody, addToast }) {
             </div>
           )}
 
-          {/* Main text content - cleaned */}
-          {cleanText.length > 0 && (
+          {/* Structured content - headings, paragraphs, lists */}
+          {parsedContent.structuredContent && parsedContent.structuredContent.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                Content
+              </h4>
+              <div className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+                {parsedContent.structuredContent.map((item, idx) => (
+                  <StructuredContentItem key={idx} item={item} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Fallback: Main text content - cleaned */}
+          {(!parsedContent.structuredContent || parsedContent.structuredContent.length === 0) && cleanText.length > 0 && (
             <div className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
               {cleanText.map((line, idx) => (
                 <p key={idx} className="mb-2">{line}</p>
@@ -965,7 +989,7 @@ function EmailContentRenderer({ htmlBody, textBody, addToast }) {
           {parsedContent.images.length > 0 && (
             <div className="space-y-3">
               <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Images ({parsedContent.images.length})</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 {parsedContent.images.map((img, idx) => (
                   <div key={idx} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                     <div 
@@ -1022,11 +1046,12 @@ function EmailContentRenderer({ htmlBody, textBody, addToast }) {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+                    title={link.href}
                   >
                     {link.text}
                   </a>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-all">
-                    {link.href}
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {link.domain || link.href}
                   </p>
                 </div>
               </div>
@@ -1037,57 +1062,116 @@ function EmailContentRenderer({ htmlBody, textBody, addToast }) {
         )}
       </ExplorerSection>
 
-      {/* SECTION 3: Raw HTML Content */}
-      <ExplorerSection 
-        title={
-          <div className="flex items-center gap-2">
-            <Code className="h-4 w-4" />
-            <span>Raw HTML Content</span>
-          </div>
-        }
-      >
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              View the raw HTML source of the email
-            </p>
+      {/* SECTION 3: Raw Content (HTML or Plain Text) */}
+      {!isPlainText && htmlBody && (
+        <ExplorerSection 
+          title={
             <div className="flex items-center gap-2">
-              <Button
-                onClick={() => setShowRawHTML(!showRawHTML)}
-                variant="outline"
-                size="sm"
-                className="text-xs bg-transparent border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"
-              >
-                {showRawHTML ? 'Hide' : 'Show'} HTML
-              </Button>
-              <Button
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(htmlBody);
-                    addToast('HTML copied to clipboard', 'success');
-                  } catch (err) {
-                    console.error('Failed to copy HTML:', err);
-                    addToast('Failed to copy HTML', 'error');
-                  }
-                }}
-                variant="outline"
-                size="sm"
-                className="text-xs bg-transparent border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"
-              >
-                Copy HTML
-              </Button>
+              <Code className="h-4 w-4" />
+              <span>Raw HTML Content</span>
             </div>
+          }
+        >
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                View the raw HTML source of the email
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setShowRawHTML(!showRawHTML)}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs bg-transparent border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"
+                >
+                  {showRawHTML ? 'Hide' : 'Show'} HTML
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(htmlBody);
+                      addToast('HTML copied to clipboard', 'success');
+                    } catch (err) {
+                      console.error('Failed to copy HTML:', err);
+                      addToast('Failed to copy HTML', 'error');
+                    }
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs bg-transparent border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"
+                >
+                  Copy HTML
+                </Button>
+              </div>
+            </div>
+            
+            {showRawHTML && (
+              <div className="relative">
+                <pre className="text-xs text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700 overflow-x-auto max-h-96 overflow-y-auto font-mono">
+                  {htmlBody}
+                </pre>
+              </div>
+            )}
           </div>
-          
-          {showRawHTML && (
-            <div className="relative">
-              <pre className="text-xs text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700 overflow-x-auto max-h-96 overflow-y-auto font-mono">
-                {htmlBody}
-              </pre>
-            </div>
-          )}
-        </div>
-      </ExplorerSection>
+        </ExplorerSection>
+      )}
     </div>
   );
+}
+
+/**
+ * StructuredContentItem - Renders individual structured content items
+ */
+function StructuredContentItem({ item }) {
+  switch (item.type) {
+    case 'heading':
+      // All headings use the same font size, but different weights for visual hierarchy
+      const headingWeight = item.level <= 2 ? 'font-bold' : item.level <= 4 ? 'font-semibold' : 'font-medium';
+      const headingMargin = item.level <= 2 ? 'mt-4 mb-2' : 'mt-3 mb-1.5';
+      return (
+        <h3 className={`text-sm ${headingWeight} ${headingMargin} first:mt-0 text-gray-900 dark:text-gray-100`}>
+          {item.text}
+        </h3>
+      );
+    
+    case 'paragraph':
+      return (
+        <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-200">
+          {item.text}
+        </p>
+      );
+    
+    case 'list':
+      return (
+        <div className="ml-4">
+          {item.ordered ? (
+            <ol className="list-decimal list-outside space-y-1">
+              {item.items.map((listItem, idx) => (
+                <li key={idx} className="text-sm text-gray-800 dark:text-gray-200 pl-1">
+                  {listItem}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <ul className="list-disc list-outside space-y-1">
+              {item.items.map((listItem, idx) => (
+                <li key={idx} className="text-sm text-gray-800 dark:text-gray-200 pl-1">
+                  {listItem}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      );
+    
+    case 'blockquote':
+      return (
+        <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 py-2 italic text-sm text-gray-700 dark:text-gray-300">
+          {item.text}
+        </blockquote>
+      );
+    
+    default:
+      return null;
+  }
 }

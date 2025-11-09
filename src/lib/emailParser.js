@@ -1,6 +1,6 @@
 /**
- * Email HTML Parser
- * Extracts meaningful content from complex HTML emails and presents it in a clean format
+ * Email Parser
+ * Extracts meaningful content from HTML and plain text emails and presents it in a clean format
  */
 
 /**
@@ -15,6 +15,9 @@ export function parseEmailHTML(html) {
 
   // Extract all text content
   const allText = doc.body.textContent || '';
+  
+  // Extract structured content
+  const structuredContent = extractStructuredContent(doc);
   
   // Extract tables
   const tables = extractTables(doc);
@@ -33,11 +36,337 @@ export function parseEmailHTML(html) {
 
   return {
     text: cleanText,
+    structuredContent,
     tables,
     links,
     images,
-    hasStructuredContent: tables.length > 0 || links.length > 0
+    hasStructuredContent: structuredContent.length > 0 || tables.length > 0 || links.length > 0
   };
+}
+
+/**
+ * Parse plain text email and extract structured data
+ * @param {string} text - Raw plain text content
+ * @returns {Object} Parsed email data
+ */
+export function parseEmailText(text) {
+  if (!text) {
+    return {
+      text: '',
+      structuredContent: [],
+      tables: [],
+      links: [],
+      images: [],
+      hasStructuredContent: false
+    };
+  }
+
+  const structuredContent = extractStructuredContentFromText(text);
+  const links = extractLinksFromText(text);
+
+  return {
+    text: text.trim(),
+    structuredContent,
+    tables: [],
+    links,
+    images: [],
+    hasStructuredContent: structuredContent.length > 0 || links.length > 0
+  };
+}
+
+/**
+ * Extract structured content from plain text
+ */
+function extractStructuredContentFromText(text) {
+  const content = [];
+  const lines = text.split('\n');
+  let currentParagraph = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Skip empty lines
+    if (!line) {
+      // If we have accumulated paragraph text, add it
+      if (currentParagraph.length > 0) {
+        content.push({
+          type: 'paragraph',
+          text: currentParagraph.join(' ')
+        });
+        currentParagraph = [];
+      }
+      continue;
+    }
+    
+    // Detect headings (ALL CAPS lines or lines ending with colon)
+    const isAllCaps = line === line.toUpperCase() && line.length > 3 && line.length < 100 && /[A-Z]/.test(line);
+    const endsWithColon = line.endsWith(':') && line.length < 100 && !line.includes('http');
+    
+    if (isAllCaps || endsWithColon) {
+      // Flush current paragraph
+      if (currentParagraph.length > 0) {
+        content.push({
+          type: 'paragraph',
+          text: currentParagraph.join(' ')
+        });
+        currentParagraph = [];
+      }
+      
+      // Add as heading
+      content.push({
+        type: 'heading',
+        level: isAllCaps ? 2 : 3,
+        text: line.replace(/:$/, '')
+      });
+      continue;
+    }
+    
+    // Detect list items (lines starting with -, *, •, or numbers)
+    const listMatch = line.match(/^(\s*)([-*•]|\d+\.)\s+(.+)$/);
+    if (listMatch) {
+      // Flush current paragraph
+      if (currentParagraph.length > 0) {
+        content.push({
+          type: 'paragraph',
+          text: currentParagraph.join(' ')
+        });
+        currentParagraph = [];
+      }
+      
+      // Check if we should add to existing list or create new one
+      const lastItem = content[content.length - 1];
+      const isNumbered = /^\d+\./.test(listMatch[2]);
+      
+      if (lastItem && lastItem.type === 'list' && lastItem.ordered === isNumbered) {
+        // Add to existing list
+        lastItem.items.push(listMatch[3]);
+      } else {
+        // Create new list
+        content.push({
+          type: 'list',
+          ordered: isNumbered,
+          items: [listMatch[3]]
+        });
+      }
+      continue;
+    }
+    
+    // Detect horizontal separators (lines with only dashes, equals, or underscores)
+    if (/^[-=_]{3,}$/.test(line)) {
+      // Flush current paragraph
+      if (currentParagraph.length > 0) {
+        content.push({
+          type: 'paragraph',
+          text: currentParagraph.join(' ')
+        });
+        currentParagraph = [];
+      }
+      continue;
+    }
+    
+    // Regular text - accumulate into paragraph
+    currentParagraph.push(line);
+  }
+  
+  // Flush any remaining paragraph
+  if (currentParagraph.length > 0) {
+    content.push({
+      type: 'paragraph',
+      text: currentParagraph.join(' ')
+    });
+  }
+  
+  return content;
+}
+
+/**
+ * Extract links from plain text
+ */
+function extractLinksFromText(text) {
+  const links = [];
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  let match;
+  
+  while ((match = urlRegex.exec(text)) !== null) {
+    const url = match[1];
+    links.push({
+      text: url,
+      href: url,
+      domain: extractDomain(url)
+    });
+  }
+  
+  return links;
+}
+
+/**
+ * Extract structured content (headings, paragraphs, lists, etc.)
+ */
+function extractStructuredContent(doc) {
+  const content = [];
+  const seenTexts = new Set(); // Avoid duplicates
+  
+  // Get the body or main content area
+  const body = doc.body;
+  if (!body) return content;
+  
+  // Helper to check if element is likely a content container
+  const isContentElement = (node) => {
+    const tagName = node.tagName.toLowerCase();
+    
+    // Skip script, style, and hidden elements
+    if (['script', 'style', 'noscript', 'meta', 'link'].includes(tagName)) {
+      return false;
+    }
+    
+    // Skip if element has display:none or visibility:hidden
+    const style = window.getComputedStyle ? window.getComputedStyle(node) : node.style;
+    if (style && (style.display === 'none' || style.visibility === 'hidden')) {
+      return false;
+    }
+    
+    return true;
+  };
+  
+  // Helper to get direct text content (not from nested elements)
+  const getDirectText = (node) => {
+    return Array.from(node.childNodes)
+      .filter(n => n.nodeType === Node.TEXT_NODE)
+      .map(n => n.textContent.trim())
+      .filter(t => t.length > 0)
+      .join(' ')
+      .trim();
+  };
+  
+  // Helper to add content if not duplicate
+  const addContent = (item) => {
+    const key = `${item.type}:${item.text || item.items?.join('|')}`;
+    if (!seenTexts.has(key) && item.text && item.text.length > 0) {
+      seenTexts.add(key);
+      content.push(item);
+      return true;
+    }
+    return false;
+  };
+  
+  // Process all child nodes recursively
+  const processNode = (node, depth = 0, inTable = false) => {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return;
+    if (!isContentElement(node)) return;
+    
+    const tagName = node.tagName.toLowerCase();
+    
+    // Skip layout tables but process their content
+    if (tagName === 'table') {
+      if (isLikelyLayoutTable(node)) {
+        // Process children of layout table to extract content
+        Array.from(node.querySelectorAll('td, th')).forEach(cell => {
+          processNode(cell, depth + 1, true);
+        });
+        return;
+      }
+      // For data tables, skip them (they're handled separately)
+      return;
+    }
+    
+    // Extract headings (h1-h6)
+    if (/^h[1-6]$/.test(tagName)) {
+      const text = node.textContent.trim();
+      if (text && text.length > 2 && text.length < 200) {
+        addContent({
+          type: 'heading',
+          level: parseInt(tagName[1]),
+          text
+        });
+      }
+      return; // Don't process children
+    }
+    
+    // Extract paragraphs
+    if (tagName === 'p') {
+      const text = node.textContent.trim();
+      if (text && text.length > 5 && text.length < 1000) {
+        addContent({
+          type: 'paragraph',
+          text
+        });
+      }
+      return; // Don't process children
+    }
+    
+    // Extract lists (ul, ol)
+    if (tagName === 'ul' || tagName === 'ol') {
+      const items = [];
+      const listItems = node.querySelectorAll(':scope > li');
+      listItems.forEach(li => {
+        const text = li.textContent.trim();
+        if (text && text.length > 2) {
+          items.push(text);
+        }
+      });
+      
+      if (items.length > 0) {
+        const key = `list:${items.join('|')}`;
+        if (!seenTexts.has(key)) {
+          seenTexts.add(key);
+          content.push({
+            type: 'list',
+            ordered: tagName === 'ol',
+            items
+          });
+        }
+      }
+      return; // Don't process children
+    }
+    
+    // Extract blockquotes
+    if (tagName === 'blockquote') {
+      const text = node.textContent.trim();
+      if (text && text.length > 5) {
+        addContent({
+          type: 'blockquote',
+          text
+        });
+      }
+      return; // Don't process children
+    }
+    
+    // Extract divs with significant direct text content
+    if (tagName === 'div' || tagName === 'td' || tagName === 'th') {
+      const directText = getDirectText(node);
+      
+      // Only add if it has meaningful direct text and isn't too long
+      if (directText && directText.length >= 10 && directText.length < 500) {
+        // Check if this looks like a meaningful paragraph
+        const hasChildren = node.children.length > 0;
+        const childrenAreInline = hasChildren && Array.from(node.children).every(child => {
+          const childTag = child.tagName.toLowerCase();
+          return ['span', 'a', 'strong', 'em', 'b', 'i', 'u', 'br', 'img'].includes(childTag);
+        });
+        
+        // Add as paragraph if it's substantial text
+        if (!hasChildren || childrenAreInline) {
+          addContent({
+            type: 'paragraph',
+            text: node.textContent.trim()
+          });
+          return; // Don't process children if we added this as content
+        }
+      }
+    }
+    
+    // Process children for other elements
+    Array.from(node.children).forEach(child => {
+      processNode(child, depth + 1, inTable);
+    });
+  };
+  
+  // Start processing from body
+  Array.from(body.children).forEach(child => {
+    processNode(child);
+  });
+  
+  return content;
 }
 
 /**
@@ -161,12 +490,27 @@ function extractLinks(doc) {
     if (text && href && !href.startsWith('#')) {
       links.push({
         text,
-        href
+        href,
+        domain: extractDomain(href)
       });
     }
   });
   
   return links;
+}
+
+/**
+ * Extract domain from URL
+ */
+function extractDomain(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.replace(/^www\./, '');
+  } catch (e) {
+    // If URL parsing fails, try to extract domain manually
+    const match = url.match(/^(?:https?:\/\/)?(?:www\.)?([^\/\?#]+)/i);
+    return match ? match[1] : url;
+  }
 }
 
 /**
