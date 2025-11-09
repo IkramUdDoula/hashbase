@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect } from 'react';
-import { SiGmail, SiNetlify, SiGithub, SiPosthog } from 'react-icons/si';
+import { SiGmail, SiNetlify, SiGithub, SiPosthog, SiOpenai } from 'react-icons/si';
 import { Sparkles, Newspaper, CheckSquare, Timer, AlertTriangle, ClipboardList } from 'lucide-react';
 import { UnreadEmailWidgetV2 } from './components/widgets/Gmail/UnreadEmailWidgetV2';
 import { DeploymentWidgetV2 } from './components/widgets/Netlify/DeploymentWidgetV2';
@@ -10,6 +10,7 @@ import { BD24LiveWidgetV2 } from './components/widgets/BD24Live/BD24LiveWidgetV2
 import { ChecklistWidget } from './components/widgets/Checklist/ChecklistWidget';
 import { TimerWidget } from './components/widgets/Timer/TimerWidget';
 import { PostHogErrorsWidget, PostHogSurveysWidget } from './components/widgets/PostHog';
+import { OpenAIWidget } from './components/widgets/OpenAI';
 // import { HaalkhataWidget } from './components/widgets/Haalkhata'; // Disabled for now
 import { LandingPage } from './components/LandingPage';
 import { SettingsButton } from './components/SettingsButton';
@@ -120,6 +121,14 @@ function AppContent() {
       description: 'Manage and view PostHog surveys with response statistics and controls',
       icon: ClipboardList
     },
+    { 
+      id: 'openai-usage', 
+      component: OpenAIWidget, 
+      rowSpan: 3,
+      name: 'OpenAI Usage',
+      description: 'Monitor OpenAI API usage, token consumption, costs, and available balance',
+      icon: SiOpenai
+    },
     // Haalkhata widget disabled for now - integration code remains intact
     // { 
     //   id: 'haalkhata-receipts', 
@@ -158,6 +167,7 @@ function AppContent() {
         'timer': false,
         'posthog-errors': false,
         'posthog-surveys': false,
+        'openai-usage': false,
         // 'haalkhata-receipts': false // Widget disabled
       };
       setWidgetPreferences(defaultPreferences);

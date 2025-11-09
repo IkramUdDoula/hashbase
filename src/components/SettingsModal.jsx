@@ -640,8 +640,14 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
     {
       key: SECRET_KEYS.OPENAI_API_KEY,
       label: 'OpenAI API Key',
-      description: 'Get from platform.openai.com/api-keys',
+      description: 'Get from platform.openai.com/api-keys (for AI Chat widget)',
       placeholder: 'sk-proj-xxxxxxxxxxxxx'
+    },
+    {
+      key: SECRET_KEYS.OPENAI_ADMIN_KEY,
+      label: 'OpenAI Admin API Key',
+      description: 'Get from platform.openai.com/settings/organization/admin-keys (for Usage widget)',
+      placeholder: 'sk-xxxxxxxxxxxxx'
     },
     {
       key: SECRET_KEYS.CLAUDE_API_KEY,

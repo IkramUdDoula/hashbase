@@ -63,6 +63,10 @@ export function getDashboardKeys() {
     // PostHog widget settings (non-sensitive configuration only)
     'posthog_errors_settings',                // PostHog Errors widget config
     'posthog_surveys_settings',               // PostHog Surveys widget config
+    
+    // OpenAI widget
+    'openai_widget_data',                     // Cached usage data
+    'openai_widget_settings',                 // Widget settings
   ];
   
   // Add per-canvas layout keys dynamically
