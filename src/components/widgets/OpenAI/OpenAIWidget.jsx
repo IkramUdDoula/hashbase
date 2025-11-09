@@ -46,8 +46,7 @@ export function OpenAIWidget({ rowSpan = 2, dragRef }) {
   const [settings, setSettings] = useState({
     autoRefresh: true,
     refreshInterval: 30,
-    showUsageChart: true,
-    showCostBreakdown: true,
+    dataTimeline: 30, // days
   });
   
   // Temporary settings for modal
@@ -97,7 +96,7 @@ export function OpenAIWidget({ rowSpan = 2, dragRef }) {
         return;
       }
 
-      const openaiData = await fetchAllOpenAIData();
+      const openaiData = await fetchAllOpenAIData(settings.dataTimeline || 30);
       
       setData(openaiData);
       
@@ -374,7 +373,7 @@ export function OpenAIWidget({ rowSpan = 2, dragRef }) {
           {tempSettings.autoRefresh && (
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Refresh Interval (minutes)
+                Refresh Interval
               </label>
               <p className="text-xs text-gray-600 dark:text-gray-400">
                 How often to automatically refresh usage data
@@ -400,48 +399,32 @@ export function OpenAIWidget({ rowSpan = 2, dragRef }) {
             </div>
           )}
           
-          {/* Show Usage Chart Toggle */}
+          {/* Data Timeline */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Show Usage Chart
+              Data Timeline
             </label>
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Display visual chart of token usage over time
+              How far back to fetch usage data (max 31 days for daily view)
             </p>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={tempSettings.showUsageChart}
-                onChange={(e) => setTempSettings({ ...tempSettings, showUsageChart: e.target.checked })}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900 dark:peer-checked:bg-gray-100 peer-checked:after:bg-white dark:peer-checked:after:bg-gray-900"></div>
-              <span className="ml-3 text-sm text-gray-900 dark:text-gray-100">
-                {tempSettings.showUsageChart ? 'Enabled' : 'Disabled'}
-              </span>
-            </label>
-          </div>
-          
-          {/* Show Cost Breakdown Toggle */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Show Cost Breakdown
-            </label>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Display detailed cost breakdown by model
-            </p>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={tempSettings.showCostBreakdown}
-                onChange={(e) => setTempSettings({ ...tempSettings, showCostBreakdown: e.target.checked })}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900 dark:peer-checked:bg-gray-100 peer-checked:after:bg-white dark:peer-checked:after:bg-gray-900"></div>
-              <span className="ml-3 text-sm text-gray-900 dark:text-gray-100">
-                {tempSettings.showCostBreakdown ? 'Enabled' : 'Disabled'}
-              </span>
-            </label>
+            <div className="relative">
+              <select
+                value={tempSettings.dataTimeline}
+                onChange={(e) => setTempSettings({ ...tempSettings, dataTimeline: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 pr-8 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 appearance-none cursor-pointer"
+              >
+                <option value="1">Last 24 hours</option>
+                <option value="7">Last 7 days</option>
+                <option value="14">Last 14 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="31">Last 31 days</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 dark:text-gray-400">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
           
           {/* Reset to Defaults */}
@@ -451,8 +434,7 @@ export function OpenAIWidget({ rowSpan = 2, dragRef }) {
                 setTempSettings({
                   autoRefresh: true,
                   refreshInterval: 30,
-                  showUsageChart: true,
-                  showCostBreakdown: true,
+                  dataTimeline: 30,
                 });
               }}
               className="w-full px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"

@@ -38,8 +38,7 @@ export function getOpenAISettings() {
   return {
     autoRefresh: true,
     refreshInterval: 30, // minutes
-    showUsageChart: true,
-    showCostBreakdown: true,
+    dataTimeline: 30, // days
   };
 }
 
@@ -59,9 +58,10 @@ export function saveOpenAISettings(settings) {
  * Fetch current usage statistics from OpenAI
  * Note: Requires an Admin API key (not a regular API key)
  * Get Admin keys from: https://platform.openai.com/settings/organization/admin-keys
+ * @param {number} daysAgo - Number of days to fetch (default: 30)
  * @returns {Promise<Object>} Usage data
  */
-export async function fetchUsageStats() {
+export async function fetchUsageStats(daysAgo = 30) {
   const token = getSecret(SECRET_KEYS.OPENAI_ADMIN_KEY);
   
   if (!token) {
@@ -74,8 +74,7 @@ export async function fetchUsageStats() {
   };
 
   try {
-    // Calculate start time: 30 days ago
-    const daysAgo = 30;
+    // Calculate start time based on days ago
     const startTime = Math.floor(Date.now() / 1000) - (daysAgo * 24 * 60 * 60);
     
     // Fetch usage data for completions
@@ -127,9 +126,10 @@ export async function fetchUsageStats() {
 /**
  * Fetch costs data from OpenAI
  * Note: Requires an Admin API key
+ * @param {number} daysAgo - Number of days to fetch (default: 30)
  * @returns {Promise<Object>} Costs data
  */
-export async function fetchCostsData() {
+export async function fetchCostsData(daysAgo = 30) {
   const token = getSecret(SECRET_KEYS.OPENAI_ADMIN_KEY);
   
   if (!token) {
@@ -142,8 +142,7 @@ export async function fetchCostsData() {
   };
 
   try {
-    // Calculate start time: 30 days ago
-    const daysAgo = 30;
+    // Calculate start time based on days ago
     const startTime = Math.floor(Date.now() / 1000) - (daysAgo * 24 * 60 * 60);
     
     // Note: limit=31 is the maximum for bucket_width=1d (daily buckets)
@@ -171,13 +170,14 @@ export async function fetchCostsData() {
 
 /**
  * Fetch all OpenAI data (usage and costs)
+ * @param {number} daysAgo - Number of days to fetch (default: 30)
  * @returns {Promise<Object>} Combined data
  */
-export async function fetchAllOpenAIData() {
+export async function fetchAllOpenAIData(daysAgo = 30) {
   try {
     const [usage, costs] = await Promise.all([
-      fetchUsageStats(),
-      fetchCostsData()
+      fetchUsageStats(daysAgo),
+      fetchCostsData(daysAgo)
     ]);
 
     return {
