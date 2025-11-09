@@ -73,6 +73,7 @@ function createApiServer() {
     const oauth2Client = getOAuth2Client()
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
+      prompt: 'consent', // Force consent screen to get refresh token
       scope: [
         'https://www.googleapis.com/auth/gmail.readonly',
         'https://www.googleapis.com/auth/gmail.modify'
@@ -92,6 +93,19 @@ function createApiServer() {
       const oauth2Client = getOAuth2Client()
       const { tokens } = await oauth2Client.getToken(code)
       oauth2Client.setCredentials(tokens)
+      
+      // Log token info (without exposing actual tokens)
+      console.log('✅ Gmail OAuth: Tokens received')
+      console.log('   - Access token:', tokens.access_token ? 'Present' : 'Missing')
+      console.log('   - Refresh token:', tokens.refresh_token ? 'Present ✅' : 'Missing ❌')
+      console.log('   - Expiry date:', tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : 'Not set')
+      
+      // Warn if refresh token is missing
+      if (!tokens.refresh_token) {
+        console.warn('⚠️  WARNING: No refresh token received from Google!')
+        console.warn('   This usually means the user already granted access previously.')
+        console.warn('   To get a refresh token, revoke access at: https://myaccount.google.com/permissions')
+      }
       
       // Return tokens to be stored in localStorage
       const tokensJson = JSON.stringify(tokens)

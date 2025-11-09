@@ -173,6 +173,29 @@ VITE_CONFIG_ENCRYPTION_KEY=your_64_character_hex_key_here
 
 ## Troubleshooting
 
+### "No refresh token is set" Error:
+**Symptoms**: Console shows repeated errors:
+```
+🔄 Gmail: Access token expired or expiring soon, refreshing...
+❌ Gmail: Failed to refresh token: No refresh token is set.
+```
+
+**Root Cause**: Google OAuth doesn't return a refresh token if the user has already granted access previously.
+
+**Solution**:
+1. **Revoke existing access** at: https://myaccount.google.com/permissions
+2. Find "Hashbase" or your app name in the list
+3. Click "Remove Access"
+4. **Re-authenticate** in the Gmail widget
+5. You should now receive a refresh token
+
+**Why this happens**: 
+- Google only provides a refresh token on the **first** authorization
+- Subsequent authentications reuse the existing grant without returning a new refresh token
+- Adding `prompt: 'consent'` forces the consent screen, which should return a refresh token
+
+**Prevention**: The code now includes `prompt: 'consent'` to force Google to return refresh tokens on every authentication.
+
 ### Token Refresh Fails:
 **Symptoms**: User gets logged out unexpectedly
 
@@ -180,8 +203,12 @@ VITE_CONFIG_ENCRYPTION_KEY=your_64_character_hex_key_here
 1. Refresh token revoked by user in Google Account settings
 2. OAuth credentials changed/invalid
 3. Network issues during refresh
+4. No refresh token was stored (see above)
 
-**Solution**: User needs to re-authenticate
+**Solution**: 
+1. Check if refresh token exists in localStorage
+2. If missing, revoke access and re-authenticate
+3. If present, check OAuth credentials in `.env`
 
 ### Tokens Not Persisting:
 **Symptoms**: User has to login every session
