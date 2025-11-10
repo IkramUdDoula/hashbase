@@ -257,13 +257,13 @@ export function OpenAIWidget({ rowSpan = 2, dragRef }) {
                 </div>
                 <span className="text-xs text-blue-600 dark:text-blue-400">Last 30 days</span>
               </div>
-              <p className="text-xl font-bold text-blue-900 dark:text-blue-100">
+              <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
                 {formatNumber(stats.totalTokens)}
               </p>
-              {/* <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-xs">
                 <span className="text-blue-600 dark:text-blue-400">In/Out</span>
                 <span className="font-mono font-medium text-blue-700 dark:text-blue-300">{formatNumber(stats.inputTokens)} / {formatNumber(stats.outputTokens)}</span>
-              </div> */}
+              </div>
           </div>
           
           {/* Total Cost */}
@@ -278,7 +278,7 @@ export function OpenAIWidget({ rowSpan = 2, dragRef }) {
                 </div>
                 <span className="text-xs text-green-600 dark:text-green-400">Last 30 days</span>
               </div>
-              <p className="text-xl font-bold text-green-900 dark:text-green-100">
+              <p className="text-2xl font-bold text-green-900 dark:text-green-100">
                 {formatCurrency(stats.totalCost)}
               </p>
           </div>
