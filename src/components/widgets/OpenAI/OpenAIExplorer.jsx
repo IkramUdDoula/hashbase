@@ -78,86 +78,128 @@ export function OpenAIExplorer({
       <ExplorerBody>
         {/* Summary Section */}
         <ExplorerSection title="Summary">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center gap-2 mb-1">
-                <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Total Tokens</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Token Usage Card */}
+            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2 mb-3">
+                <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">Token Usage</span>
               </div>
-              <p className="text-xl font-bold text-blue-900 dark:text-blue-100">
+              <p className="text-3xl font-bold text-blue-900 dark:text-blue-100 mb-3">
                 {formatNumber(usage.totalTokens)}
               </p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-blue-600 dark:text-blue-400">Input Tokens</span>
+                  <span className="text-sm font-mono font-semibold text-blue-700 dark:text-blue-300">
+                    {formatNumber(usage.summary?.promptTokens || 0)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-blue-600 dark:text-blue-400">Output Tokens</span>
+                  <span className="text-sm font-mono font-semibold text-blue-700 dark:text-blue-300">
+                    {formatNumber(usage.summary?.completionTokens || 0)}
+                  </span>
+                </div>
+              </div>
             </div>
             
-            <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-              <div className="flex items-center gap-2 mb-1">
-                <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
-                <span className="text-xs font-medium text-green-700 dark:text-green-300">Total Cost</span>
+            {/* Cost Card */}
+            <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-2 mb-3">
+                <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <span className="text-sm font-semibold text-green-700 dark:text-green-300">Total Cost</span>
               </div>
-              <p className="text-xl font-bold text-green-900 dark:text-green-100">
+              <p className="text-3xl font-bold text-green-900 dark:text-green-100 mb-3">
                 {formatCurrency(totalCost)}
               </p>
-            </div>
-            
-            <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
-              <div className="flex items-center gap-2 mb-1">
-                <Activity className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                <span className="text-xs font-medium text-orange-700 dark:text-orange-300">API Requests</span>
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <span className="text-xs text-green-600 dark:text-green-400">API Requests:</span>
+                <span className="text-sm font-mono font-semibold text-green-700 dark:text-green-300">
+                  {formatNumber(usage.summary?.requests || 0)}
+                </span>
               </div>
-              <p className="text-xl font-bold text-orange-900 dark:text-orange-100">
-                {formatNumber(usage.summary?.requests || 0)}
-              </p>
             </div>
           </div>
         </ExplorerSection>
 
         {/* Token Breakdown */}
         <ExplorerSection title="Token Breakdown">
-          <div className="space-y-2">
-            <ExplorerField 
-              label="Prompt Tokens" 
-              value={formatNumber(usage.summary?.promptTokens || 0)} 
-            />
-            <ExplorerField 
-              label="Completion Tokens" 
-              value={formatNumber(usage.summary?.completionTokens || 0)} 
-            />
-            <ExplorerField 
-              label="Total Tokens" 
-              value={formatNumber(usage.summary?.totalTokens || 0)} 
-            />
+          <div className="space-y-3">
+            <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Input Tokens (Prompt)</span>
+                <span className="text-lg font-bold font-mono text-gray-900 dark:text-gray-100">
+                  {formatNumber(usage.summary?.promptTokens || 0)}
+                </span>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Tokens sent to the model in requests
+              </p>
+            </div>
+            
+            <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Output Tokens (Completion)</span>
+                <span className="text-lg font-bold font-mono text-gray-900 dark:text-gray-100">
+                  {formatNumber(usage.summary?.completionTokens || 0)}
+                </span>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Tokens generated by the model in responses
+              </p>
+            </div>
+            
+            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">Total Tokens</span>
+                <span className="text-xl font-bold font-mono text-blue-900 dark:text-blue-100">
+                  {formatNumber(usage.summary?.totalTokens || 0)}
+                </span>
+              </div>
+            </div>
           </div>
         </ExplorerSection>
 
         {/* Model Breakdown */}
-        {settings.showCostBreakdown && topModels.length > 0 && (
+        {topModels.length > 0 && (
           <ExplorerSection title="Usage by Model">
             <div className="space-y-3">
               {topModels.map(([model, stats]) => (
                 <div 
                   key={model}
-                  className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                  className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
                 >
-                  <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-start justify-between mb-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                         {model}
                       </p>
                       <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {formatNumber(stats.requests)} requests
+                        {formatNumber(stats.requests)} requests · {((stats.totalTokens / usage.totalTokens) * 100).toFixed(1)}% of total
                       </p>
                     </div>
-                    <Badge variant="secondary" className="ml-2">
-                      {formatNumber(stats.totalTokens)} tokens
-                    </Badge>
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-600 dark:text-gray-400">
-                      Prompt: {formatNumber(stats.promptTokens)} | Completion: {formatNumber(stats.completionTokens)}
-                    </span>
-                    <span className="text-gray-700 dark:text-gray-300 font-mono">
-                      {((stats.totalTokens / usage.totalTokens) * 100).toFixed(1)}% of total
-                    </span>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Total Tokens</span>
+                      <span className="text-sm font-mono font-semibold text-gray-900 dark:text-gray-100">
+                        {formatNumber(stats.totalTokens)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Input Tokens</span>
+                      <span className="text-sm font-mono font-medium text-gray-700 dark:text-gray-300">
+                        {formatNumber(stats.promptTokens)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Output Tokens</span>
+                      <span className="text-sm font-mono font-medium text-gray-700 dark:text-gray-300">
+                        {formatNumber(stats.completionTokens)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -166,7 +208,7 @@ export function OpenAIExplorer({
         )}
 
         {/* Daily Usage */}
-        {settings.showUsageChart && usage.dailyUsage && usage.dailyUsage.length > 0 && (
+        {usage.dailyUsage && usage.dailyUsage.length > 0 && (
           <ExplorerSection title="Daily Usage (Last 30 Days)">
             <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
               {usage.dailyUsage.map((day, index) => {
@@ -176,7 +218,7 @@ export function OpenAIExplorer({
                     key={index}
                     className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
                   >
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -187,17 +229,29 @@ export function OpenAIExplorer({
                           })}
                         </span>
                       </div>
-                      <Badge variant="secondary">
+                      <Badge variant="secondary" className="font-semibold">
                         {formatCurrency(dayCost)}
                       </Badge>
                     </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {formatNumber(day.totalTokens)} tokens
-                      </span>
-                      <span className="text-gray-700 dark:text-gray-300">
-                        {day.requests} requests
-                      </span>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600 dark:text-gray-400">Total Tokens</span>
+                        <span className="text-gray-900 dark:text-gray-100 font-mono font-medium">
+                          {formatNumber(day.totalTokens)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600 dark:text-gray-400">Input / Output</span>
+                        <span className="text-gray-700 dark:text-gray-300 font-mono">
+                          {formatNumber(day.promptTokens)} / {formatNumber(day.completionTokens)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600 dark:text-gray-400">Requests</span>
+                        <span className="text-gray-700 dark:text-gray-300 font-mono">
+                          {day.requests}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
