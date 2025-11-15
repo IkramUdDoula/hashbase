@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button"
  * Keyboard Shortcuts:
  * - Arrow Left: Previous item
  * - Arrow Right: Next item
+ * - Arrow Up: Scroll up
+ * - Arrow Down: Scroll down
  * - Escape: Close explorer
  * 
  * @param {Object} props
@@ -50,6 +52,8 @@ const Explorer = ({
   children,
   className 
 }) => {
+  const scrollableRef = React.useRef(null)
+
   React.useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden'
@@ -69,12 +73,32 @@ const Explorer = ({
       // Left arrow key - Previous
       if (e.key === 'ArrowLeft' && hasPrevious && onPrevious) {
         e.preventDefault()
+        if (scrollableRef.current) {
+          scrollableRef.current.scrollTop = 0
+        }
         onPrevious()
       }
       // Right arrow key - Next
       else if (e.key === 'ArrowRight' && hasNext && onNext) {
         e.preventDefault()
+        if (scrollableRef.current) {
+          scrollableRef.current.scrollTop = 0
+        }
         onNext()
+      }
+      // Up arrow key - Scroll up
+      else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (scrollableRef.current) {
+          scrollableRef.current.scrollBy({ top: -50, behavior: 'smooth' })
+        }
+      }
+      // Down arrow key - Scroll down
+      else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        if (scrollableRef.current) {
+          scrollableRef.current.scrollBy({ top: 50, behavior: 'smooth' })
+        }
       }
       // Escape key - Close
       else if (e.key === 'Escape') {
@@ -156,7 +180,7 @@ const Explorer = ({
         </div>
         
         {/* Body - Dynamic Content Zone - Scrollable with custom scrollbar */}
-        <div className="flex-1 overflow-y-auto min-h-0 explorer-scrollbar relative">
+        <div ref={scrollableRef} className="flex-1 overflow-y-auto min-h-0 explorer-scrollbar relative">
           {children}
         </div>
         
