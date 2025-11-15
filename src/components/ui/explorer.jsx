@@ -120,9 +120,9 @@ const Explorer = ({
                   onClick={onPrevious}
                   disabled={!hasPrevious}
                   title="Previous item"
-                  className="h-8 w-8"
+                  className="h-8 w-8 hover:bg-gray-200 dark:hover:bg-gray-800"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4"/>
                 </Button>
                 <Button
                   variant="ghost"
@@ -130,7 +130,7 @@ const Explorer = ({
                   onClick={onNext}
                   disabled={!hasNext}
                   title="Next item"
-                  className="h-8 w-8"
+                  className="h-8 w-8 hover:bg-gray-200 dark:hover:bg-gray-800"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
