@@ -1533,14 +1533,13 @@ function CanvasManagementPanel({ onClose }) {
       </p>
 
       {/* Create New Canvas Button */}
-      <Button
+      <button
         onClick={handleCreateCanvas}
-        className="w-full flex items-center justify-center gap-2"
-        variant="outline"
+        className="w-full px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
       >
         <Plus className="h-4 w-4" />
         Create New Canvas
-      </Button>
+      </button>
 
       {/* Canvas List */}
       <div className="space-y-3">
