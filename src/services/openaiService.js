@@ -160,6 +160,9 @@ export async function fetchCostsData(daysAgo = 30) {
     
     // Debug: Log the raw response
     console.log('OpenAI Costs API Response:', data);
+    const bucketWithData = data.data?.find(b => b.results?.length > 0);
+    console.log('First costs bucket with data:', bucketWithData);
+    console.log('Sample cost result (full):', JSON.stringify(bucketWithData?.results?.[0], null, 2));
     
     return processCostsData(data);
   } catch (error) {
@@ -304,7 +307,13 @@ function processCostsData(rawData) {
     
     let dayCost = 0;
     bucket.results.forEach(result => {
-      dayCost += result.amount?.value || 0;
+      // Handle different possible response formats from OpenAI API
+      // The amount can be in different formats:
+      // 1. result.amount.value (nested object)
+      // 2. result.amount (direct number)
+      // 3. result.cost (alternative field name)
+      const amount = result.amount?.value ?? result.amount ?? result.cost ?? 0;
+      dayCost += typeof amount === 'number' ? amount : parseFloat(amount) || 0;
     });
 
     dailyCosts.push({
