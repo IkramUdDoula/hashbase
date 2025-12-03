@@ -1031,31 +1031,72 @@ function EmailContentRenderer({ htmlBody, textBody, addToast }) {
         title={
           <div className="flex items-center gap-2">
             <Link className="h-4 w-4" />
-            <span>Links</span>
+            <span>Links ({parsedContent.links.length})</span>
           </div>
         }
       >
         {parsedContent.links.length > 0 ? (
           <div className="space-y-2">
-            {parsedContent.links.map((link, idx) => (
-              <div key={idx} className="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                <ExternalLink className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <a
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
-                    title={link.href}
+            {parsedContent.links.map((link, idx) => {
+              // Determine badge color based on link type
+              const typeColors = {
+                anchor: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+                text: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+                attribute: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+                onclick: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+                style: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300'
+              };
+              
+              const typeLabel = {
+                anchor: 'Link',
+                text: 'URL in Text',
+                attribute: 'Data Attribute',
+                onclick: 'Click Handler',
+                style: 'Style URL'
+              };
+              
+              return (
+                <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+                  <ExternalLink className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all font-medium"
+                        title={link.href}
+                      >
+                        {link.text.length > 80 ? link.text.substring(0, 80) + '...' : link.text}
+                      </a>
+                      {link.type && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${typeColors[link.type] || typeColors.text}`}>
+                          {typeLabel[link.type] || link.type}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {link.domain || link.href}
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(link.href);
+                        addToast('URL copied to clipboard', 'success');
+                      } catch (err) {
+                        console.error('Failed to copy URL:', err);
+                        addToast('Failed to copy URL', 'error');
+                      }
+                    }}
+                    className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 flex-shrink-0 transition-colors"
+                    title="Copy URL to clipboard"
                   >
-                    {link.text}
-                  </a>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {link.domain || link.href}
-                  </p>
+                    Copy
+                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-sm text-gray-500 dark:text-gray-400 italic">No links found</p>

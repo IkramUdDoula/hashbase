@@ -478,21 +478,104 @@ function hasDataContent(rows) {
 
 /**
  * Extract links from HTML
+ * Extracts both explicit <a> tags and URLs found in text content
  */
 function extractLinks(doc) {
   const links = [];
-  const anchors = doc.querySelectorAll('a[href]');
+  const seenUrls = new Set(); // Track unique URLs to avoid duplicates
   
+  // 1. Extract explicit <a> tags
+  const anchors = doc.querySelectorAll('a[href]');
   anchors.forEach((a) => {
     const text = a.textContent.trim();
     const href = a.getAttribute('href');
     
-    if (text && href && !href.startsWith('#')) {
+    if (href && !href.startsWith('#') && !seenUrls.has(href)) {
+      seenUrls.add(href);
       links.push({
-        text,
+        text: text || href,
         href,
-        domain: extractDomain(href)
+        domain: extractDomain(href),
+        type: 'anchor'
       });
+    }
+  });
+  
+  // 2. Extract URLs from text content and attributes
+  const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`\[\]]*)/g;
+  
+  // Extract from all text nodes
+  const walker = doc.createTreeWalker(
+    doc.body,
+    NodeFilter.SHOW_TEXT,
+    null,
+    false
+  );
+  
+  let node;
+  while (node = walker.nextNode()) {
+    const text = node.textContent;
+    let match;
+    
+    while ((match = urlRegex.exec(text)) !== null) {
+      const url = match[1];
+      
+      // Skip if already found as anchor
+      if (!seenUrls.has(url)) {
+        seenUrls.add(url);
+        links.push({
+          text: url,
+          href: url,
+          domain: extractDomain(url),
+          type: 'text'
+        });
+      }
+    }
+  }
+  
+  // 3. Extract URLs from common attributes (data-href, onclick, etc.)
+  const elementsWithUrls = doc.querySelectorAll('[data-href], [onclick], [style]');
+  elementsWithUrls.forEach((el) => {
+    // Check data-href attribute
+    const dataHref = el.getAttribute('data-href');
+    if (dataHref && dataHref.startsWith('http') && !seenUrls.has(dataHref)) {
+      seenUrls.add(dataHref);
+      links.push({
+        text: dataHref,
+        href: dataHref,
+        domain: extractDomain(dataHref),
+        type: 'attribute'
+      });
+    }
+    
+    // Check onclick for URLs
+    const onclick = el.getAttribute('onclick');
+    if (onclick) {
+      const urlMatch = onclick.match(/(https?:\/\/[^\s'"]*)/);
+      if (urlMatch && !seenUrls.has(urlMatch[1])) {
+        seenUrls.add(urlMatch[1]);
+        links.push({
+          text: urlMatch[1],
+          href: urlMatch[1],
+          domain: extractDomain(urlMatch[1]),
+          type: 'onclick'
+        });
+      }
+    }
+    
+    // Check style for URLs (background-image, etc.)
+    const style = el.getAttribute('style');
+    if (style) {
+      const urlMatch = style.match(/url\(['"]?(https?:\/\/[^\s'"()]*)/);
+      if (urlMatch && !seenUrls.has(urlMatch[1])) {
+        seenUrls.add(urlMatch[1]);
+        links.push({
+          text: urlMatch[1],
+          href: urlMatch[1],
+          domain: extractDomain(urlMatch[1]),
+          type: 'style'
+        });
+      }
     }
   });
   
