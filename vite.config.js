@@ -1156,6 +1156,56 @@ function createApiServer() {
     }
   })
 
+  // ===== Railway API Proxy Endpoints =====
+
+  // Proxy Railway GraphQL API
+  app.post('/api/railway/graphql', async (req, res) => {
+    try {
+      const { query, variables } = req.body
+      const token = req.headers['x-railway-token']
+      
+      if (!token) {
+        return res.status(401).json({ 
+          error: 'Railway token not configured',
+          message: 'Please add your Railway API token in Settings > Secrets'
+        })
+      }
+
+      console.log('🚂 Railway: Proxying GraphQL request')
+
+      // Make request to Railway API
+      const response = await fetch('https://backboard.railway.com/graphql/v2', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ query, variables }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ errors: [{ message: 'Unknown error' }] }))
+        console.error('❌ Railway API Error:', response.status)
+        return res.status(response.status).json(error)
+      }
+
+      const data = await response.json()
+      
+      if (data.errors) {
+        console.error('❌ Railway GraphQL Error:', data.errors)
+        return res.status(400).json(data)
+      }
+
+      console.log('✅ Railway: Request successful')
+      res.json(data)
+    } catch (error) {
+      console.error('❌ Error proxying Railway request:', error)
+      res.status(500).json({ 
+        errors: [{ message: error.message }]
+      })
+    }
+  })
+
   return app
 }
 

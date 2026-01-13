@@ -10,20 +10,24 @@ import { Search, X } from 'lucide-react';
  * @param {function} props.onChange - Callback when search value changes
  * @param {string} props.placeholder - Placeholder text (default: "Search...")
  * @param {string} props.className - Additional CSS classes
+ * @param {React.Component} props.icon - Optional icon component to replace the default Search icon
  */
 export function WidgetSearch({ 
   value, 
   onChange, 
   placeholder = "Search...",
-  className = "" 
+  className = "",
+  icon: Icon
 }) {
   const handleClear = () => {
     onChange('');
   };
 
+  const SearchIcon = Icon || Search;
+
   return (
     <div className={`relative mb-1.5 ${className}`}>
-      <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+      <SearchIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
       <Input
         type="text"
         placeholder={placeholder}

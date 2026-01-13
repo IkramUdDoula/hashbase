@@ -317,6 +317,7 @@ export function BaseWidgetV2({
                 value={searchValue}
                 onChange={onSearchChange}
                 placeholder={searchPlaceholder}
+                icon={Logo}
               />
             )}
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">

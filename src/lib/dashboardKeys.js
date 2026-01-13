@@ -67,6 +67,10 @@ export function getDashboardKeys() {
     // OpenAI widget
     'openai_widget_data',                     // Cached usage data
     'openai_widget_settings',                 // Widget settings
+    
+    // Railway widget
+    'railway_project_selection',              // Project selection preferences
+    'railway_widget_settings',                // Widget settings
   ];
   
   // Add per-canvas layout keys dynamically

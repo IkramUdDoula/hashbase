@@ -672,6 +672,12 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
       label: 'PostHog Personal API Key',
       description: 'Get from PostHog Settings > Personal API Keys (requires project:read scope)',
       placeholder: 'phx_xxxxxxxxxxxxx'
+    },
+    {
+      key: SECRET_KEYS.RAILWAY_TOKEN,
+      label: 'Railway API Token',
+      description: 'Get from railway.app/account/tokens (use Personal Token, not Project Token)',
+      placeholder: 'railway_xxxxxxxxxxxxx'
     }
   ];
 
