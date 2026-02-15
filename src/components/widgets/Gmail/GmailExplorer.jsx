@@ -585,56 +585,347 @@ async function processEmailWithAI(htmlContent, openaiApiKey) {
     throw new Error('OpenAI API key not configured. Please add it in Settings > Secrets.');
   }
 
-  const AI_PROMPT = `You are an intelligent financial document analyzer. Extract structured receipt/transaction data from this email HTML.
+  const AI_PROMPT = `You are an intelligent financial document analyzer with vision and translation capabilities.
 
-The email may contain: receipts, invoices, payment confirmations, transaction notifications from services like Stripe, PayPal, bKash, Nagad, etc.
+Your task is to **extract and normalize transaction attributes from financial receipts and documents**.
 
-EXTRACT THESE FIELDS (return as JSON):
+## OUTPUT FORMAT
 
-REQUIRED:
-- amount: Transaction amount as number (NOT balance/fees/charges)
-- purpose: Transaction category or description
-- transaction_type: "income" (credits/received) or "expense" (debits/payments) or "savings"
-- transaction_date: ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+Return structured data with all fields properly typed and validated.
+The system will automatically ensure correct formatting.
 
-OPTIONAL:
-- sender: Person/entity who sent money
-- from_account: Sender's account number (may be masked)
-- to_account: Recipient's account number
-- receiver: Person/entity who received money
-- currency: Infer from symbols/text (৳/Tk/BDT → BDT, $ → USD, € → EUR)
-- platform: Service used (bKash, Nagad, Stripe, PayPal, bank name)
-- transaction_id: Reference/tracking number
-- details: Additional info (fees, merchant address, notes)
+---
 
-PURPOSE CATEGORIES (choose best fit):
-Food, Clothing, Essentials, Accommodation, Fuel, Transportation, Electricity, Gas, Water, Phone, Internet, Subscription, Education, Salary, Tax, Gift, or "Any Other Expenses"
+## VISUAL + LANGUAGE PROCESSING
 
-EXTRACTION RULES:
-1. Return ONLY valid JSON, no commentary
-2. amount must be a number (extract from "Amount:", "Total:", currency symbols)
-3. Ignore service charges, VAT, balance - only extract transaction amount
-4. Use context clues: green/plus = income, red/minus = expense
-5. Handle various date formats and convert to ISO 8601
-6. Extract transaction IDs from any reference/confirmation numbers
-7. Use null for fields that cannot be determined
-8. Verify amount is transaction value, not account balance
+- Read the full image including header, footer, logos, icons, and layout
+- Identify the financial platform or institution from visible branding or UI
+- Detect the language of each text segment and translate internally to English before interpreting
+- Preserve all numbers exactly as shown
+- Separate transaction amount from balance, VAT, fees, discounts, or totals
+- Handle blur, rotation, watermarks, screenshots, or handwriting
+- Extract text from tables, forms, and structured layouts
 
-EXAMPLE OUTPUT:
-{
-  "sender": "John Doe",
-  "from_account": "****1234",
-  "to_account": "****5678",
-  "receiver": "Acme Corp",
-  "amount": 150.50,
-  "currency": "USD",
-  "transaction_type": "expense",
-  "platform": "Stripe",
-  "transaction_id": "TXN-12345",
-  "transaction_date": "2025-01-05T10:30:00Z",
-  "purpose": "Office Supplies",
-  "details": "Purchased office supplies"
-}
+---
+
+## CURRENCY DETECTION
+
+- Detect currency from symbols (৳, $, €, £, ¥, ₹), keywords, platform, or locale
+- If multiple currencies appear, select the transaction currency (not balance currency)
+- Output **ISO 4217** currency code only: BDT, USD, EUR, GBP, INR, JPY, etc.
+- Common mappings:
+  - ৳ or "Taka" → BDT
+  - $ → USD (unless context suggests otherwise)
+  - € → EUR
+  - £ → GBP
+  - ₹ or "Rupee" → INR
+- If currency is unclear, return ""
+
+---
+
+## FIELD EXTRACTION RULES
+
+### sender
+- Extract sender/payer name if explicitly written
+- Look for labels: "From", "Sender", "Payer", "Paid by"
+- For person-to-person transfers, extract the sender's name or phone number
+- If not visible or unclear, return ""
+- Examples: "John Doe", "01712345678", "ABC Company"
+
+### from_account
+- Extract source account number or identifier if visible
+- Can be full or masked: "01712****78", "Account: ****1234", "Card ending 5678"
+- Look for labels: "From Account", "Source", "Debit from"
+- Return exactly as shown (preserve masking)
+- If not visible, return ""
+
+### to_account
+- Extract destination account number or identifier if visible
+- Can be full or masked: "01798****32", "Account: ****5678", "Card ending 1234"
+- Look for labels: "To Account", "Destination", "Credit to"
+- Return exactly as shown (preserve masking)
+- If not visible, return ""
+
+### receiver
+- Extract receiver/payee name if explicitly written
+- Look for labels: "To", "Receiver", "Payee", "Paid to", "Merchant"
+- For merchant payments, extract merchant name
+- If not visible or unclear, return ""
+- Examples: "Jane Smith", "01798765432", "Daraz.com.bd", "Starbucks"
+
+### amount
+- Extract the PRIMARY transaction amount only
+- Look for labels: "Amount", "Transaction Amount", "Paid", "Received", "Total", "Grand Total"
+- **EXCLUDE these:**
+  - Balance amounts: "Balance", "Available Balance", "New Balance", "Previous Balance"
+  - Fees: "Service Charge", "Fee", "VAT", "Tax" (unless part of total)
+  - Subtotals (use final total instead)
+- **If multiple amounts visible:**
+  - For payments: use the amount paid (not remaining balance)
+  - For receipts: use the transaction amount (not running balance)
+  - For invoices: use the total amount due or paid
+- Return as a positive number (remove any negative signs)
+- Remove currency symbols and commas: "৳1,500.00" → 1500.00
+- If amount is unclear or not visible, return 0
+
+### currency
+- ISO 4217 currency code (BDT, USD, EUR, GBP, INR, etc.)
+- Detect from symbols, text, or platform context
+- Default to BDT for Bangladesh platforms (bKash, Nagad, Rocket) if not specified
+- If completely unclear, return ""
+
+### transaction_type
+**Allowed values:** "Expense", "Income", "Transfer"
+
+Classify based on transaction flow and keywords:
+
+**Expense:**
+- Payment to merchant, shop, or service provider
+- Bill payment (electricity, water, internet, phone)
+- Purchase of goods or services
+- Keywords: "paid", "purchase", "bill payment", "payment to", "debit"
+- Money leaving your account to a non-financial entity
+- Examples: grocery shopping, restaurant bill, online purchase
+
+**Income:**
+- Money received from person, organization, or system
+- Salary, wages, refund, cashback, interest, dividend
+- Keywords: "received", "credited", "refund", "salary", "cashback", "interest", "credit"
+- Money entering your account from a non-financial entity
+- Examples: salary deposit, refund from merchant, cashback reward
+
+**Transfer:**
+- Money moved between your own financial accounts or platforms
+- Both source AND destination must be financial platforms (bank, wallet, card)
+- Keywords: "send money", "transfer", "cash out", "withdraw", "deposit", "fund transfer"
+- Examples:
+  - bKash to bKash (different accounts) → Transfer
+  - Bank to Nagad → Transfer
+  - Rocket to Bank → Transfer
+  - Cash withdrawal from ATM → Transfer
+- **NOT Transfer:** bKash to merchant (this is Expense)
+
+**Default:** If unclear, classify as "Expense"
+
+### platform
+Extract and normalize the platform name:
+
+**Mobile Wallets:**
+- bKash variations (bKash, BKASH, Bkash, বিকাশ) → return "bKash"
+- Nagad variations (NAGAD, Nagad, নগদ) → return "Nagad"
+- Rocket variations (ROCKET, Rocket, রকেট) → return "Rocket"
+- Upay variations (UPAY, Upay, উপায়) → return "Upay"
+- SureCash → return "SureCash"
+- MCash → return "MCash"
+
+**Banks:**
+- Dutch-Bangla Bank, DBBL, ডাচ-বাংলা ব্যাংক → return "DBBL"
+- Brac Bank, ব্র্যাক ব্যাংক → return "Brac Bank"
+- City Bank → return "City Bank"
+- Standard Chartered → return "Standard Chartered"
+- HSBC → return "HSBC"
+- If generic bank UI without specific name → return "Bank"
+
+**Cards:**
+- If credit card visible → return "Credit Card"
+- If debit card visible → return "Debit Card"
+- If specific bank card (e.g., "DBBL Credit Card") → return "DBBL"
+
+**Other:**
+- Cash receipts, handwritten notes → return "Cash"
+- If completely unclear → return "Unknown"
+
+Always normalize to consistent naming (proper case, standard abbreviations).
+
+### transfer_to_platform
+- Fill **ONLY IF:**
+  - "transaction_type" = "Transfer"
+  - AND destination platform name is explicitly visible or can be inferred
+- Use same normalization rules as "platform" field
+- Examples:
+  - bKash to Nagad → "Nagad"
+  - Bank to bKash → "bKash"
+  - DBBL to Rocket → "Rocket"
+- If destination platform unclear, return ""
+- If not a transfer, return ""
+
+### transaction_id
+- Extract transaction/reference/TRX ID exactly as shown
+- Common labels: "TrxID", "Transaction ID", "Reference", "Ref No", "Reference Number"
+- Preserve exact format including letters, numbers, hyphens
+- Examples: "ABC123XYZ", "TRX-2026-001234", "REF123456"
+- If not visible, return ""
+
+### transaction_date
+- Normalize to ISO 8601 format: "YYYY-MM-DD HH:MM:SS+06:00"
+- Handle relative dates:
+  - "Today", "আজ" (Bengali) → use current date
+  - "Yesterday", "গতকাল" (Bengali) → use previous date
+- Handle various formats:
+  - "05 Feb 2026, 2:30 PM" → "2026-02-05 14:30:00+06:00"
+  - "06/02/2026" → "2026-02-06 00:00:00+06:00"
+  - "2026-02-06 14:30" → "2026-02-06 14:30:00+06:00"
+  - "05-02-2026" → "2026-02-05 00:00:00+06:00"
+- Convert 12-hour to 24-hour format:
+  - "2:30 PM" → "14:30:00"
+  - "11:45 AM" → "11:45:00"
+- If time not visible, use "00:00:00"
+- If date unreadable or missing, use current datetime
+- Always use +06:00 timezone (Bangladesh Standard Time)
+
+### purpose
+- Extract or infer the transaction purpose in 2-4 concise words
+- **For merchant payments:** use merchant name or category
+  - Examples: "Daraz Shopping", "Grocery", "Restaurant", "Fuel"
+- **For transfers:** use "Money Transfer" or "Send Money"
+- **For bills:** use "Bill Payment" or specific type
+  - Examples: "Electricity Bill", "Internet Bill", "Phone Bill"
+- **For salary:** use "Salary"
+- **For refunds:** use "Refund"
+- **For unclear transactions:** use "Payment" or "Transaction"
+- Keep it brief, user-friendly, and descriptive
+- If no clear purpose, return ""
+
+### details
+- Provide a brief summary of the transaction (1-2 sentences)
+- Include key information: what, who, when
+- Examples:
+  - "bKash send money to 01798765432 on 05 Feb 2026"
+  - "Payment to Daraz.com.bd using DBBL credit card"
+  - "Electricity bill payment via Nagad"
+  - "Salary received from ABC Company"
+- If image quality is poor, mention: "Image quality low, some details unclear"
+- If information is incomplete, mention: "Limited information visible"
+- Keep it concise and informative
+
+### is_complete
+- Indicates if receipt has sufficient information for processing
+- "true" if ALL of these are present:
+  - "amount > 0"
+  - "transaction_date" is not empty
+  - "platform" is not empty and not "Unknown"
+- "false" otherwise
+- This helps users identify receipts that need manual review
+
+---
+
+## PLATFORM-SPECIFIC EXTRACTION TIPS
+
+### bKash Receipts
+- Look for pink/magenta branding
+- Transaction ID format: usually 10 alphanumeric characters
+- Phone numbers: 11 digits starting with 01
+- Common keywords: "Send Money", "Cash Out", "Payment", "Mobile Recharge"
+
+### Nagad Receipts
+- Look for orange branding
+- Transaction ID format: usually 14 alphanumeric characters
+- Phone numbers: 11 digits starting with 01
+- Common keywords: "Send Money", "Cash Out", "Payment"
+
+### Rocket Receipts
+- Look for purple/violet branding
+- Phone numbers: 11 digits starting with 01
+- Common keywords: "Send Money", "Cash Out"
+
+### Bank Receipts
+- Look for bank logo and name in header
+- Account numbers: often masked (****1234)
+- Common keywords: "Debit", "Credit", "Transfer", "Withdrawal", "Deposit"
+
+### Credit/Debit Card Receipts
+- Look for card network logos (Visa, Mastercard, Amex)
+- Card numbers: always masked (****1234)
+- Merchant name usually prominent
+- Common keywords: "Purchase", "Sale", "Authorization"
+
+### Cash Receipts
+- Handwritten or printed receipts without digital platform branding
+- May have shop/business name and address
+- Often simpler format with just amount and date
+
+---
+
+## HANDLING EDGE CASES
+
+### Poor Image Quality
+- If text is blurry but partially readable, extract what you can
+- Mention in "details": "Image quality low, some details unclear"
+- Set "is_complete = false" if critical fields are unreadable
+
+### Multiple Amounts
+- Prioritize labeled amounts: "Transaction Amount", "Total", "Paid"
+- Ignore balance amounts: "Available Balance", "New Balance"
+- If still unclear, use the most prominent amount
+
+### Ambiguous Transaction Type
+- If receipt shows both payment and refund, use the net transaction
+- If unclear between Expense and Transfer, default to Expense
+- If keywords conflict, prioritize the transaction flow (who to whom)
+
+### Missing Date
+- Use current datetime as fallback
+- Mention in "details": "Date not visible, using current date"
+
+### Missing Platform
+- Try to infer from visual branding, colors, layout
+- If completely unclear, return "Unknown"
+- Set "is_complete = false"
+
+### Multiple Languages
+- Translate all text internally to English before processing
+- Preserve numbers and IDs exactly as shown
+- Common Bengali keywords:
+  - টাকা (Taka) → BDT
+  - পাঠানো (Send) → Transfer/Expense
+  - গ্রহণ (Receive) → Income
+  - আজ (Today) → current date
+  - গতকাল (Yesterday) → previous date
+
+### Rotated or Upside-Down Images
+- Mentally rotate the image to correct orientation
+- Extract text as if properly oriented
+
+### Screenshots with UI Elements
+- Ignore phone status bar, navigation buttons, app UI
+- Focus on the receipt content only
+
+---
+
+## VALIDATION RULES
+
+Before returning data, verify:
+
+1. **Amount:** Must be > 0 (if visible)
+2. **Currency:** Must be valid ISO 4217 code or empty
+3. **Transaction Type:** Must be exactly "Expense", "Income", or "Transfer"
+4. **Date:** Must be valid ISO 8601 format with timezone
+5. **Platform:** Should be normalized (proper case, standard names)
+6. **Completeness:** Set "is_complete" correctly based on rules
+
+---
+
+## REMEMBER
+
+1. **Accuracy over speed:** Take time to read the entire image carefully
+2. **Context matters:** Use visual branding, layout, and keywords together
+3. **Normalize consistently:** Use standard platform names and formats
+4. **Handle ambiguity:** When unclear, use sensible defaults and note in details
+5. **Validate output:** Ensure all required fields are properly formatted
+6. **User-friendly:** Purpose and details should be clear and concise
+7. **Completeness flag:** Set correctly to help users identify incomplete receipts
+
+---
+
+## CRITICAL RULES
+
+- **NEVER** return null values (use empty string "" instead)
+- **ALWAYS** return amount as a number (not string)
+- **ALWAYS** use ISO 8601 date format with +06:00 timezone
+- **ALWAYS** use proper transaction_type values (Expense, Income, Transfer)
+- **ALWAYS** normalize platform names consistently
+- **ALWAYS** set is_complete based on the defined rules
+- **NEVER** include markdown, code blocks, or explanations in output
 
 Now analyze this email and return extracted data as JSON:`;
 
