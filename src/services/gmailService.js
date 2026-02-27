@@ -63,9 +63,13 @@ function handleTokenRefresh(response) {
   try {
     const refreshedToken = response.headers.get('x-gmail-token-refreshed');
     if (refreshedToken) {
-      console.log('🔄 Gmail: Token was refreshed by server, updating localStorage');
-      localStorage.setItem(GMAIL_TOKEN_KEY, refreshedToken);
-      console.log('✅ Gmail: New token saved to localStorage');
+      const currentToken = getGmailToken();
+      // Only update and log if the token actually changed
+      if (currentToken !== refreshedToken) {
+        console.log('🔄 Gmail: Token was refreshed by server, updating localStorage');
+        localStorage.setItem(GMAIL_TOKEN_KEY, refreshedToken);
+        console.log('✅ Gmail: New token saved to localStorage');
+      }
     }
   } catch (error) {
     console.error('Error handling token refresh:', error);
