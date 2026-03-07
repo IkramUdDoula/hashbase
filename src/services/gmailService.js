@@ -81,11 +81,32 @@ export function saveGmailToken(token) {
 }
 
 // Clear Gmail token from localStorage
-export function clearGmailToken() {
+export async function clearGmailToken() {
   try {
-    console.log('🗑️ Gmail token cleared from localStorage');
+    console.log('🗑️ Gmail: Clearing tokens from localStorage and server');
     console.trace('   Clear token called from:'); // This will show the call stack
+    
+    // Clear from localStorage
     localStorage.removeItem(GMAIL_TOKEN_KEY);
+    
+    // Clear from server-side storage
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        console.log('✅ Gmail: Server-side tokens cleared');
+      } else {
+        console.warn('⚠️ Gmail: Failed to clear server-side tokens');
+      }
+    } catch (serverError) {
+      console.warn('⚠️ Gmail: Could not reach server to clear tokens:', serverError.message);
+    }
+    
     return true;
   } catch (error) {
     console.error('Error clearing Gmail token:', error);

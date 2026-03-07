@@ -125,3 +125,6 @@ temp/
 .pnp.*
 
 token.json
+
+# Gmail OAuth tokens (server-side storage)
+.gmail-tokens.json
