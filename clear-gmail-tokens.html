@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Gmail Tokens</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        button {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #b91c1c;
+        }
+        button.success {
+            background: #16a34a;
+        }
+        button.success:hover {
+            background: #15803d;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+        .status.show {
+            display: block;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .status.success {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        pre {
+            background: #f3f4f6;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .step {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f9fafb;
+            border-left: 4px solid #3b82f6;
+            border-radius: 4px;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Gmail Token Cleanup Tool</h1>
+        
+        <div class="info">
+            <strong>⚠️ Important:</strong> This will clear ALL Gmail authentication data from your browser. You'll need to re-authenticate after this.
+        </div>
+
+        <div class="step">
+            <h3>Step 1: Clear Local Storage</h3>
+            <p>Remove all Gmail tokens from your browser:</p>
+            <button onclick="clearTokens()">Clear Gmail Tokens</button>
+            <button onclick="showCurrentToken()">Show Current Token</button>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Revoke Google Access</h3>
+            <p>Remove old authorization from Google:</p>
+            <button class="success" onclick="openGooglePermissions()">Open Google Permissions</button>
+            <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                Find your app in the list and click "Remove access"
+            </p>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Return to App</h3>
+            <p>Go back to your app and authenticate:</p>
+            <button class="success" onclick="openApp()">Open App (localhost:5000)</button>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <div id="tokenDisplay" style="margin-top: 20px; display: none;">
+            <h3>Current Token Data:</h3>
+            <pre id="tokenContent"></pre>
+        </div>
+    </div>
+
+    <script>
+        function showStatus(message, type = 'success') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status show ${type}`;
+            setTimeout(() => {
+                status.classList.remove('show');
+            }, 5000);
+        }
+
+        function clearTokens() {
+            try {
+                // Clear gmail_tokens
+                localStorage.removeItem('gmail_tokens');
+                
+                // Clear any other Gmail-related items
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.toLowerCase().includes('gmail')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+                
+                showStatus(`✅ Cleared ${keysToRemove.length + 1} Gmail-related items from localStorage`, 'success');
+                
+                // Hide token display
+                document.getElementById('tokenDisplay').style.display = 'none';
+            } catch (error) {
+                showStatus(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function showCurrentToken() {
+            try {
+                const token = localStorage.getItem('gmail_tokens');
+                const display = document.getElementById('tokenDisplay');
+                const content = document.getElementById('tokenContent');
+                
+                if (token) {
+                    try {
+                        const parsed = JSON.parse(token);
+                        content.textContent = JSON.stringify(parsed, null, 2);
+                        display.style.display = 'block';
+                        
+                        // Check expiry
+                        if (parsed.expiry_date) {
+                            const expiry = new Date(parsed.expiry_date);
+                            const now = new Date();
+                            const expired = now >= expiry;
+                            
+                            showStatus(
+                                expired 
+                                    ? `⚠️ Token expired at ${expiry.toLocaleString()}` 
+                                    : `✅ Token valid until ${expiry.toLocaleString()}`,
+                                expired ? 'error' : 'success'
+                            );
+                        }
+                    } catch (e) {
+                        content.textContent = token;
+                        display.style.display = 'block';
+                        showStatus('⚠️ Token exists but is not valid JSON', 'error');
+                    }
+                } else {
+                    showStatus('ℹ️ No Gmail token found in localStorage', 'success');
+                    display.style.display = 'none';
+                }
+            } catch (error) {
+                showStatus(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function openGooglePermissions() {
+            window.open('https://myaccount.google.com/permissions', '_blank');
+            showStatus('✅ Opened Google Permissions page in new tab', 'success');
+        }
+
+        function openApp() {
+            window.open('http://localhost:5000', '_blank');
+            showStatus('✅ Opened app in new tab', 'success');
+        }
+
+        // Show current token on load
+        window.addEventListener('load', () => {
+            const token = localStorage.getItem('gmail_tokens');
+            if (token) {
+                showStatus('⚠️ Gmail token found. Click "Show Current Token" to view or "Clear Gmail Tokens" to remove.', 'error');
+            } else {
+                showStatus('✅ No Gmail token found. You\'re ready to authenticate!', 'success');
+            }
+        });
+    </script>
+</body>
+</html>

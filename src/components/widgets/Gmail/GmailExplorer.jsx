@@ -74,6 +74,9 @@ export function GmailExplorer({
 
   // Fetch full email details when emailId changes
   useEffect(() => {
+    // Use a flag to prevent race conditions
+    let isCancelled = false;
+    
     const loadFullEmail = async () => {
       if (!emailId || !open) return;
       
@@ -82,17 +85,41 @@ export function GmailExplorer({
       
       try {
         const details = await fetchEmailDetails(emailId);
-        setFullEmail(details);
+        
+        // Only update state if this request wasn't cancelled
+        if (!isCancelled) {
+          setFullEmail(details);
+        }
       } catch (error) {
-        console.error('Failed to load email details:', error);
-        setDetailsError(error.message);
+        if (!isCancelled) {
+          console.error('Failed to load email details:', error);
+          setDetailsError(error.message);
+          
+          // If authentication expired, trigger parent refresh to update auth state
+          if (error.message.includes('authentication expired')) {
+            console.log('🔄 Gmail Explorer: Authentication expired, closing explorer and triggering parent refresh');
+            // Close the explorer first to prevent re-triggering
+            onOpenChange(false);
+            // Then trigger parent refresh after a delay
+            if (onRefresh) {
+              setTimeout(() => onRefresh(), 500);
+            }
+          }
+        }
       } finally {
-        setLoadingDetails(false);
+        if (!isCancelled) {
+          setLoadingDetails(false);
+        }
       }
     };
 
     loadFullEmail();
-  }, [emailId, open]);
+    
+    // Cleanup function to cancel the request if component unmounts or emailId changes
+    return () => {
+      isCancelled = true;
+    };
+  }, [emailId, open, onRefresh, onOpenChange]);
 
   const handlePrevious = () => {
     if (hasPrevious) {

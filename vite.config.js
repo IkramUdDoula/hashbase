@@ -28,31 +28,56 @@ async function loadCredentialsFromHeader(req) {
   try {
     const tokenHeader = req.headers['x-gmail-token']
     if (!tokenHeader) {
+      console.log('❌ Gmail: No token header provided')
       return null
     }
     const credentials = JSON.parse(tokenHeader)
+    
+    // Check if token is already expired (not just expiring soon)
+    const expiryDate = credentials.expiry_date
+    const now = Date.now()
+    
+    if (expiryDate && now >= expiryDate) {
+      console.log(`❌ Gmail: Token is already expired (Expiry: ${new Date(expiryDate).toISOString()}, Now: ${new Date(now).toISOString()})`)
+      console.log('   Rejecting expired token - client must re-authenticate')
+      return { error: 'REFRESH_FAILED', message: 'Token expired' }
+    }
+    
     const oauth2Client = getOAuth2Client()
     oauth2Client.setCredentials(credentials)
     
-    // Check if token is expired or about to expire (within 5 minutes)
-    const expiryDate = credentials.expiry_date
-    const now = Date.now()
+    // Check if token is about to expire (within 5 minutes)
     const fiveMinutes = 5 * 60 * 1000
+    
+    console.log(`🔍 Gmail: Token check - Expiry: ${expiryDate ? new Date(expiryDate).toISOString() : 'Not set'}, Now: ${new Date(now).toISOString()}`)
     
     if (expiryDate && (now >= expiryDate - fiveMinutes)) {
       console.log('🔄 Gmail: Access token expired or expiring soon, refreshing...')
       try {
         // Refresh the token
         const { credentials: newCredentials } = await oauth2Client.refreshAccessToken()
+        
+        console.log(`   Refresh response - has refresh_token: ${!!newCredentials.refresh_token}`)
+        
+        // Preserve the refresh token if not returned (Google doesn't always return it)
+        if (!newCredentials.refresh_token && credentials.refresh_token) {
+          console.log('   ⚠️ Google did not return refresh_token, preserving from original')
+          newCredentials.refresh_token = credentials.refresh_token
+        }
+        
         oauth2Client.setCredentials(newCredentials)
         console.log('✅ Gmail: Token refreshed successfully')
+        console.log(`   New expiry: ${newCredentials.expiry_date ? new Date(newCredentials.expiry_date).toISOString() : 'Not set'}`)
+        console.log(`   Has refresh_token: ${!!newCredentials.refresh_token ? '✅' : '❌'}`)
         
         // Return both the client and the new credentials so they can be sent back to frontend
         return { oauth2Client, newCredentials }
       } catch (refreshError) {
         console.error('❌ Gmail: Failed to refresh token:', refreshError.message)
-        // If refresh fails, return null to force re-authentication
-        return null
+        console.error('   Error code:', refreshError.code)
+        console.error('   Error details:', JSON.stringify(refreshError.response?.data || {}, null, 2))
+        // Return error info so frontend can handle re-authentication
+        return { error: 'REFRESH_FAILED', message: refreshError.message }
       }
     }
     
@@ -73,7 +98,7 @@ function createApiServer() {
     const oauth2Client = getOAuth2Client()
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
-      prompt: 'consent', // Force consent screen to get refresh token
+      prompt: 'select_account', // Changed from 'consent' to avoid forcing re-consent every time
       scope: [
         'https://www.googleapis.com/auth/gmail.readonly',
         'https://www.googleapis.com/auth/gmail.modify'
@@ -92,6 +117,27 @@ function createApiServer() {
     try {
       const oauth2Client = getOAuth2Client()
       const { tokens } = await oauth2Client.getToken(code)
+      
+      // Check if we have an existing refresh token in the request
+      // (This would come from the frontend if they're re-authenticating)
+      const existingTokenHeader = req.headers['x-gmail-token']
+      let existingRefreshToken = null
+      
+      if (existingTokenHeader) {
+        try {
+          const existingCreds = JSON.parse(existingTokenHeader)
+          existingRefreshToken = existingCreds.refresh_token
+        } catch (e) {
+          // Ignore parsing errors
+        }
+      }
+      
+      // If Google didn't return a refresh token but we have an existing one, preserve it
+      if (!tokens.refresh_token && existingRefreshToken) {
+        console.log('⚠️  Google did not return a new refresh token, preserving existing one')
+        tokens.refresh_token = existingRefreshToken
+      }
+      
       oauth2Client.setCredentials(tokens)
       
       // Log token info (without exposing actual tokens)
@@ -105,6 +151,90 @@ function createApiServer() {
         console.warn('⚠️  WARNING: No refresh token received from Google!')
         console.warn('   This usually means the user already granted access previously.')
         console.warn('   To get a refresh token, revoke access at: https://myaccount.google.com/permissions')
+        console.warn('   ')
+        console.warn('   🔴 CRITICAL: Without a refresh token, you will need to re-authenticate every hour!')
+        console.warn('   ')
+        
+        // Return error page instead of success
+        const frontendUrl = process.env.VITE_FRONTEND_URL
+        return res.send(`
+          <html>
+            <head>
+              <title>Authentication Issue</title>
+              <style>
+                body {
+                  font-family: system-ui, -apple-system, sans-serif;
+                  max-width: 600px;
+                  margin: 50px auto;
+                  padding: 20px;
+                  background: #fee2e2;
+                }
+                .container {
+                  background: white;
+                  padding: 30px;
+                  border-radius: 8px;
+                  border: 2px solid #dc2626;
+                }
+                h1 { color: #dc2626; margin-top: 0; }
+                .warning { background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b; }
+                .steps { background: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0; }
+                .step { margin: 10px 0; padding: 10px; background: white; border-radius: 4px; }
+                button {
+                  background: #dc2626;
+                  color: white;
+                  border: none;
+                  padding: 12px 24px;
+                  border-radius: 6px;
+                  font-size: 16px;
+                  cursor: pointer;
+                  margin: 10px 5px;
+                }
+                button:hover { background: #b91c1c; }
+                button.secondary { background: #6b7280; }
+                button.secondary:hover { background: #4b5563; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h1>⚠️ No Refresh Token Received</h1>
+                
+                <div class="warning">
+                  <strong>Problem:</strong> Google did not provide a refresh token because you've already authorized this app before.
+                  <br><br>
+                  <strong>Impact:</strong> Your access will expire in 1 hour and you'll need to re-authenticate again.
+                </div>
+                
+                <div class="steps">
+                  <h3>Fix This Now (2 Steps):</h3>
+                  
+                  <div class="step">
+                    <strong>Step 1:</strong> Revoke access at Google
+                    <br>
+                    <button onclick="window.open('https://myaccount.google.com/permissions', '_blank')">
+                      Open Google Permissions
+                    </button>
+                    <br>
+                    <small>Find your app and click "Remove access"</small>
+                  </div>
+                  
+                  <div class="step">
+                    <strong>Step 2:</strong> Try authenticating again
+                    <br>
+                    <button class="secondary" onclick="window.location.href='${frontendUrl}'">
+                      Return to App
+                    </button>
+                    <br>
+                    <small>Click "Authenticate with Gmail" again</small>
+                  </div>
+                </div>
+                
+                <p style="font-size: 14px; color: #666;">
+                  After revoking access and re-authenticating, you should see "Refresh token: Present ✅" in the server logs.
+                </p>
+              </div>
+            </body>
+          </html>
+        `)
       }
       
       // Return tokens to be stored in localStorage
@@ -158,6 +288,15 @@ function createApiServer() {
         return res.json({ authenticated: false })
       }
       
+      // Check if refresh failed
+      if (result.error === 'REFRESH_FAILED') {
+        return res.json({ 
+          authenticated: false,
+          requiresReauth: true,
+          error: result.message
+        })
+      }
+      
       // If token was refreshed, return the new credentials
       if (result.newCredentials) {
         return res.json({ 
@@ -183,7 +322,18 @@ function createApiServer() {
         console.log('❌ Gmail: Not authenticated - no token provided in header')
         return res.status(401).json({ 
           error: 'Not authenticated',
-          message: 'Please authenticate with Gmail first'
+          message: 'Please authenticate with Gmail first',
+          requiresReauth: true
+        })
+      }
+      
+      // Check if refresh failed
+      if (result.error === 'REFRESH_FAILED') {
+        console.log('❌ Gmail: Token refresh failed, re-authentication required')
+        return res.status(401).json({ 
+          error: 'Token refresh failed',
+          message: result.message,
+          requiresReauth: true
         })
       }
 
@@ -253,7 +403,19 @@ function createApiServer() {
       const result = await loadCredentialsFromHeader(req)
       
       if (!result) {
-        return res.status(401).json({ error: 'Not authenticated' })
+        return res.status(401).json({ 
+          error: 'Not authenticated',
+          requiresReauth: true
+        })
+      }
+      
+      // Check if refresh failed
+      if (result.error === 'REFRESH_FAILED') {
+        return res.status(401).json({ 
+          error: 'Token refresh failed',
+          message: result.message,
+          requiresReauth: true
+        })
       }
 
       const gmail = google.gmail({ version: 'v1', auth: result.oauth2Client })
@@ -283,7 +445,20 @@ function createApiServer() {
       const result = await loadCredentialsFromHeader(req)
       
       if (!result) {
-        return res.status(401).json({ error: 'Not authenticated' })
+        return res.status(401).json({ 
+          error: 'Not authenticated',
+          requiresReauth: true
+        })
+      }
+      
+      // Check if refresh failed
+      if (result.error === 'REFRESH_FAILED') {
+        console.log('❌ Gmail: Token refresh failed, re-authentication required')
+        return res.status(401).json({ 
+          error: 'Token refresh failed',
+          message: result.message,
+          requiresReauth: true
+        })
       }
 
       console.log(`📧 Gmail: Fetching full details for message ${messageId}`)
@@ -412,7 +587,19 @@ function createApiServer() {
       const result = await loadCredentialsFromHeader(req)
       
       if (!result) {
-        return res.status(401).json({ error: 'Not authenticated' })
+        return res.status(401).json({ 
+          error: 'Not authenticated',
+          requiresReauth: true
+        })
+      }
+      
+      // Check if refresh failed
+      if (result.error === 'REFRESH_FAILED') {
+        return res.status(401).json({ 
+          error: 'Token refresh failed',
+          message: result.message,
+          requiresReauth: true
+        })
       }
 
       console.log(`📎 Gmail: Downloading attachment ${attachmentId} from message ${messageId}`)

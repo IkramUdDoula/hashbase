@@ -22,7 +22,46 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
   const loadEmails = async () => {
     try {
       setError(null);
+      
+      // First, validate the token in localStorage
+      const storedToken = localStorage.getItem('gmail_tokens');
+      console.log('🔍 Gmail Widget: Checking stored token on load');
+      
+      if (storedToken) {
+        try {
+          const parsed = JSON.parse(storedToken);
+          console.log(`   Token found - Expiry: ${parsed.expiry_date ? new Date(parsed.expiry_date).toISOString() : 'Not set'}`);
+          console.log(`   Has refresh_token: ${!!parsed.refresh_token ? '✅' : '❌'}`);
+          
+          if (parsed.expiry_date) {
+            const expiry = new Date(parsed.expiry_date);
+            const now = new Date();
+            // If token is already expired (not just expiring soon), clear it immediately
+            if (now >= expiry) {
+              console.log('⚠️ Gmail Widget: Token in localStorage is already expired, clearing it');
+              clearGmailToken();
+              setIsAuthenticated(false);
+              setError('Gmail authentication expired. Please sign in again.');
+              setCurrentState('error');
+              setRefreshing(false);
+              return;
+            }
+          }
+          
+          // Check if refresh token is missing
+          if (!parsed.refresh_token) {
+            console.warn('⚠️ Gmail Widget: Token has no refresh_token - will expire in 1 hour');
+          }
+        } catch (e) {
+          console.error('⚠️ Gmail Widget: Invalid token in localStorage, clearing it');
+          clearGmailToken();
+        }
+      } else {
+        console.log('   No token found in localStorage');
+      }
+      
       const authStatus = await checkAuthStatus();
+      console.log(`   Auth status: ${authStatus ? '✅ Authenticated' : '❌ Not authenticated'}`);
       setIsAuthenticated(authStatus);
       
       if (!authStatus) {
@@ -38,6 +77,10 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
     } catch (err) {
       setError(err.message);
       setCurrentState('error');
+      // If auth error, update auth status
+      if (err.message.includes('authentication expired')) {
+        setIsAuthenticated(false);
+      }
     } finally {
       setRefreshing(false);
     }
@@ -88,11 +131,21 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
       }
     };
     
+    // Listen for storage changes (token updates from other tabs)
+    const handleStorageChange = (e) => {
+      if (e.key === 'gmail_tokens') {
+        console.log('🔄 Gmail Widget: Token changed in another tab, reloading...');
+        loadEmails();
+      }
+    };
+    
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('storage', handleStorageChange);
     
     return () => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
