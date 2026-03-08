@@ -81,6 +81,18 @@ async function loadCredentialsFromHeader(req) {
     if (tokenHeader) {
       credentials = JSON.parse(tokenHeader)
       console.log('📨 Gmail: Using token from request header')
+      
+      // CRITICAL: If header token doesn't have refresh_token, try to get it from file storage
+      if (!credentials.refresh_token) {
+        console.log('⚠️  Gmail: Header token missing refresh_token, checking file storage...')
+        const fileTokens = loadTokensFromFile()
+        if (fileTokens && fileTokens.refresh_token) {
+          console.log('✅ Gmail: Found refresh_token in file storage, merging it')
+          credentials.refresh_token = fileTokens.refresh_token
+        } else {
+          console.log('❌ Gmail: No refresh_token in file storage either')
+        }
+      }
     } else {
       // Fall back to file storage
       credentials = loadTokensFromFile()
