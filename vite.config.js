@@ -62,54 +62,6 @@ function clearTokensFromFile() {
   }
 }
 
-// Token storage file path
-const TOKEN_STORAGE_PATH = path.join(__dirname, '.gmail-tokens.json')
-
-// Load tokens from file
-function loadTokensFromFile() {
-  try {
-    if (fs.existsSync(TOKEN_STORAGE_PATH)) {
-      const data = fs.readFileSync(TOKEN_STORAGE_PATH, 'utf8')
-      const tokens = JSON.parse(data)
-      console.log('📂 Gmail: Loaded tokens from file storage')
-      console.log(`   Expiry: ${tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : 'Not set'}`)
-      console.log(`   Has refresh_token: ${!!tokens.refresh_token ? '✅' : '❌'}`)
-      return tokens
-    }
-  } catch (error) {
-    console.error('❌ Gmail: Error loading tokens from file:', error.message)
-  }
-  return null
-}
-
-// Save tokens to file
-function saveTokensToFile(tokens) {
-  try {
-    fs.writeFileSync(TOKEN_STORAGE_PATH, JSON.stringify(tokens, null, 2), 'utf8')
-    console.log('💾 Gmail: Tokens saved to file storage')
-    console.log(`   Expiry: ${tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : 'Not set'}`)
-    console.log(`   Has refresh_token: ${!!tokens.refresh_token ? '✅' : '❌'}`)
-    return true
-  } catch (error) {
-    console.error('❌ Gmail: Error saving tokens to file:', error.message)
-    return false
-  }
-}
-
-// Clear tokens from file
-function clearTokensFromFile() {
-  try {
-    if (fs.existsSync(TOKEN_STORAGE_PATH)) {
-      fs.unlinkSync(TOKEN_STORAGE_PATH)
-      console.log('🗑️ Gmail: Tokens cleared from file storage')
-    }
-    return true
-  } catch (error) {
-    console.error('❌ Gmail: Error clearing tokens from file:', error.message)
-    return false
-  }
-}
-
 // Initialize OAuth2 client
 function getOAuth2Client() {
   return new google.auth.OAuth2(
