@@ -23,43 +23,7 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
     try {
       setError(null);
       
-      // First, validate the token in localStorage
-      const storedToken = localStorage.getItem('gmail_tokens');
-      console.log('🔍 Gmail Widget: Checking stored token on load');
-      
-      if (storedToken) {
-        try {
-          const parsed = JSON.parse(storedToken);
-          console.log(`   Token found - Expiry: ${parsed.expiry_date ? new Date(parsed.expiry_date).toISOString() : 'Not set'}`);
-          console.log(`   Has refresh_token: ${!!parsed.refresh_token ? '✅' : '❌'}`);
-          
-          if (parsed.expiry_date) {
-            const expiry = new Date(parsed.expiry_date);
-            const now = new Date();
-            // If token is already expired (not just expiring soon), clear it immediately
-            if (now >= expiry) {
-              console.log('⚠️ Gmail Widget: Token in localStorage is already expired, clearing it');
-              clearGmailToken();
-              setIsAuthenticated(false);
-              setError('Gmail authentication expired. Please sign in again.');
-              setCurrentState('error');
-              setRefreshing(false);
-              return;
-            }
-          }
-          
-          // Check if refresh token is missing
-          if (!parsed.refresh_token) {
-            console.warn('⚠️ Gmail Widget: Token has no refresh_token - will expire in 1 hour');
-          }
-        } catch (e) {
-          console.error('⚠️ Gmail Widget: Invalid token in localStorage, clearing it');
-          clearGmailToken();
-        }
-      } else {
-        console.log('   No token found in localStorage');
-      }
-      
+      // Check auth status (backend will handle token refresh if needed)
       const authStatus = await checkAuthStatus();
       console.log(`   Auth status: ${authStatus ? '✅ Authenticated' : '❌ Not authenticated'}`);
       setIsAuthenticated(authStatus);
@@ -122,12 +86,47 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
   };
 
   useEffect(() => {
-    loadEmails();
-    const interval = setInterval(loadEmails, 60000);
+    // Initial load with auth check
+    const initializeWidget = async () => {
+      console.log('🔄 Gmail Widget: Initializing...');
+      const authStatus = await checkAuthStatus();
+      setIsAuthenticated(authStatus);
+      if (authStatus) {
+        await loadEmails();
+      } else {
+        setCurrentState('error');
+        setError('Not authenticated with Gmail');
+      }
+    };
+    
+    initializeWidget();
+    
+    // Refresh emails every 60 seconds
+    const emailInterval = setInterval(loadEmails, 60000);
+    
+    // Proactive token refresh every 30 minutes
+    const tokenRefreshInterval = setInterval(async () => {
+      if (isAuthenticated) {
+        console.log('🔄 Gmail Widget: Proactive token check (30min interval)');
+        const authStatus = await checkAuthStatus();
+        if (!authStatus) {
+          console.log('⚠️ Gmail Widget: Token refresh failed, marking as unauthenticated');
+          setIsAuthenticated(false);
+          setCurrentState('error');
+          setError('Gmail authentication expired. Please sign in again.');
+        }
+      }
+    }, 30 * 60 * 1000); // 30 minutes
     
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        loadEmails();
+        console.log('🔄 Gmail Widget: Tab became visible, checking auth and reloading');
+        checkAuthStatus().then(status => {
+          setIsAuthenticated(status);
+          if (status) {
+            loadEmails();
+          }
+        });
       }
     };
     
@@ -143,7 +142,8 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
     window.addEventListener('storage', handleStorageChange);
     
     return () => {
-      clearInterval(interval);
+      clearInterval(emailInterval);
+      clearInterval(tokenRefreshInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('storage', handleStorageChange);
     };

@@ -32,12 +32,18 @@ function getGmailToken() {
           console.log(`   Time until expiry: ${minutesUntilExpiry} minutes`);
           console.log(`   Status: ${isExpired ? '❌ EXPIRED' : '✅ Valid'}`);
           
-          // If expired, clear it immediately
+          // CRITICAL FIX: Don't delete expired tokens if they have a refresh_token
+          // The backend will handle refreshing expired tokens
           if (isExpired) {
-            console.log('🗑️ Gmail: Clearing expired token from localStorage');
-            console.trace('   Token expired, clearing from:');
-            localStorage.removeItem(GMAIL_TOKEN_KEY);
-            return null;
+            if (parsed.refresh_token) {
+              console.log('⚠️ Gmail: Access token expired, but refresh_token present - backend will refresh');
+              // Return the token anyway - backend will refresh it
+            } else {
+              console.log('🗑️ Gmail: Token expired and no refresh_token - clearing');
+              console.trace('   Token expired without refresh_token, clearing from:');
+              localStorage.removeItem(GMAIL_TOKEN_KEY);
+              return null;
+            }
           }
         }
       } catch (e) {

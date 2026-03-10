@@ -103,26 +103,27 @@ async function loadCredentialsFromHeader(req) {
       console.log('📂 Gmail: Using token from file storage')
     }
     
-    // Check if token is already expired (not just expiring soon)
+    // Check if we have a refresh token - this is the critical requirement
+    if (!credentials.refresh_token) {
+      console.log('❌ Gmail: No refresh token available - cannot refresh')
+      return { error: 'REFRESH_FAILED', message: 'No refresh token available' }
+    }
+    
     const expiryDate = credentials.expiry_date
     const now = Date.now()
-    
-    if (expiryDate && now >= expiryDate) {
-      console.log(`❌ Gmail: Token is already expired (Expiry: ${new Date(expiryDate).toISOString()}, Now: ${new Date(now).toISOString()})`)
-      console.log('   Rejecting expired token - client must re-authenticate')
-      return { error: 'REFRESH_FAILED', message: 'Token expired' }
-    }
     
     const oauth2Client = getOAuth2Client()
     oauth2Client.setCredentials(credentials)
     
-    // Check if token is about to expire (within 5 minutes)
+    // Check if token is expired or about to expire (within 5 minutes)
     const fiveMinutes = 5 * 60 * 1000
     
     console.log(`🔍 Gmail: Token check - Expiry: ${expiryDate ? new Date(expiryDate).toISOString() : 'Not set'}, Now: ${new Date(now).toISOString()}`)
     
+    // CRITICAL FIX: Refresh expired tokens instead of rejecting them
     if (expiryDate && (now >= expiryDate - fiveMinutes)) {
-      console.log('🔄 Gmail: Access token expired or expiring soon, refreshing...')
+      const isAlreadyExpired = now >= expiryDate
+      console.log(`🔄 Gmail: Access token ${isAlreadyExpired ? 'expired' : 'expiring soon'}, refreshing...`)
       try {
         // Refresh the token
         const { credentials: newCredentials } = await oauth2Client.refreshAccessToken()
@@ -172,7 +173,7 @@ function createApiServer() {
     const oauth2Client = getOAuth2Client()
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
-      prompt: 'select_account', // Changed from 'consent' to avoid forcing re-consent every time
+      prompt: 'consent', // CRITICAL FIX: Use 'consent' to always get refresh_token
       scope: [
         'https://www.googleapis.com/auth/gmail.readonly',
         'https://www.googleapis.com/auth/gmail.modify'
