@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Explorer, 
   ExplorerHeader, 
@@ -65,6 +65,9 @@ export function GmailExplorer({
   const [detailsError, setDetailsError] = useState(null);
   const [creatingReceipt, setCreatingReceipt] = useState(false);
   const [markingAsRead, setMarkingAsRead] = useState(false);
+  
+  // Ref to prevent duplicate fetches
+  const loadingEmailIdRef = useRef(null);
 
   // Find current email from the list
   const currentIndex = emailList.findIndex(e => e.id === emailId);
@@ -80,6 +83,13 @@ export function GmailExplorer({
     const loadFullEmail = async () => {
       if (!emailId || !open) return;
       
+      // Prevent duplicate fetches for the same email
+      if (loadingEmailIdRef.current === emailId) {
+        console.log('⏭️ Gmail Explorer: Already loading this email, skipping');
+        return;
+      }
+      
+      loadingEmailIdRef.current = emailId;
       setLoadingDetails(true);
       setDetailsError(null);
       
@@ -97,10 +107,8 @@ export function GmailExplorer({
           
           // If authentication expired, trigger parent refresh to update auth state
           if (error.message.includes('authentication expired')) {
-            console.log('🔄 Gmail Explorer: Authentication expired, closing explorer and triggering parent refresh');
-            // Close the explorer first to prevent re-triggering
+            console.log('🔄 Gmail Explorer: Authentication expired, closing explorer');
             onOpenChange(false);
-            // Then trigger parent refresh after a delay
             if (onRefresh) {
               setTimeout(() => onRefresh(), 500);
             }
@@ -109,6 +117,7 @@ export function GmailExplorer({
       } finally {
         if (!isCancelled) {
           setLoadingDetails(false);
+          loadingEmailIdRef.current = null;
         }
       }
     };
@@ -119,7 +128,7 @@ export function GmailExplorer({
     return () => {
       isCancelled = true;
     };
-  }, [emailId, open, onRefresh, onOpenChange]);
+  }, [emailId, open]); // Removed onRefresh and onOpenChange from dependencies
 
   const handlePrevious = () => {
     if (hasPrevious) {

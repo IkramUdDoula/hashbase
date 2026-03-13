@@ -18,32 +18,18 @@ function getGmailToken() {
       // Validate it's proper JSON
       try {
         const parsed = JSON.parse(token);
-        // Log the expiry for debugging
+        // Validate expiry
         if (parsed.expiry_date) {
           const expiry = new Date(parsed.expiry_date);
           const now = new Date();
           const isExpired = now >= expiry;
-          const timeUntilExpiry = expiry - now;
-          const minutesUntilExpiry = Math.floor(timeUntilExpiry / 1000 / 60);
-          
-          console.log(`📋 Gmail: Reading token from localStorage`);
-          console.log(`   Expiry: ${expiry.toISOString()}`);
-          console.log(`   Now: ${now.toISOString()}`);
-          console.log(`   Time until expiry: ${minutesUntilExpiry} minutes`);
-          console.log(`   Status: ${isExpired ? '❌ EXPIRED' : '✅ Valid'}`);
           
           // CRITICAL FIX: Don't delete expired tokens if they have a refresh_token
           // The backend will handle refreshing expired tokens
-          if (isExpired) {
-            if (parsed.refresh_token) {
-              console.log('⚠️ Gmail: Access token expired, but refresh_token present - backend will refresh');
-              // Return the token anyway - backend will refresh it
-            } else {
-              console.log('🗑️ Gmail: Token expired and no refresh_token - clearing');
-              console.trace('   Token expired without refresh_token, clearing from:');
-              localStorage.removeItem(GMAIL_TOKEN_KEY);
-              return null;
-            }
+          if (isExpired && !parsed.refresh_token) {
+            console.log('🗑️ Gmail: Token expired and no refresh_token - clearing');
+            localStorage.removeItem(GMAIL_TOKEN_KEY);
+            return null;
           }
         }
       } catch (e) {
@@ -67,10 +53,7 @@ export function saveGmailToken(token) {
     // Validate it's proper JSON before saving
     if (typeof token === 'string') {
       try {
-        const parsed = JSON.parse(token);
-        if (parsed.expiry_date) {
-          console.log(`💾 Gmail: Saving token to localStorage - Expiry: ${new Date(parsed.expiry_date).toISOString()}`);
-        }
+        JSON.parse(token);
       } catch (e) {
         console.error('⚠️ Gmail: Attempted to save invalid JSON token');
         return false;
@@ -78,7 +61,7 @@ export function saveGmailToken(token) {
     }
     
     localStorage.setItem(GMAIL_TOKEN_KEY, token);
-    console.log('✅ Gmail token saved to localStorage (will be encrypted in config exports)');
+    console.log('✅ Gmail token saved');
     return true;
   } catch (error) {
     console.error('Error saving Gmail token:', error);
@@ -89,8 +72,7 @@ export function saveGmailToken(token) {
 // Clear Gmail token from localStorage
 export async function clearGmailToken() {
   try {
-    console.log('🗑️ Gmail: Clearing tokens from localStorage and server');
-    console.trace('   Clear token called from:'); // This will show the call stack
+    console.log('🗑️ Gmail: Clearing tokens');
     
     // Clear from localStorage
     localStorage.removeItem(GMAIL_TOKEN_KEY);

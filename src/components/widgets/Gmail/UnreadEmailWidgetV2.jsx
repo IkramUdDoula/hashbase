@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BaseWidgetV2 } from '../../BaseWidgetV2';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,9 +18,20 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [explorerOpen, setExplorerOpen] = useState(false);
   const [selectedEmailId, setSelectedEmailId] = useState(null);
+  
+  // Refs to prevent duplicate operations
+  const isLoadingRef = useRef(false);
+  const lastVisibilityLoadRef = useRef(0);
 
   const loadEmails = async () => {
+    // Prevent concurrent loads
+    if (isLoadingRef.current) {
+      console.log('⏭️ Gmail Widget: Load already in progress, skipping');
+      return;
+    }
+    
     try {
+      isLoadingRef.current = true;
       setError(null);
       
       // Check auth status (backend will handle token refresh if needed)
@@ -47,6 +58,7 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
       }
     } finally {
       setRefreshing(false);
+      isLoadingRef.current = false;
     }
   };
 
@@ -86,10 +98,13 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
   };
 
   useEffect(() => {
+    let isActive = true;
+    
     // Initial load with auth check
     const initializeWidget = async () => {
-      console.log('🔄 Gmail Widget: Initializing...');
       const authStatus = await checkAuthStatus();
+      if (!isActive) return;
+      
       setIsAuthenticated(authStatus);
       if (authStatus) {
         await loadEmails();
@@ -102,37 +117,44 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
     initializeWidget();
     
     // Refresh emails every 60 seconds
-    const emailInterval = setInterval(loadEmails, 60000);
+    const emailInterval = setInterval(() => {
+      if (isActive) loadEmails();
+    }, 60000);
     
     // Proactive token refresh every 30 minutes
     const tokenRefreshInterval = setInterval(async () => {
-      if (isAuthenticated) {
-        console.log('🔄 Gmail Widget: Proactive token check (30min interval)');
-        const authStatus = await checkAuthStatus();
-        if (!authStatus) {
-          console.log('⚠️ Gmail Widget: Token refresh failed, marking as unauthenticated');
-          setIsAuthenticated(false);
-          setCurrentState('error');
-          setError('Gmail authentication expired. Please sign in again.');
-        }
+      if (!isActive) return;
+      
+      const authStatus = await checkAuthStatus();
+      if (!isActive) return;
+      
+      if (!authStatus) {
+        console.log('⚠️ Gmail Widget: Token refresh failed, marking as unauthenticated');
+        setIsAuthenticated(false);
+        setCurrentState('error');
+        setError('Gmail authentication expired. Please sign in again.');
       }
     }, 30 * 60 * 1000); // 30 minutes
     
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        console.log('🔄 Gmail Widget: Tab became visible, checking auth and reloading');
-        checkAuthStatus().then(status => {
-          setIsAuthenticated(status);
-          if (status) {
-            loadEmails();
-          }
-        });
+      if (!document.hidden && isActive) {
+        // Debounce visibility changes - only reload if it's been more than 2 seconds since last load
+        const now = Date.now();
+        if (now - lastVisibilityLoadRef.current < 2000) {
+          console.log('⏭️ Gmail Widget: Visibility change too soon, skipping reload');
+          return;
+        }
+        
+        console.log('🔄 Gmail Widget: Tab became visible, reloading');
+        lastVisibilityLoadRef.current = now;
+        // loadEmails already checks auth status internally, no need to duplicate
+        loadEmails();
       }
     };
     
     // Listen for storage changes (token updates from other tabs)
     const handleStorageChange = (e) => {
-      if (e.key === 'gmail_tokens') {
+      if (e.key === 'gmail_tokens' && isActive) {
         console.log('🔄 Gmail Widget: Token changed in another tab, reloading...');
         loadEmails();
       }
@@ -142,6 +164,7 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
     window.addEventListener('storage', handleStorageChange);
     
     return () => {
+      isActive = false;
       clearInterval(emailInterval);
       clearInterval(tokenRefreshInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
