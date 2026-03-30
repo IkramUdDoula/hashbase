@@ -51,7 +51,17 @@ app.get('/health', (req, res) => {
 // API routes
 const apiRouter = createApiRouter();
 app.use('/api', apiRouter);
-app.use('/oauth2callback', apiRouter);
+
+// Mount OAuth callback at root level (Google OAuth redirects to /oauth2callback)
+// We need to handle it here because it's not under /api prefix
+app.get('/oauth2callback', (req, res) => {
+  // Forward the request to the API router by calling it with /api prefix
+  req.url = '/api/oauth2callback';
+  req.originalUrl = '/api/oauth2callback';
+  apiRouter(req, res, () => {
+    res.status(404).send('OAuth callback handler not found');
+  });
+});
 
 // Serve static files from dist directory
 app.use(express.static(path.join(__dirname, 'dist')));
