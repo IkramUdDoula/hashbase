@@ -129,12 +129,17 @@ router.get('/auth/url', (req, res) => {
 
 // OAuth2 callback
 router.get('/oauth2callback', async (req, res) => {
+  console.log('📨 OAuth callback received');
+  console.log('   Query params:', Object.keys(req.query));
+  
   const code = req.query.code;
   if (!code) {
+    console.error('❌ No authorization code provided');
     return res.status(400).send('No code provided');
   }
 
   try {
+    console.log('🔄 Exchanging code for tokens...');
     const oauth2Client = getOAuth2Client();
     const { tokens } = await oauth2Client.getToken(code);
     
@@ -162,13 +167,14 @@ router.get('/oauth2callback', async (req, res) => {
     // Save tokens to database
     await saveGmailTokensToDb(tokens);
     
-    console.log('✅ Gmail OAuth: Tokens received');
+    console.log('✅ Gmail OAuth: Tokens received and saved');
     console.log('   - Access token:', tokens.access_token ? 'Present' : 'Missing');
     console.log('   - Refresh token:', tokens.refresh_token ? 'Present ✅' : 'Missing ❌');
     console.log('   - Expiry date:', tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : 'Not set');
     
     // Get frontend URL - use FRONTEND_URL or VITE_FRONTEND_URL or construct from request
     const frontendUrl = process.env.FRONTEND_URL || process.env.VITE_FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
+    console.log('   - Redirecting to:', frontendUrl);
     
     if (!tokens.refresh_token) {
       console.warn('⚠️  WARNING: No refresh token received from Google!');
@@ -201,19 +207,67 @@ router.get('/oauth2callback', async (req, res) => {
     
     const tokensJson = JSON.stringify(tokens);
     res.send(`
+      <!DOCTYPE html>
       <html>
         <head>
+          <meta charset="UTF-8">
           <title>Authentication Successful</title>
-          <script>
-            localStorage.setItem('gmail_tokens', '${tokensJson.replace(/'/g, "\\'")}');
-            window.location.href = '${frontendUrl}?auth=success';
-          </script>
+          <style>
+            body {
+              font-family: system-ui, -apple-system, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              margin: 0;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            .container {
+              background: white;
+              padding: 40px;
+              border-radius: 12px;
+              box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+              text-align: center;
+            }
+            .spinner {
+              border: 4px solid #f3f3f3;
+              border-top: 4px solid #667eea;
+              border-radius: 50%;
+              width: 40px;
+              height: 40px;
+              animation: spin 1s linear infinite;
+              margin: 20px auto;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          </style>
         </head>
-        <body><p>Redirecting...</p></body>
+        <body>
+          <div class="container">
+            <h2>✅ Authentication Successful</h2>
+            <div class="spinner"></div>
+            <p>Redirecting to dashboard...</p>
+          </div>
+          <script>
+            try {
+              console.log('Storing Gmail tokens...');
+              localStorage.setItem('gmail_tokens', ${JSON.stringify(tokensJson)});
+              console.log('Tokens stored, redirecting...');
+              setTimeout(function() {
+                window.location.href = '${frontendUrl}?auth=success';
+              }, 500);
+            } catch (error) {
+              console.error('Error storing tokens:', error);
+              document.body.innerHTML = '<div class="container"><h2>Error</h2><p>' + error.message + '</p></div>';
+            }
+          </script>
+        </body>
       </html>
     `);
   } catch (error) {
-    console.error('Error getting tokens:', error);
+    console.error('❌ Error getting tokens:', error);
     const frontendUrl = process.env.FRONTEND_URL || process.env.VITE_FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
     const errorMessage = encodeURIComponent(error.message);
     res.status(500).send(`
