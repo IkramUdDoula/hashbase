@@ -92,30 +92,58 @@ app.get('/oauth2callback', async (req, res) => {
           <meta charset="UTF-8">
           <title>Authentication Successful</title>
           <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
             body {
-              font-family: system-ui, -apple-system, sans-serif;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
               display: flex;
               justify-content: center;
               align-items: center;
               height: 100vh;
-              margin: 0;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              background: #000000;
+              color: #f2f2f2;
             }
             .container {
-              background: white;
-              padding: 40px;
-              border-radius: 12px;
-              box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+              background: #141414;
+              padding: 48px;
+              border-radius: 8px;
+              border: 1px solid #333333;
               text-align: center;
+              max-width: 400px;
+            }
+            .icon {
+              width: 64px;
+              height: 64px;
+              margin: 0 auto 24px;
+              background: #22c55e;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 32px;
+            }
+            h2 {
+              font-size: 24px;
+              font-weight: 600;
+              margin-bottom: 12px;
+              color: #f2f2f2;
+            }
+            p {
+              color: #999999;
+              font-size: 14px;
+              margin-bottom: 32px;
             }
             .spinner {
-              border: 4px solid #f3f3f3;
-              border-top: 4px solid #667eea;
+              border: 3px solid #333333;
+              border-top: 3px solid #f2f2f2;
               border-radius: 50%;
               width: 40px;
               height: 40px;
-              animation: spin 1s linear infinite;
-              margin: 20px auto;
+              animation: spin 0.8s linear infinite;
+              margin: 0 auto;
             }
             @keyframes spin {
               0% { transform: rotate(0deg); }
@@ -125,9 +153,10 @@ app.get('/oauth2callback', async (req, res) => {
         </head>
         <body>
           <div class="container">
-            <h2>✅ Authentication Successful</h2>
+            <div class="icon">✓</div>
+            <h2>Authentication Successful</h2>
+            <p>Redirecting to your dashboard...</p>
             <div class="spinner"></div>
-            <p>Redirecting to dashboard...</p>
           </div>
           <script>
             try {
@@ -139,7 +168,7 @@ app.get('/oauth2callback', async (req, res) => {
               }, 500);
             } catch (error) {
               console.error('Error storing tokens:', error);
-              document.body.innerHTML = '<div class="container"><h2>Error</h2><p>' + error.message + '</p></div>';
+              document.body.innerHTML = '<div class="container"><div class="icon" style="background:#ef4444;">✕</div><h2>Error</h2><p>' + error.message + '</p></div>';
             }
           </script>
         </body>
@@ -149,14 +178,78 @@ app.get('/oauth2callback', async (req, res) => {
     console.error('❌ Error in OAuth callback:', error);
     const frontendUrl = process.env.FRONTEND_URL || process.env.VITE_FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
     res.status(500).send(`
+      <!DOCTYPE html>
       <html>
         <head>
+          <meta charset="UTF-8">
           <title>Authentication Failed</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              background: #000000;
+              color: #f2f2f2;
+            }
+            .container {
+              background: #141414;
+              padding: 48px;
+              border-radius: 8px;
+              border: 1px solid #333333;
+              text-align: center;
+              max-width: 400px;
+            }
+            .icon {
+              width: 64px;
+              height: 64px;
+              margin: 0 auto 24px;
+              background: #ef4444;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 32px;
+            }
+            h2 {
+              font-size: 24px;
+              font-weight: 600;
+              margin-bottom: 12px;
+              color: #f2f2f2;
+            }
+            p {
+              color: #999999;
+              font-size: 14px;
+              margin-bottom: 24px;
+            }
+            a {
+              display: inline-block;
+              padding: 12px 24px;
+              background: #f2f2f2;
+              color: #000000;
+              text-decoration: none;
+              border-radius: 6px;
+              font-weight: 500;
+              transition: background 0.2s;
+            }
+            a:hover {
+              background: #e5e5e5;
+            }
+          </style>
         </head>
         <body>
-          <h1>Authentication Failed</h1>
-          <p>${error.message}</p>
-          <a href="${frontendUrl}">Return to App</a>
+          <div class="container">
+            <div class="icon">✕</div>
+            <h2>Authentication Failed</h2>
+            <p>${error.message}</p>
+            <a href="${frontendUrl}">Return to Dashboard</a>
+          </div>
         </body>
       </html>
     `);
