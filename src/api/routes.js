@@ -167,9 +167,11 @@ router.get('/oauth2callback', async (req, res) => {
     console.log('   - Refresh token:', tokens.refresh_token ? 'Present ✅' : 'Missing ❌');
     console.log('   - Expiry date:', tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : 'Not set');
     
+    // Get frontend URL - use FRONTEND_URL or VITE_FRONTEND_URL or construct from request
+    const frontendUrl = process.env.FRONTEND_URL || process.env.VITE_FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
+    
     if (!tokens.refresh_token) {
       console.warn('⚠️  WARNING: No refresh token received from Google!');
-      const frontendUrl = process.env.VITE_FRONTEND_URL;
       return res.send(`
         <html>
           <head>
@@ -198,7 +200,6 @@ router.get('/oauth2callback', async (req, res) => {
     }
     
     const tokensJson = JSON.stringify(tokens);
-    const frontendUrl = process.env.VITE_FRONTEND_URL;
     res.send(`
       <html>
         <head>
@@ -213,7 +214,7 @@ router.get('/oauth2callback', async (req, res) => {
     `);
   } catch (error) {
     console.error('Error getting tokens:', error);
-    const frontendUrl = process.env.VITE_FRONTEND_URL;
+    const frontendUrl = process.env.FRONTEND_URL || process.env.VITE_FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
     const errorMessage = encodeURIComponent(error.message);
     res.status(500).send(`
       <html>
