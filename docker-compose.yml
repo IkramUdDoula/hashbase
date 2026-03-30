@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hashbase-postgres
+    environment:
+      POSTGRES_DB: hashbase
+      POSTGRES_USER: hashbase
+      POSTGRES_PASSWORD: hashbase_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hashbase"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:5000
+        VITE_FRONTEND_URL: http://localhost:5000
+        VITE_CONFIG_ENCRYPTION_KEY: ${VITE_CONFIG_ENCRYPTION_KEY}
+        VITE_ENV: ${VITE_ENV:-dev}
+        VITE_GITHUB_LANDING_TOKEN: ${VITE_GITHUB_LANDING_TOKEN:-}
+        VITE_GITHUB_LANDING_OWNER: ${VITE_GITHUB_LANDING_OWNER:-}
+        VITE_GITHUB_LANDING_REPO: ${VITE_GITHUB_LANDING_REPO:-}
+    container_name: hashbase-app
+    ports:
+      - "5000:5000"
+    environment:
+      # Database
+      DATABASE_URL: postgresql://hashbase:hashbase_dev_password@postgres:5432/hashbase?sslmode=disable
+      
+      # Gmail OAuth (replace with your values)
+      GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID}
+      GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET}
+      GMAIL_REDIRECT_URI: http://localhost:5000/oauth2callback
+      
+      # News API (optional)
+      NEWS_API_KEY: ${NEWS_API_KEY:-}
+      
+      # Frontend URLs
+      VITE_FRONTEND_URL: http://localhost:5000
+      VITE_API_URL: http://localhost:5000
+      
+      # Config encryption
+      VITE_CONFIG_ENCRYPTION_KEY: ${VITE_CONFIG_ENCRYPTION_KEY}
+      
+      # Environment
+      VITE_ENV: dev
+      NODE_ENV: production
+      PORT: 5000
+      
+      # GitHub landing page (optional)
+      VITE_GITHUB_LANDING_TOKEN: ${VITE_GITHUB_LANDING_TOKEN:-}
+      VITE_GITHUB_LANDING_OWNER: ${VITE_GITHUB_LANDING_OWNER:-}
+      VITE_GITHUB_LANDING_REPO: ${VITE_GITHUB_LANDING_REPO:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
