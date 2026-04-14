@@ -31,6 +31,7 @@ services:
         VITE_GITHUB_LANDING_TOKEN: ${VITE_GITHUB_LANDING_TOKEN:-}
         VITE_GITHUB_LANDING_OWNER: ${VITE_GITHUB_LANDING_OWNER:-}
         VITE_GITHUB_LANDING_REPO: ${VITE_GITHUB_LANDING_REPO:-}
+        VITE_TMDB_API_KEY: ${VITE_TMDB_API_KEY:-}
     container_name: hashbase-app
     ports:
       - "5000:5000"
@@ -62,6 +63,9 @@ services:
       VITE_GITHUB_LANDING_TOKEN: ${VITE_GITHUB_LANDING_TOKEN:-}
       VITE_GITHUB_LANDING_OWNER: ${VITE_GITHUB_LANDING_OWNER:-}
       VITE_GITHUB_LANDING_REPO: ${VITE_GITHUB_LANDING_REPO:-}
+      
+      # TMDB API (optional)
+      VITE_TMDB_API_KEY: ${VITE_TMDB_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

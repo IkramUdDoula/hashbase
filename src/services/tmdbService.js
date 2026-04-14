@@ -43,7 +43,7 @@ export async function searchMedia(query, type = 'multi') {
         releaseDate: item.release_date || item.first_air_date || null,
         releaseYear: item.release_date 
           ? new Date(item.release_date).getFullYear()
-          : item.first_air_date 
+          : item.first_air_date   
             ? new Date(item.first_air_date).getFullYear()
             : null,
         posterPath: item.poster_path,
