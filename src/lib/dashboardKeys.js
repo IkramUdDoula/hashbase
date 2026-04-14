@@ -71,6 +71,10 @@ export function getDashboardKeys() {
     // Railway widget
     'railway_project_selection',              // Project selection preferences
     'railway_widget_settings',                // Widget settings
+    
+    // Watchlist widget
+    'watchlist_items',                        // All watchlist entries
+    'watchlist_settings',                     // Widget settings
   ];
   
   // Add per-canvas layout keys dynamically

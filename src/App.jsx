@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect } from 'react';
 import { SiGmail, SiNetlify, SiGithub, SiPosthog, SiOpenai } from 'react-icons/si';
-import { Sparkles, Newspaper, CheckSquare, Timer, AlertTriangle, ClipboardList, Train } from 'lucide-react';
+import { Sparkles, Newspaper, CheckSquare, Timer, AlertTriangle, ClipboardList, Train, Film } from 'lucide-react';
 import { UnreadEmailWidgetV2 } from './components/widgets/Gmail/UnreadEmailWidgetV2';
 import { DeploymentWidgetV2 } from './components/widgets/Netlify/DeploymentWidgetV2';
 import { AIChatWidget } from './components/widgets/AI/AIChatWidget';
@@ -12,6 +12,7 @@ import { TimerWidget } from './components/widgets/Timer/TimerWidget';
 import { PostHogErrorsWidget, PostHogSurveysWidget } from './components/widgets/PostHog';
 import { OpenAIWidget } from './components/widgets/OpenAI';
 import { RailwayWidget } from './components/widgets/Railway';
+import { WatchlistWidget } from './components/widgets/Watchlist';
 // import { HaalkhataWidget } from './components/widgets/Haalkhata'; // Disabled for now
 import { LandingPage } from './components/LandingPage';
 import { SettingsButton } from './components/SettingsButton';
@@ -138,6 +139,14 @@ function AppContent() {
       description: 'Monitor your Railway projects, deployments, costs, and resource usage',
       icon: Train
     },
+    { 
+      id: 'watchlist', 
+      component: WatchlistWidget, 
+      rowSpan: 2,
+      name: 'Watchlist',
+      description: 'Track movies and TV shows you want to watch or are watching',
+      icon: Film
+    },
     // Haalkhata widget disabled for now - integration code remains intact
     // { 
     //   id: 'haalkhata-receipts', 
@@ -178,6 +187,7 @@ function AppContent() {
         'posthog-surveys': false,
         'openai-usage': false,
         'railway-projects': false,
+        'watchlist': true,
         // 'haalkhata-receipts': false // Widget disabled
       };
       setWidgetPreferences(defaultPreferences);
