@@ -8,6 +8,14 @@ const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 
+// Log TMDB API key status on initialization
+if (!TMDB_API_KEY || TMDB_API_KEY === 'undefined') {
+  console.error('❌ TMDB API Key is missing or undefined');
+  console.error('   Please set VITE_TMDB_API_KEY environment variable');
+} else {
+  console.log('✅ TMDB API Key configured:', TMDB_API_KEY.substring(0, 8) + '...');
+}
+
 /**
  * Search for movies and TV shows
  * @param {string} query - Search query
@@ -17,20 +25,34 @@ const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 export async function searchMedia(query, type = 'multi') {
   if (!query.trim()) return [];
   
+  if (!TMDB_API_KEY || TMDB_API_KEY === 'undefined') {
+    console.error('❌ TMDB searchMedia failed: API key not configured');
+    return [];
+  }
+  
   try {
     const endpoint = type === 'multi' 
       ? `${TMDB_BASE_URL}/search/multi`
       : `${TMDB_BASE_URL}/search/${type}`;
     
-    const response = await fetch(
-      `${endpoint}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=1`
-    );
+    const url = `${endpoint}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=1`;
+    console.log('🔍 TMDB search:', { query, type, endpoint });
+    
+    const response = await fetch(url);
     
     if (!response.ok) {
+      console.error('❌ TMDB API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        query,
+        apiKeyPresent: !!TMDB_API_KEY,
+        apiKeyValue: TMDB_API_KEY === 'undefined' ? 'string "undefined"' : 'set'
+      });
       throw new Error(`TMDB API error: ${response.status}`);
     }
     
     const data = await response.json();
+    console.log('✅ TMDB search results:', data.results?.length || 0, 'items');
     
     // Filter and format results
     return data.results
