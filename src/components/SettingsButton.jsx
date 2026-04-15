@@ -9,12 +9,27 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from '@/comp
 export function SettingsButton({ availableWidgets = [] }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [initialTab, setInitialTab] = useState('apps');
   const { theme, setTheme } = useTheme();
   const { canvases, activeCanvasId, setActiveCanvasId } = useCanvas();
   
   const currentIndex = canvases.findIndex(c => c.id === activeCanvasId);
   const canvasNumber = currentIndex + 1;
   const hasMultipleCanvases = canvases.length > 1;
+  
+  // Listen for custom event to open settings with specific tab
+  React.useEffect(() => {
+    const handleOpenSettings = (e) => {
+      if (e.detail?.tab) {
+        setInitialTab(e.detail.tab);
+      }
+      setIsModalOpen(true);
+      setIsDrawerOpen(false);
+    };
+
+    window.addEventListener('open-settings', handleOpenSettings);
+    return () => window.removeEventListener('open-settings', handleOpenSettings);
+  }, []);
   
   const handleNavigateUp = () => {
     const newIndex = currentIndex > 0 ? currentIndex - 1 : canvases.length - 1;
@@ -31,6 +46,7 @@ export function SettingsButton({ availableWidgets = [] }) {
   };
 
   const openConfigModal = () => {
+    setInitialTab('apps');
     setIsModalOpen(true);
     setIsDrawerOpen(false);
   };
@@ -136,6 +152,7 @@ export function SettingsButton({ availableWidgets = [] }) {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
         availableWidgets={availableWidgets}
+        initialTab={initialTab}
       />
     </>
   );

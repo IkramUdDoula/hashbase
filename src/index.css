@@ -101,3 +101,13 @@
 .dark .explorer-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgb(107 114 128);
 }
+
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}

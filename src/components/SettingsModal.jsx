@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Eye, EyeOff, Save, Key, AppWindow, Trash2, Search, Grid3x3, Download, Upload, Database, Layers, Plus, Edit2, AlertTriangle } from 'lucide-react';
+import { X, Eye, EyeOff, Save, Key, AppWindow, Trash2, Search, Grid3x3, Download, Upload, Database, Layers, Plus, Edit2, AlertTriangle, Link2 } from 'lucide-react';
 import { useCanvas } from '@/contexts/CanvasContext';
 import { useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
@@ -19,10 +19,11 @@ import { getWidgetPreferences, setWidgetPreferences, getWidgetCanvasAssignments,
 import { downloadConfig, uploadConfig, getConfigSummary } from '@/services/configService';
 import { ScrollbarStyles } from '@/components/ui/scrollbar-styles';
 import { CanvasVisualization } from './CanvasVisualization';
+import { QuickLinksSettings } from './QuickLinksSettings';
 
-export function SettingsModal({ isOpen, onClose, availableWidgets }) {
+export function SettingsModal({ isOpen, onClose, availableWidgets, initialTab = 'apps' }) {
   const { canvases } = useCanvas();
-  const [activeTab, setActiveTab] = useState('apps');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [secrets, setSecretsState] = useState({});
   const [widgetPrefs, setWidgetPrefsState] = useState({});
   const [widgetCanvasAssignments, setWidgetCanvasAssignmentsState] = useState({});
@@ -35,6 +36,13 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
   const [noSpaceWarning, setNoSpaceWarning] = useState(null);
   const clearTimeoutRef = useRef(null);
   const modalRef = useRef(null);
+
+  // Update active tab when initialTab changes
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   // Load data on mount
   useEffect(() => {
@@ -340,7 +348,7 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div ref={modalRef} className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col border-2 border-gray-200 dark:border-gray-800">
         {/* Modal Header - Modal Name & Close Button */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
@@ -400,6 +408,20 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
             >
               <Layers className="h-4 w-4" />
               Canvases
+            </button>
+            <button
+              onClick={() => setActiveTab('quicklinks')}
+              role="tab"
+              aria-selected={activeTab === 'quicklinks'}
+              aria-controls="quicklinks-panel"
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${
+                activeTab === 'quicklinks'
+                  ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-b-2 border-gray-900 dark:border-gray-100'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+              }`}
+            >
+              <Link2 className="h-4 w-4" />
+              Quick Links
             </button>
             <button
               onClick={() => setActiveTab('storage')}
@@ -661,6 +683,13 @@ export function SettingsModal({ isOpen, onClose, availableWidgets }) {
           {/* Canvas Tab Panel */}
           {activeTab === 'canvas' && (
             <CanvasManagementPanel onClose={onClose} />
+          )}
+
+          {/* Quick Links Tab Panel */}
+          {activeTab === 'quicklinks' && (
+            <div id="quicklinks-panel" role="tabpanel" aria-labelledby="quicklinks-tab">
+              <QuickLinksSettings />
+            </div>
           )}
 
           {/* Storage Tab Panel */}

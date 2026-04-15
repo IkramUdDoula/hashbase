@@ -75,6 +75,9 @@ export function getDashboardKeys() {
     // Watchlist widget
     'watchlist_items',                        // All watchlist entries
     'watchlist_settings',                     // Widget settings
+    
+    // Quick Links dock
+    'hashbase_quicklinks',                    // Quick access links
   ];
   
   // Add per-canvas layout keys dynamically

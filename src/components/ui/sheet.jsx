@@ -20,7 +20,7 @@ const Sheet = ({ open, onOpenChange, children }) => {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
       />
       {children}
@@ -48,7 +48,7 @@ const SheetContent = React.forwardRef(
       <div
         ref={ref}
         className={cn(
-          "fixed z-50 bg-white dark:bg-gray-900 shadow-xl transition-transform",
+          "fixed z-[100] bg-white dark:bg-gray-900 shadow-xl transition-transform",
           sideClasses[side],
           slideClasses[side],
           className

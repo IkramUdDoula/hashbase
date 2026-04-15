@@ -18,6 +18,7 @@ import { LandingPage } from './components/LandingPage';
 import { SettingsButton } from './components/SettingsButton';
 import { Canvas } from './components/Canvas';
 import { ScreenSizeGuard } from './components/ScreenSizeGuard';
+import { QuickLinksDock } from './components/QuickLinksDock';
 import { ToastProvider, useToast } from './components/ui/toast';
 import { CanvasProvider } from './contexts/CanvasContext';
 import { isWidgetEnabled, setWidgetPreferences } from './services/widgetRegistry';
@@ -220,12 +221,16 @@ function AppContent() {
     <ScreenSizeGuard>
       <div className="h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:bg-[#000000] dark:from-black dark:via-black dark:to-black p-4 transition-colors duration-200">
         {/* Canvas with drag-and-drop widget rearrangement - fills remaining space */}
-        <div className="w-full h-full">
+        {/* Bottom padding accounts for dock height + double gap spacing (32px) */}
+        <div className="w-full h-full pb-[88px]">
           <Canvas widgets={enabledWidgets} />
         </div>
 
         {/* Floating Settings Button with Canvas Navigator (Right) */}
         <SettingsButton availableWidgets={allWidgets} />
+        
+        {/* Quick Links Dock at Bottom */}
+        <QuickLinksDock />
       </div>
     </ScreenSizeGuard>
   );
