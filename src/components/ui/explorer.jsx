@@ -70,31 +70,41 @@ const Explorer = ({
     if (!open) return
 
     const handleKeyDown = (e) => {
-      // Left arrow key - Previous
-      if (e.key === 'ArrowLeft' && hasPrevious && onPrevious) {
+      // Check if the focus is on an interactive element (input, textarea, button, select, etc.)
+      const activeElement = document.activeElement
+      const isInteractiveElement = 
+        activeElement?.tagName === 'INPUT' ||
+        activeElement?.tagName === 'TEXTAREA' ||
+        activeElement?.tagName === 'SELECT' ||
+        activeElement?.tagName === 'BUTTON' ||
+        activeElement?.isContentEditable ||
+        activeElement?.closest('button') !== null
+
+      // Left arrow key - Previous item (only if not on interactive element)
+      if (e.key === 'ArrowLeft' && hasPrevious && onPrevious && !isInteractiveElement) {
         e.preventDefault()
         if (scrollableRef.current) {
           scrollableRef.current.scrollTop = 0
         }
         onPrevious()
       }
-      // Right arrow key - Next
-      else if (e.key === 'ArrowRight' && hasNext && onNext) {
+      // Right arrow key - Next item (only if not on interactive element)
+      else if (e.key === 'ArrowRight' && hasNext && onNext && !isInteractiveElement) {
         e.preventDefault()
         if (scrollableRef.current) {
           scrollableRef.current.scrollTop = 0
         }
         onNext()
       }
-      // Up arrow key - Scroll up
-      else if (e.key === 'ArrowUp') {
+      // Up arrow key - Scroll up (only if not on interactive element)
+      else if (e.key === 'ArrowUp' && !isInteractiveElement) {
         e.preventDefault()
         if (scrollableRef.current) {
           scrollableRef.current.scrollBy({ top: -50, behavior: 'smooth' })
         }
       }
-      // Down arrow key - Scroll down
-      else if (e.key === 'ArrowDown') {
+      // Down arrow key - Scroll down (only if not on interactive element)
+      else if (e.key === 'ArrowDown' && !isInteractiveElement) {
         e.preventDefault()
         if (scrollableRef.current) {
           scrollableRef.current.scrollBy({ top: 50, behavior: 'smooth' })

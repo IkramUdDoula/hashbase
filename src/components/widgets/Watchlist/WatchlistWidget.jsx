@@ -40,8 +40,7 @@ export function WatchlistWidget({ rowSpan = 2, dragRef }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [groupBy, setGroupBy] = useState('none'); // 'none', 'type', 'status'
-  const [activeTab, setActiveTab] = useState('movies'); // 'movies', 'tv'
+  const [activeTab, setActiveTab] = useState(''); // Will be set from settings
   const searchTimeoutRef = useRef(null);
   
   // Explorer state
@@ -53,6 +52,7 @@ export function WatchlistWidget({ rowSpan = 2, dragRef }) {
     showCompleted: true,
     autoSort: true,
     defaultView: 'all', // 'all', 'movies', 'tv'
+    defaultTab: 'movies', // 'movies', 'tv'
     sortBy: 'status' // 'status', 'dateAdded', 'title', 'rating'
   });
   
@@ -77,9 +77,14 @@ export function WatchlistWidget({ rowSpan = 2, dragRef }) {
         const parsed = JSON.parse(savedSettings);
         setSettings(parsed);
         setTempSettings(parsed);
+        // Set active tab from saved settings
+        setActiveTab(parsed.defaultTab || 'movies');
       } catch (e) {
         console.error('Failed to load watchlist settings:', e);
+        setActiveTab('movies');
       }
+    } else {
+      setActiveTab('movies');
     }
     
     setIsInitialized(true);
@@ -280,6 +285,8 @@ export function WatchlistWidget({ rowSpan = 2, dragRef }) {
   
   const handleSettingsSave = () => {
     setSettings(tempSettings);
+    // Update active tab if default tab changed
+    setActiveTab(tempSettings.defaultTab || 'movies');
     setSettingsOpen(false);
   };
   
@@ -365,37 +372,7 @@ export function WatchlistWidget({ rowSpan = 2, dragRef }) {
     return getSortedItems(filtered);
   };
   
-  // Group items by type or status
-  const getGroupedItems = () => {
-    const filtered = getFilteredItems();
-    
-    if (groupBy === 'none') {
-      return { ungrouped: filtered };
-    }
-    
-    if (groupBy === 'type') {
-      return {
-        movies: filtered.filter(item => item.type === 'movie'),
-        tv: filtered.filter(item => item.type === 'tv')
-      };
-    }
-    
-    if (groupBy === 'status') {
-      const grouped = {};
-      filtered.forEach(item => {
-        if (!grouped[item.status]) {
-          grouped[item.status] = [];
-        }
-        grouped[item.status].push(item);
-      });
-      return grouped;
-    }
-    
-    return { ungrouped: filtered };
-  };
-  
   const filteredItems = getFilteredItems();
-  const groupedItems = getGroupedItems();
   
   // Render star rating
   const renderStars = (rating) => {
@@ -616,54 +593,9 @@ export function WatchlistWidget({ rowSpan = 2, dragRef }) {
               </div>
             ) : (
               <div className="space-y-3">
-                {groupBy === 'type' ? (
-                  <>
-                    {groupedItems.movies && groupedItems.movies.length > 0 && (
-                      <div>
-                        <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2 flex items-center gap-2">
-                          <Film className="h-3 w-3" />
-                          Movies ({groupedItems.movies.length})
-                        </h3>
-                        <div className="space-y-2">
-                          {groupedItems.movies.map((item) => renderItem(item))}
-                        </div>
-                      </div>
-                    )}
-                    {groupedItems.tv && groupedItems.tv.length > 0 && (
-                      <div>
-                        <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2 flex items-center gap-2">
-                          <Tv className="h-3 w-3" />
-                          TV Shows ({groupedItems.tv.length})
-                        </h3>
-                        <div className="space-y-2">
-                          {groupedItems.tv.map((item) => renderItem(item))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : groupBy === 'status' ? (
-                  <>
-                    {Object.entries(groupedItems).map(([status, statusItems]) => {
-                      if (statusItems.length === 0) return null;
-                      const StatusIcon = statusConfig[status]?.icon || Bookmark;
-                      return (
-                        <div key={status}>
-                          <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2 flex items-center gap-2">
-                            <StatusIcon className="h-3 w-3" />
-                            {statusConfig[status]?.label} ({statusItems.length})
-                          </h3>
-                          <div className="space-y-2">
-                            {statusItems.map((item) => renderItem(item))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </>
-                ) : (
-                  <div className="space-y-2">
-                    {filteredItems.map((item) => renderItem(item))}
-                  </div>
-                )}
+                <div className="space-y-2">
+                  {filteredItems.map((item) => renderItem(item))}
+                </div>
               </div>
             )}
           </div>
@@ -826,35 +758,21 @@ export function WatchlistWidget({ rowSpan = 2, dragRef }) {
             </select>
           </div>
           
-          {/* Default View */}
+          {/* Default Tab */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Default View
+              Default Tab
             </label>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Which tab to show when opening the widget
+            </p>
             <select
-              value={tempSettings.defaultView}
-              onChange={(e) => setTempSettings({ ...tempSettings, defaultView: e.target.value })}
+              value={tempSettings.defaultTab || 'movies'}
+              onChange={(e) => setTempSettings({ ...tempSettings, defaultTab: e.target.value })}
               className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="all">All</option>
-              <option value="movies">Movies Only</option>
-              <option value="tv">TV Shows Only</option>
-            </select>
-          </div>
-          
-          {/* Group By */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Group By
-            </label>
-            <select
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="none">None</option>
-              <option value="type">Type (Movies/TV)</option>
-              <option value="status">Status</option>
+              <option value="movies">Movies</option>
+              <option value="tv">TV Shows</option>
             </select>
           </div>
         </div>
