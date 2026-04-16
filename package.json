@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "node server.js",
+    "check-pwa": "node check-pwa.js",
     "docker:build": "docker build -t hashbase .",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
