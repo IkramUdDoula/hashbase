@@ -4,16 +4,26 @@
  * Provides functions to search and fetch movie/TV show data
  */
 
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+import { getSecret, SECRET_KEYS } from './secretsService';
+
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 
-// Log TMDB API key status on initialization
-if (!TMDB_API_KEY || TMDB_API_KEY === 'undefined') {
-  console.error('❌ TMDB API Key is missing or undefined');
-  console.error('   Please set VITE_TMDB_API_KEY environment variable');
-} else {
-  console.log('✅ TMDB API Key configured:', TMDB_API_KEY.substring(0, 8) + '...');
+/**
+ * Get TMDB API key from secrets
+ * @returns {string|null} TMDB API key or null if not configured
+ */
+function getTmdbApiKey() {
+  return getSecret(SECRET_KEYS.TMDB_API_KEY);
+}
+
+/**
+ * Check if TMDB API is configured
+ * @returns {boolean} True if TMDB API key is configured
+ */
+export function isTmdbConfigured() {
+  const apiKey = getTmdbApiKey();
+  return !!apiKey && apiKey.trim() !== '';
 }
 
 /**
@@ -25,9 +35,11 @@ if (!TMDB_API_KEY || TMDB_API_KEY === 'undefined') {
 export async function searchMedia(query, type = 'multi') {
   if (!query.trim()) return [];
   
-  if (!TMDB_API_KEY || TMDB_API_KEY === 'undefined') {
+  const apiKey = getTmdbApiKey();
+  
+  if (!apiKey) {
     console.error('❌ TMDB searchMedia failed: API key not configured');
-    return [];
+    throw new Error('TMDB API key not configured. Please add it in Settings → Secrets.');
   }
   
   try {
@@ -35,7 +47,7 @@ export async function searchMedia(query, type = 'multi') {
       ? `${TMDB_BASE_URL}/search/multi`
       : `${TMDB_BASE_URL}/search/${type}`;
     
-    const url = `${endpoint}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=1`;
+    const url = `${endpoint}?api_key=${apiKey}&query=${encodeURIComponent(query)}&page=1`;
     console.log('🔍 TMDB search:', { query, type, endpoint });
     
     const response = await fetch(url);
@@ -44,9 +56,7 @@ export async function searchMedia(query, type = 'multi') {
       console.error('❌ TMDB API error:', {
         status: response.status,
         statusText: response.statusText,
-        query,
-        apiKeyPresent: !!TMDB_API_KEY,
-        apiKeyValue: TMDB_API_KEY === 'undefined' ? 'string "undefined"' : 'set'
+        query
       });
       throw new Error(`TMDB API error: ${response.status}`);
     }
@@ -74,7 +84,7 @@ export async function searchMedia(query, type = 'multi') {
       }));
   } catch (error) {
     console.error('TMDB search error:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -84,9 +94,15 @@ export async function searchMedia(query, type = 'multi') {
  * @returns {Promise<Object>} Movie details
  */
 export async function getMovieDetails(movieId) {
+  const apiKey = getTmdbApiKey();
+  
+  if (!apiKey) {
+    throw new Error('TMDB API key not configured');
+  }
+  
   try {
     const response = await fetch(
-      `${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}`
+      `${TMDB_BASE_URL}/movie/${movieId}?api_key=${apiKey}`
     );
     
     if (!response.ok) {
@@ -120,9 +136,15 @@ export async function getMovieDetails(movieId) {
  * @returns {Promise<Object>} TV show details
  */
 export async function getTVDetails(tvId) {
+  const apiKey = getTmdbApiKey();
+  
+  if (!apiKey) {
+    throw new Error('TMDB API key not configured');
+  }
+  
   try {
     const response = await fetch(
-      `${TMDB_BASE_URL}/tv/${tvId}?api_key=${TMDB_API_KEY}`
+      `${TMDB_BASE_URL}/tv/${tvId}?api_key=${apiKey}`
     );
     
     if (!response.ok) {
@@ -162,9 +184,15 @@ export async function getTVDetails(tvId) {
  * @returns {Promise<Object>} Season details with episodes
  */
 export async function getSeasonDetails(tvId, seasonNumber) {
+  const apiKey = getTmdbApiKey();
+  
+  if (!apiKey) {
+    throw new Error('TMDB API key not configured');
+  }
+  
   try {
     const response = await fetch(
-      `${TMDB_BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${TMDB_API_KEY}`
+      `${TMDB_BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${apiKey}`
     );
     
     if (!response.ok) {

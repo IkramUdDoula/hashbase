@@ -13,11 +13,12 @@ import {
   Bookmark,
   Search,
   Calendar,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { WidgetModal, WidgetModalFooter } from '@/components/ui/widget-modal';
 import { WatchlistExplorer } from './WatchlistExplorer';
-import { searchMedia, getTVDetails, getSeasonDetails, getPosterUrl } from '@/services/tmdbService';
+import { searchMedia, getTVDetails, getSeasonDetails, getPosterUrl, isTmdbConfigured } from '@/services/tmdbService';
 
 /**
  * WatchlistWidget - Track movies and TV shows
@@ -115,6 +116,13 @@ export function WatchlistWidget({ rowSpan = 2, dragRef }) {
   // Debounced TMDB search
   useEffect(() => {
     if (!searchInput.trim()) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    // Check if TMDB is configured
+    if (!isTmdbConfigured()) {
       setSearchResults([]);
       setShowSearchResults(false);
       return;
@@ -602,6 +610,18 @@ export function WatchlistWidget({ rowSpan = 2, dragRef }) {
           
           {/* Search Input with Autocomplete - Fixed at bottom */}
           <div className="relative">
+            {!isTmdbConfigured() && (
+              <div className="mb-2 p-2 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                      <strong>TMDB API not configured.</strong> Add your API key in Settings → Secrets to search for movies and TV shows.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <Search className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
               <input
@@ -609,8 +629,9 @@ export function WatchlistWidget({ rowSpan = 2, dragRef }) {
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={handleInputKeyDown}
                 onFocus={() => searchResults.length > 0 && setShowSearchResults(true)}
-                placeholder="Search movies & TV shows on TMDB..."
-                className="flex-1 min-w-0 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                placeholder={isTmdbConfigured() ? "Search movies & TV shows on TMDB..." : "Configure TMDB API key in Settings first"}
+                disabled={!isTmdbConfigured()}
+                className="flex-1 min-w-0 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               {searchLoading && (
                 <Loader2 className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin flex-shrink-0" />

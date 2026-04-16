@@ -296,6 +296,12 @@ export function SettingsModal({ isOpen, onClose, availableWidgets, initialTab = 
       label: 'Railway API Token',
       description: 'Get from railway.app/account/tokens (use Personal Token, not Project Token)',
       placeholder: 'railway_xxxxxxxxxxxxx'
+    },
+    {
+      key: SECRET_KEYS.TMDB_API_KEY,
+      label: 'TMDB API Key',
+      description: 'Get from themoviedb.org/settings/api (for Watchlist widget)',
+      placeholder: 'xxxxxxxxxxxxx'
     }
   ];
 
