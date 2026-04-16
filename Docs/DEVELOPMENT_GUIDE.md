@@ -399,7 +399,7 @@ export function YourWidget({ rowSpan = 2, dragRef }) {
             {filteredData.map((item) => (
               <div
                 key={item.id}
-                className="p-3 rounded-lg border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer"
+                className="p-3 rounded-lg bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/40 dark:to-slate-900/40 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all cursor-pointer group"
               >
                 {/* Your item content */}
               </div>
@@ -824,7 +824,7 @@ export function YourWidget({ rowSpan = 2, dragRef }) {
               <div
                 key={item.id}
                 onClick={() => handleOpenItem(item.id)}
-                className="p-3 rounded-lg border cursor-pointer hover:border-blue-300 transition-all"
+                className="p-3 rounded-lg bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/40 dark:to-slate-900/40 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all cursor-pointer group"
               >
                 <h4 className="font-medium">{item.name}</h4>
                 <p className="text-sm text-gray-600">{item.description}</p>
@@ -890,12 +890,14 @@ export function YourWidget({ rowSpan = 2, dragRef }) {
 - Add helpful error messages
 - Use tooltips for icon-only buttons
 - Support dark mode (use Tailwind dark: classes)
+- Use the standard hover effect for clickable items (see pattern below)
 
 ❌ **DON'T:**
 - Create custom widget containers
 - Leave users guessing what went wrong
 - Forget about accessibility
 - Hardcode colors
+- Use inconsistent hover effects across widgets
 
 ### Performance
 
@@ -979,6 +981,35 @@ const handleDelete = () => {
   }
 };
 ```
+
+### Pattern 5: Standard Item Hover Effect
+
+Use this consistent hover effect for all clickable widget items:
+
+```jsx
+<div
+  onClick={() => handleItemClick(item.id)}
+  className="p-3 rounded-lg bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/40 dark:to-slate-900/40 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all cursor-pointer group"
+>
+  {/* Item content */}
+</div>
+```
+
+**Why this pattern?**
+- ✅ Consistent across all widgets (GitHub, Watchlist, etc.)
+- ✅ Subtle gradient background for depth
+- ✅ Shadow on hover for elevation feedback
+- ✅ Border color change for clear interaction
+- ✅ Dark mode support built-in
+- ✅ `group` class enables child element hover effects
+
+**Key classes:**
+- `bg-gradient-to-br from-gray-50 to-slate-50` - Subtle gradient background
+- `dark:from-gray-900/40 dark:to-slate-900/40` - Dark mode gradient
+- `hover:shadow-md` - Elevation on hover
+- `hover:border-gray-300 dark:hover:border-gray-600` - Border highlight
+- `transition-all` - Smooth animation
+- `group` - Enables group-hover for child elements
 
 ### Example Widgets
 

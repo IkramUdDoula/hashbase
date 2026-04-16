@@ -428,7 +428,7 @@ export function WatchlistWidget({ rowSpan = 2, dragRef }) {
       <div
         key={item.id}
         onClick={() => handleOpenItem(item.id)}
-        className="group p-3 rounded-lg border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm transition-all cursor-pointer"
+        className="p-3 rounded-lg bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/40 dark:to-slate-900/40 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all cursor-pointer group"
       >
         <div className="flex items-start gap-3">
           {/* Poster or Type Icon */}
