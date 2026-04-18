@@ -92,7 +92,7 @@ export function LandingPage() {
 
       {/* Main content */}
       <div className="relative z-10 h-full flex items-center justify-center px-4 md:px-8">
-        <div className="max-w-7xl w-full mx-auto grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+        <div className="max-w-[1600px] w-full mx-auto grid lg:grid-cols-[1fr_1.4fr] gap-8 lg:gap-16 items-center">
           
           {/* Left side - Content */}
           <div className="space-y-6 md:space-y-8 text-center lg:text-left">
@@ -135,23 +135,18 @@ export function LandingPage() {
 
             {/* CTA Button */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-              <button
-                onClick={() => setIsFormOpen(true)}
-                className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-lg font-bold rounded-xl shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105 overflow-hidden"
+              <a
+                href="https://github.com/IkramUdDoula/hashbase"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-lg font-bold rounded-xl shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105 overflow-hidden inline-flex items-center justify-center"
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   Get Started
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              </button>
-              
-              <button
-                onClick={() => setIsFormOpen(true)}
-                className="px-8 py-4 bg-white/5 backdrop-blur-sm border border-white/10 text-white text-lg font-semibold rounded-xl hover:bg-white/10 transition-all duration-300"
-              >
-                Learn More
-              </button>
+              </a>
             </div>
 
             {/* Stats */}
@@ -172,9 +167,9 @@ export function LandingPage() {
           </div>
 
           {/* Right side - Dashboard preview */}
-          <div className="relative animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+          <div className="relative animate-fade-in-up lg:scale-110" style={{ animationDelay: '0.2s' }}>
             {/* Glow effect */}
-            <div className="absolute -inset-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-3xl blur-3xl opacity-20 animate-pulse"></div>
+            <div className="absolute -inset-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-3xl blur-3xl opacity-20 animate-pulse"></div>
             
             {/* Image container with 3D effect */}
             <div 
