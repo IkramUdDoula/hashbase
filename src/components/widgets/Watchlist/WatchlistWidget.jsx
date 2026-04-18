@@ -436,92 +436,56 @@ export function WatchlistWidget({ rowSpan = 2, dragRef }) {
       <div
         key={item.id}
         onClick={() => handleOpenItem(item.id)}
-        className="p-3 rounded-lg bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/40 dark:to-slate-900/40 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all cursor-pointer group"
+        className="relative p-2.5 rounded-lg bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/40 dark:to-slate-900/40 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all cursor-pointer group"
       >
-        <div className="flex items-start gap-3">
-          {/* Poster or Type Icon */}
-          <div className="flex-shrink-0 w-12 h-16 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
-            {item.posterUrl ? (
-              <img
-                src={item.posterUrl}
-                alt={item.title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                {item.type === 'movie' ? (
-                  <Film className="h-6 w-6 text-gray-400" />
-                ) : (
-                  <Tv className="h-6 w-6 text-gray-400" />
-                )}
-              </div>
-            )}
-          </div>
+        {/* Content - 2 lines only */}
+        <div className="pr-8">
+          {/* Line 1: Title */}
+          <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate leading-tight">
+            {item.title}
+          </h4>
           
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-gray-900 dark:text-gray-100 truncate">
-              {item.title}
-            </h4>
-            
-            {/* Metadata */}
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              {/* Rating */}
-              {item.rating > 0 && (
-                <div className="flex items-center gap-1">
-                  {renderStars(item.rating)}
-                </div>
-              )}
-              
-              {/* Status Badge - Only show if not "want-to-watch" */}
-              {item.status !== 'want-to-watch' && (
-                <Badge 
-                  variant="secondary" 
-                  className={`${statusConfig[item.status]?.color} text-xs`}
-                >
-                  <StatusIcon className="h-3 w-3 mr-1" />
-                  {statusConfig[item.status]?.label}
-                </Badge>
-              )}
-            </div>
-            
-            {/* Next Episode or Progress for TV shows */}
-            {item.type === 'tv' && nextEpisode && (
-              <div className="mt-2 flex items-center gap-2 text-xs">
-                <Calendar className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                <span className="text-blue-600 dark:text-blue-400 font-medium">
+          {/* Line 2: Next Episode/Date */}
+          <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-600 dark:text-gray-400">
+            {item.type === 'tv' && nextEpisode ? (
+              <>
+                <span className="font-medium text-blue-600 dark:text-blue-400">
                   Next: S{nextEpisode.seasonNumber}E{nextEpisode.episodeNumber}
                 </span>
                 {nextEpisode.airDate && (
-                  <span className="text-gray-600 dark:text-gray-400">
-                    • {new Date(nextEpisode.airDate).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                  </span>
+                  <>
+                    <span>•</span>
+                    <span>
+                      {new Date(nextEpisode.airDate).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </span>
+                  </>
                 )}
-              </div>
-            )}
-            
-            {/* Release date for movies */}
-            {item.type === 'movie' && (item.releaseDate || item.releaseYear) && (
-              <div className="mt-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                <Calendar className="h-3 w-3" />
-                <span>
-                  {item.releaseDate ? (
-                    new Date(item.releaseDate).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric',
-                      year: 'numeric'
-                    })
-                  ) : (
-                    `Released ${item.releaseYear}`
-                  )}
-                </span>
-              </div>
+              </>
+            ) : item.type === 'movie' && (item.releaseDate || item.releaseYear) ? (
+              <span>
+                {item.releaseDate ? (
+                  new Date(item.releaseDate).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: 'numeric'
+                  })
+                ) : (
+                  `Released ${item.releaseYear}`
+                )}
+              </span>
+            ) : (
+              <span className="text-gray-400 dark:text-gray-500">No date available</span>
             )}
           </div>
+        </div>
+        
+        {/* Status Icon Chip - Bottom Right Corner */}
+        <div className={`absolute bottom-2 right-2 p-1 rounded ${statusConfig[item.status]?.color}`}>
+          <StatusIcon className="h-3 w-3" />
         </div>
       </div>
     );
