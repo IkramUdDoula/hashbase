@@ -20,6 +20,32 @@ const rssParser = new Parser({
   }
 });
 
+// Helper function for fetch with timeout and retry
+async function fetchWithTimeout(url, options = {}, timeout = 30000, retries = 2) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    
+    // Retry on timeout or connection errors
+    if (retries > 0 && (error.name === 'AbortError' || error.code === 'UND_ERR_CONNECT_TIMEOUT')) {
+      console.log(`⚠️  Fetch timeout/error for ${url}, retrying... (${retries} retries left)`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+      return fetchWithTimeout(url, options, timeout, retries - 1);
+    }
+    
+    throw error;
+  }
+}
+
 export function addExternalRoutes(router) {
   // ===== Netlify API Endpoints =====
   
@@ -39,7 +65,7 @@ export function addExternalRoutes(router) {
         });
       }
 
-      const sitesResponse = await fetch('https://api.netlify.com/api/v1/sites', {
+      const sitesResponse = await fetchWithTimeout('https://api.netlify.com/api/v1/sites', {
         headers: { 'Authorization': `Bearer ${accessToken}` },
       });
 
@@ -79,7 +105,7 @@ export function addExternalRoutes(router) {
         });
       }
 
-      const sitesResponse = await fetch('https://api.netlify.com/api/v1/sites', {
+      const sitesResponse = await fetchWithTimeout('https://api.netlify.com/api/v1/sites', {
         headers: { 'Authorization': `Bearer ${accessToken}` },
       });
 
@@ -96,7 +122,7 @@ export function addExternalRoutes(router) {
       
       const deployPromises = sites.map(async (site) => {
         try {
-          const deploysResponse = await fetch(
+          const deploysResponse = await fetchWithTimeout(
             `https://api.netlify.com/api/v1/sites/${site.id}/deploys?per_page=1`,
             { headers: { 'Authorization': `Bearer ${accessToken}` } }
           );
@@ -158,7 +184,7 @@ export function addExternalRoutes(router) {
         });
       }
 
-      const deployResponse = await fetch(
+      const deployResponse = await fetchWithTimeout(
         `https://api.netlify.com/api/v1/deploys/${deployId}`,
         { headers: { 'Authorization': `Bearer ${accessToken}` } }
       );
