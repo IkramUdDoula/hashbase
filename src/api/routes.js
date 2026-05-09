@@ -24,6 +24,9 @@ function getOAuth2Client() {
 }
 
 // Load credentials from request header and auto-refresh if needed
+// Track ongoing refresh operations to prevent duplicate refreshes
+const ongoingRefreshes = new Map();
+
 async function loadCredentialsFromHeader(req) {
   try {
     let tokenHeader = req.headers['x-gmail-token'];
@@ -71,34 +74,72 @@ async function loadCredentialsFromHeader(req) {
     // Check if token is expired or about to expire (within 5 minutes)
     const fiveMinutes = 5 * 60 * 1000;
     
-    console.log(`🔍 Gmail: Token check - Expiry: ${expiryDate ? new Date(expiryDate).toISOString() : 'Not set'}, Now: ${new Date(now).toISOString()}`);
+    // Only log token checks occasionally to reduce noise (every 30 seconds)
+    const lastLogKey = 'gmail_token_check_last_log';
+    const lastLog = global[lastLogKey] || 0;
+    if (now - lastLog > 30000) {
+      console.log(`🔍 Gmail: Token check - Expiry: ${expiryDate ? new Date(expiryDate).toISOString() : 'Not set'}, Now: ${new Date(now).toISOString()}`);
+      global[lastLogKey] = now;
+    }
     
     if (expiryDate && (now >= expiryDate - fiveMinutes)) {
       const isAlreadyExpired = now >= expiryDate;
-      console.log(`🔄 Gmail: Access token ${isAlreadyExpired ? 'expired' : 'expiring soon'}, refreshing...`);
-      try {
-        const { credentials: newCredentials } = await oauth2Client.refreshAccessToken();
-        
-        console.log(`   Refresh response - has refresh_token: ${!!newCredentials.refresh_token}`);
-        
-        // Preserve the refresh token if not returned
-        if (!newCredentials.refresh_token && credentials.refresh_token) {
-          console.log('   ⚠️ Google did not return refresh_token, preserving from original');
-          newCredentials.refresh_token = credentials.refresh_token;
+      
+      // Check if a refresh is already in progress for this token
+      const refreshKey = credentials.refresh_token;
+      if (ongoingRefreshes.has(refreshKey)) {
+        console.log('⏳ Gmail: Token refresh already in progress, waiting...');
+        try {
+          // Wait for the ongoing refresh to complete
+          const result = await ongoingRefreshes.get(refreshKey);
+          return result;
+        } catch (error) {
+          console.error('❌ Gmail: Ongoing refresh failed:', error.message);
+          ongoingRefreshes.delete(refreshKey);
+          return { error: 'REFRESH_FAILED', message: error.message };
         }
-        
-        oauth2Client.setCredentials(newCredentials);
-        
-        // Save refreshed tokens to database
-        await saveGmailTokensToDb(newCredentials);
-        
-        console.log('✅ Gmail: Token refreshed successfully');
-        console.log(`   New expiry: ${newCredentials.expiry_date ? new Date(newCredentials.expiry_date).toISOString() : 'Not set'}`);
-        console.log(`   Has refresh_token: ${!!newCredentials.refresh_token ? '✅' : '❌'}`);
-        
-        return { oauth2Client, newCredentials };
+      }
+      
+      console.log(`🔄 Gmail: Access token ${isAlreadyExpired ? 'expired' : 'expiring soon'}, refreshing...`);
+      
+      // Create a promise for this refresh operation
+      const refreshPromise = (async () => {
+        try {
+          const { credentials: newCredentials } = await oauth2Client.refreshAccessToken();
+          
+          console.log(`   Refresh response - has refresh_token: ${!!newCredentials.refresh_token}`);
+          
+          // Preserve the refresh token if not returned
+          if (!newCredentials.refresh_token && credentials.refresh_token) {
+            console.log('   ⚠️ Google did not return refresh_token, preserving from original');
+            newCredentials.refresh_token = credentials.refresh_token;
+          }
+          
+          oauth2Client.setCredentials(newCredentials);
+          
+          // Save refreshed tokens to database
+          await saveGmailTokensToDb(newCredentials);
+          
+          console.log('✅ Gmail: Token refreshed successfully');
+          console.log(`   New expiry: ${newCredentials.expiry_date ? new Date(newCredentials.expiry_date).toISOString() : 'Not set'}`);
+          console.log(`   Has refresh_token: ${!!newCredentials.refresh_token ? '✅' : '❌'}`);
+          
+          return { oauth2Client, newCredentials };
+        } catch (refreshError) {
+          console.error('❌ Gmail: Failed to refresh token:', refreshError.message);
+          throw refreshError;
+        } finally {
+          // Clean up the ongoing refresh tracking
+          ongoingRefreshes.delete(refreshKey);
+        }
+      })();
+      
+      // Store the promise so other concurrent requests can wait for it
+      ongoingRefreshes.set(refreshKey, refreshPromise);
+      
+      try {
+        return await refreshPromise;
       } catch (refreshError) {
-        console.error('❌ Gmail: Failed to refresh token:', refreshError.message);
         return { error: 'REFRESH_FAILED', message: refreshError.message };
       }
     }

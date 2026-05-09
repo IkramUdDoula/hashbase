@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hashbase-v1';
+const CACHE_NAME = 'hashbase-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -42,16 +42,36 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - network first, fallback to cache
 self.addEventListener('fetch', (event) => {
+  // Skip caching for non-GET requests (POST, PUT, DELETE, etc.)
+  // The Cache API only supports GET requests
+  if (event.request.method !== 'GET') {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Skip caching for API requests to avoid stale data
+  const url = new URL(event.request.url);
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clone the response before caching
-        const responseToCache = response.clone();
-        
-        caches.open(CACHE_NAME)
-          .then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+        // Only cache successful responses
+        if (response.status === 200) {
+          // Clone the response before caching
+          const responseToCache = response.clone();
+          
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+              cache.put(event.request, responseToCache);
+            })
+            .catch((err) => {
+              console.log('Cache put failed:', err);
+            });
+        }
         
         return response;
       })
