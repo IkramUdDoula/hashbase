@@ -31,34 +31,43 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
     }
     
     try {
+      console.log('📬 Gmail Widget: Loading emails...');
       isLoadingRef.current = true;
       setError(null);
       
       // Check auth status (backend will handle token refresh if needed)
+      console.log('   Step 1: Checking authentication...');
       const authStatus = await checkAuthStatus();
       console.log(`   Auth status: ${authStatus ? '✅ Authenticated' : '❌ Not authenticated'}`);
       setIsAuthenticated(authStatus);
       
       if (!authStatus) {
+        console.log('   ❌ Not authenticated, stopping load');
         setError('Not authenticated with Gmail');
         setCurrentState('error');
         setRefreshing(false);
         return;
       }
       
+      console.log('   Step 2: Fetching unread emails...');
       const unreadEmails = await fetchUnreadEmails();
+      console.log('   ✅ Loaded', unreadEmails.length, 'emails');
+      
       setEmails(unreadEmails);
       setCurrentState(unreadEmails.length === 0 ? 'empty' : 'positive');
     } catch (err) {
+      console.error('❌ Gmail Widget: Error loading emails:', err);
       setError(err.message);
       setCurrentState('error');
       // If auth error, update auth status
       if (err.message.includes('authentication expired')) {
+        console.log('   ⚠️  Authentication expired, marking as unauthenticated');
         setIsAuthenticated(false);
       }
     } finally {
       setRefreshing(false);
       isLoadingRef.current = false;
+      console.log('   ✅ Load complete');
     }
   };
 
@@ -102,16 +111,38 @@ export function UnreadEmailWidgetV2({ rowSpan = 2, dragRef }) {
     
     // Initial load with auth check
     const initializeWidget = async () => {
+      console.log('🚀 Gmail Widget: Initializing...');
+      
+      // Check if we just returned from OAuth
+      const urlParams = new URLSearchParams(window.location.search);
+      const authSuccess = urlParams.get('auth') === 'success';
+      
+      if (authSuccess) {
+        console.log('🔄 Gmail Widget: Returned from OAuth, waiting for token to be ready...');
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        // Wait a bit longer for localStorage to be fully written
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log('   ✅ Wait complete, proceeding with auth check');
+      }
+      
+      console.log('   Checking initial auth status...');
       const authStatus = await checkAuthStatus();
       if (!isActive) return;
       
+      console.log('   Initial auth status:', authStatus ? '✅ Authenticated' : '❌ Not authenticated');
       setIsAuthenticated(authStatus);
+      
       if (authStatus) {
+        console.log('   Loading initial emails...');
         await loadEmails();
       } else {
+        console.log('   Not authenticated, showing error state');
         setCurrentState('error');
         setError('Not authenticated with Gmail');
       }
+      
+      console.log('✅ Gmail Widget: Initialization complete');
     };
     
     initializeWidget();

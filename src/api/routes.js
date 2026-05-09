@@ -292,17 +292,84 @@ router.get('/oauth2callback', async (req, res) => {
             <p>Redirecting to dashboard...</p>
           </div>
           <script>
-            try {
-              console.log('Storing Gmail tokens...');
-              localStorage.setItem('gmail_tokens', ${JSON.stringify(tokensJson)});
-              console.log('Tokens stored, redirecting...');
-              setTimeout(function() {
-                window.location.href = '${frontendUrl}?auth=success';
-              }, 500);
-            } catch (error) {
-              console.error('Error storing tokens:', error);
-              document.body.innerHTML = '<div class="container"><h2>Error</h2><p>' + error.message + '</p></div>';
-            }
+            (function() {
+              console.log('═══════════════════════════════════════════════════');
+              console.log('📝 OAuth Callback: Starting token storage process');
+              console.log('═══════════════════════════════════════════════════');
+              
+              try {
+                // Parse the token object directly (not double-stringified)
+                const tokensString = '${tokensJson.replace(/'/g, "\\'")}';
+                console.log('   Step 1: Token string received');
+                console.log('   Token string length:', tokensString.length);
+                console.log('   Token string preview:', tokensString.substring(0, 100) + '...');
+                
+                console.log('   Step 2: Parsing token JSON...');
+                const tokens = JSON.parse(tokensString);
+                console.log('   ✅ Token parsed successfully');
+                console.log('   Token keys:', Object.keys(tokens).join(', '));
+                
+                console.log('   Step 3: Validating token fields...');
+                console.log('   - access_token:', tokens.access_token ? '✅ Present (' + tokens.access_token.substring(0, 20) + '...)' : '❌ Missing');
+                console.log('   - refresh_token:', tokens.refresh_token ? '✅ Present (' + tokens.refresh_token.substring(0, 20) + '...)' : '❌ Missing');
+                console.log('   - token_type:', tokens.token_type || 'Not set');
+                console.log('   - expiry_date:', tokens.expiry_date || 'Not set');
+                
+                if (tokens.expiry_date) {
+                  const expiry = new Date(tokens.expiry_date);
+                  const now = new Date();
+                  const minutesUntilExpiry = Math.floor((expiry - now) / 60000);
+                  console.log('   Token expiry:', expiry.toISOString());
+                  console.log('   Current time:', now.toISOString());
+                  console.log('   Time until expiry:', minutesUntilExpiry, 'minutes');
+                  
+                  if (minutesUntilExpiry < 0) {
+                    console.error('   ⚠️  WARNING: Token is already expired!');
+                  } else if (minutesUntilExpiry < 5) {
+                    console.warn('   ⚠️  WARNING: Token expires in less than 5 minutes!');
+                  }
+                }
+                
+                if (!tokens.refresh_token) {
+                  console.error('   ❌ CRITICAL: No refresh_token! Token cannot be refreshed after expiry!');
+                }
+                
+                console.log('   Step 4: Storing token in localStorage...');
+                console.log('   Storage key:', 'gmail_tokens');
+                localStorage.setItem('gmail_tokens', tokensString);
+                console.log('   ✅ Token stored successfully');
+                
+                // Verify storage
+                console.log('   Step 5: Verifying storage...');
+                const storedToken = localStorage.getItem('gmail_tokens');
+                if (storedToken === tokensString) {
+                  console.log('   ✅ Storage verification passed');
+                } else {
+                  console.error('   ❌ Storage verification failed!');
+                  console.error('   Stored length:', storedToken?.length || 0);
+                  console.error('   Expected length:', tokensString.length);
+                }
+                
+                console.log('   Step 6: Preparing redirect...');
+                console.log('   Redirect URL: ${frontendUrl}?auth=success');
+                
+                // Wait a bit to ensure localStorage is fully written
+                setTimeout(function() {
+                  console.log('   🔄 Redirecting to app...');
+                  console.log('═══════════════════════════════════════════════════');
+                  window.location.href = '${frontendUrl}?auth=success';
+                }, 500);
+              } catch (error) {
+                console.error('═══════════════════════════════════════════════════');
+                console.error('❌ OAuth Callback: FATAL ERROR');
+                console.error('═══════════════════════════════════════════════════');
+                console.error('Error type:', error.name);
+                console.error('Error message:', error.message);
+                console.error('Error stack:', error.stack);
+                console.error('═══════════════════════════════════════════════════');
+                document.body.innerHTML = '<div class="container"><h2>❌ Error</h2><p>' + error.message + '</p><pre>' + error.stack + '</pre></div>';
+              }
+            })();
           </script>
         </body>
       </html>
