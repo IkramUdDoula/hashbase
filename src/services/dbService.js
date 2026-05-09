@@ -159,9 +159,23 @@ export async function loadGmailTokensFromDb(userId = 'default_user') {
       
       console.log(`   Time until expiry: ${minutesUntilExpiry} minutes`);
       
-      // If token is expired and has no refresh token, it's useless
+      // If token is expired and has no refresh token, delete it from database
       if (now >= expiry && !tokens.refresh_token) {
-        console.log('   ⚠️  Token is expired and has no refresh_token - will be refreshed by caller');
+        console.log('   ⚠️  Token is expired and has no refresh_token - deleting from database');
+        await deleteGmailTokensFromDb(userId);
+        return null;
+      }
+      
+      // If token is very old (more than 7 days expired), it's likely stale - delete it
+      const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+      if (now >= expiry + sevenDaysInMs) {
+        console.log('   ⚠️  Token is more than 7 days expired - deleting stale token from database');
+        await deleteGmailTokensFromDb(userId);
+        return null;
+      }
+      
+      if (now >= expiry && tokens.refresh_token) {
+        console.log('   ⚠️  Token is expired but has refresh_token - will be refreshed by caller');
       }
     }
 

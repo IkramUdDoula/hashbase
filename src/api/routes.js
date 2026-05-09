@@ -499,8 +499,27 @@ router.get('/gmail/unread', async (req, res) => {
 
     const emails = await Promise.all(emailPromises);
     
+    // Only send refresh header if token was actually refreshed (not just loaded from DB)
     if (result.newCredentials) {
-      res.set('x-gmail-token-refreshed', JSON.stringify(result.newCredentials));
+      // Validate the token before sending it to client
+      const now = Date.now();
+      if (result.newCredentials.expiry_date) {
+        const expiry = result.newCredentials.expiry_date;
+        if (now >= expiry) {
+          console.error('❌ Gmail: Attempted to send EXPIRED token to client!');
+          console.error(`   Token expiry: ${new Date(expiry).toISOString()}`);
+          console.error(`   Current time: ${new Date(now).toISOString()}`);
+          console.error('   NOT sending x-gmail-token-refreshed header');
+        } else {
+          console.log('✅ Gmail: Sending refreshed token to client');
+          console.log(`   Token expiry: ${new Date(expiry).toISOString()}`);
+          console.log(`   Time until expiry: ${Math.floor((expiry - now) / 60000)} minutes`);
+          res.set('x-gmail-token-refreshed', JSON.stringify(result.newCredentials));
+        }
+      } else {
+        // No expiry date - send it anyway
+        res.set('x-gmail-token-refreshed', JSON.stringify(result.newCredentials));
+      }
     }
     
     res.json({ emails });
