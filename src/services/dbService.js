@@ -150,6 +150,20 @@ export async function loadGmailTokensFromDb(userId = 'default_user') {
     console.log(`   User: ${userId}`);
     console.log(`   Expiry: ${tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : 'Not set'}`);
     console.log(`   Has refresh_token: ${!!tokens.refresh_token ? '✅' : '❌'}`);
+    
+    // Validate token expiry
+    if (tokens.expiry_date) {
+      const now = Date.now();
+      const expiry = new Date(tokens.expiry_date).getTime();
+      const minutesUntilExpiry = Math.floor((expiry - now) / 60000);
+      
+      console.log(`   Time until expiry: ${minutesUntilExpiry} minutes`);
+      
+      // If token is expired and has no refresh token, it's useless
+      if (now >= expiry && !tokens.refresh_token) {
+        console.log('   ⚠️  Token is expired and has no refresh_token - will be refreshed by caller');
+      }
+    }
 
     return tokens;
   } catch (error) {

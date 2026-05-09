@@ -117,6 +117,15 @@ async function loadCredentialsFromHeader(req) {
           
           oauth2Client.setCredentials(newCredentials);
           
+          // CRITICAL: Validate the new token before saving
+          const now = Date.now();
+          if (newCredentials.expiry_date && now >= newCredentials.expiry_date) {
+            console.error('❌ Gmail: Google returned an EXPIRED token after refresh!');
+            console.error(`   Token expiry: ${new Date(newCredentials.expiry_date).toISOString()}`);
+            console.error(`   Current time: ${new Date(now).toISOString()}`);
+            throw new Error('Received expired token from Google');
+          }
+          
           // Save refreshed tokens to database
           await saveGmailTokensToDb(newCredentials);
           

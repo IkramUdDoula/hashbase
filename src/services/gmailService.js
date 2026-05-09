@@ -198,9 +198,10 @@ function handleTokenRefresh(response) {
         if (now >= expiry) {
           console.error('❌ Gmail: Server sent an EXPIRED token in refresh header!');
           console.error(`   Expiry: ${expiry.toISOString()}, Now: ${now.toISOString()}`);
-          console.error('   Ignoring this token and clearing localStorage');
-          localStorage.removeItem(GMAIL_TOKEN_KEY);
+          console.error('   This is a server bug - the token should have been refreshed');
+          console.error('   Ignoring this expired token and keeping current token');
           console.log('═══════════════════════════════════════════════════');
+          // Don't clear localStorage - keep the current token
           return false;
         }
         
