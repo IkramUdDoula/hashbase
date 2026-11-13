@@ -5,20 +5,29 @@ import { getSecret, SECRET_KEYS, hasSecret } from './secretsService';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 
-async function executeQuery(query, variables = {}, signal) {
+class RailwayAuthorizationError extends Error {}
+
+async function executeQuery(query, variables = {}, signal, projectScoped = false) {
   const token = getSecret(SECRET_KEYS.RAILWAY_TOKEN)?.trim();
+  const tokenHeader = projectScoped ? 'X-Railway-Project-Token' : 'X-Railway-Token';
   const response = await fetch(`${API_BASE_URL}/api/railway/graphql`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Railway-Token': token || '',
+      [tokenHeader]: token || '',
     },
     body: JSON.stringify({ query, variables }),
     signal,
   });
 
   const result = await response.json().catch(() => null);
-  const message = result?.errors?.map(error => error.message).filter(Boolean).join(' ');
+  const errors = result?.errors ?? [];
+  const message = errors.map(error => error.message).filter(Boolean).join(' ');
+  if (response.status === 401 || response.status === 403 || errors.some(error =>
+    /^(not authorized|unauthorized|forbidden|invalid token|project token not found)[.!]?$/i.test(error.message)
+  )) {
+    throw new RailwayAuthorizationError(message || result?.message || 'Railway denied access.');
+  }
   if (message) {
     throw new Error(message);
   }
@@ -36,10 +45,35 @@ export function isRailwayConfigured() {
   return hasSecret(SECRET_KEYS.RAILWAY_TOKEN);
 }
 
-/**
- * Fetch projects from the account's workspaces and projects shared with it.
- */
-export async function fetchProjects(signal) {
+const projectDetails = `
+  fragment ProjectDetails on Project {
+    id
+    name
+    description
+    createdAt
+    updatedAt
+    services {
+      edges {
+        node { id name icon }
+      }
+    }
+    environments {
+      edges {
+        node { id name }
+      }
+    }
+  }
+`;
+
+function formatProject(project) {
+  return {
+    ...project,
+    services: project.services.edges.map(({ node }) => node),
+    environments: project.environments.edges.map(({ node }) => node),
+  };
+}
+
+async function fetchAccountProjects(signal) {
   const query = `
     query RailwayProjects {
       me {
@@ -56,23 +90,7 @@ export async function fetchProjects(signal) {
       }
     }
 
-    fragment ProjectDetails on Project {
-      id
-      name
-      description
-      createdAt
-      updatedAt
-      services {
-        edges {
-          node { id name icon }
-        }
-      }
-      environments {
-        edges {
-          node { id name }
-        }
-      }
-    }
+    ${projectDetails}
   `;
 
   const { me, externalWorkspaces } = await executeQuery(query, {}, signal);
@@ -80,26 +98,86 @@ export async function fetchProjects(signal) {
     workspace.projects.edges.map(({ node }) => node)
   );
   const sharedProjects = externalWorkspaces.flatMap(workspace => workspace.projects);
-  const projectsById = new Map();
-  for (const project of [...workspaceProjects, ...sharedProjects]) {
-    if (!projectsById.has(project.id)) {
-      projectsById.set(project.id, {
-        ...project,
-        services: project.services.edges.map(({ node }) => node),
-        environments: project.environments.edges.map(({ node }) => node),
-      });
+  return formatProjects([...workspaceProjects, ...sharedProjects]);
+}
+
+async function fetchWorkspaceProjects(signal) {
+  const { apiToken } = await executeQuery(`
+    query RailwayTokenWorkspaces {
+      apiToken { workspaces { id } }
+    }
+  `, {}, signal);
+
+  const projects = await Promise.all(apiToken.workspaces.map(async ({ id }) => {
+    const data = await executeQuery(`
+      query RailwayWorkspaceProjects($workspaceId: String!) {
+        projects(workspaceId: $workspaceId) {
+          edges {
+            node { ...ProjectDetails }
+          }
+        }
+      }
+
+      ${projectDetails}
+    `, { workspaceId: id }, signal);
+    return data.projects.edges.map(({ node }) => node);
+  }));
+  return formatProjects(projects.flat());
+}
+
+async function fetchScopedProject(signal) {
+  const { projectToken } = await executeQuery(`
+    query RailwayTokenProject {
+      projectToken {
+        project { id name description createdAt updatedAt }
+        environment {
+          id
+          name
+          serviceInstances {
+            edges {
+              node { serviceId serviceName }
+            }
+          }
+        }
+      }
+    }
+  `, {}, signal, true);
+
+  const { project, environment } = projectToken;
+  return [{
+    ...project,
+    scopedEnvironmentId: environment.id,
+    environments: [{ id: environment.id, name: environment.name }],
+    services: environment.serviceInstances.edges.map(({ node }) => ({
+      id: node.serviceId,
+      name: node.serviceName,
+    })),
+  }];
+}
+
+export async function fetchProjects(signal) {
+  for (const discoverProjects of [fetchAccountProjects, fetchWorkspaceProjects, fetchScopedProject]) {
+    try {
+      return await discoverProjects(signal);
+    } catch (error) {
+      if (!(error instanceof RailwayAuthorizationError)) throw error;
     }
   }
 
-  return [...projectsById.values()].sort(
-    (a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
-  );
+  throw new Error('Railway rejected this token. Check or replace it in Settings → Secrets.');
+}
+
+function formatProjects(projects) {
+  const projectsById = new Map(projects.map(project => [project.id, project]));
+  return [...projectsById.values()]
+    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+    .map(formatProject);
 }
 
 /**
  * Fetch recent deployments across the project or within a specific environment.
  */
-export async function fetchDeployments(projectId, environmentId = null, limit = 10, signal) {
+export async function fetchDeployments(project, { limit = 10, signal } = {}) {
   const query = `
     query RailwayDeployments($input: DeploymentListInput!, $first: Int) {
       deployments(input: $input, first: $first) {
@@ -110,17 +188,22 @@ export async function fetchDeployments(projectId, environmentId = null, limit = 
             createdAt
             url
             staticUrl
-            service { id name }
-            environment { id name }
+            serviceId
+            environmentId
           }
         }
       }
     }
   `;
 
-  const input = { projectId, environmentId };
-  const { deployments } = await executeQuery(query, { input, first: limit }, signal);
-  return deployments.edges.map(({ node }) => node);
+  const { id: projectId, scopedEnvironmentId } = project;
+  const input = { projectId, environmentId: scopedEnvironmentId };
+  const { deployments } = await executeQuery(query, { input, first: limit }, signal, Boolean(scopedEnvironmentId));
+  return deployments.edges.map(({ node }) => ({
+    ...node,
+    service: project.services.find(service => service.id === node.serviceId),
+    environment: project.environments.find(environment => environment.id === node.environmentId),
+  }));
 }
 
 /**

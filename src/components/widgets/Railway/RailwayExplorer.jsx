@@ -49,13 +49,13 @@ export function RailwayExplorer({
   const currentResult = deploymentResult?.projectId === currentProjectId ? deploymentResult : null;
 
   useEffect(() => {
-    if (!open || !currentProjectId) {
+    if (!open || !project) {
       setDeploymentResult(null);
       return;
     }
 
     const controller = new AbortController();
-    fetchDeployments(currentProjectId, null, 15, controller.signal).then(deployments => {
+    fetchDeployments(project, { limit: 15, signal: controller.signal }).then(deployments => {
       if (!controller.signal.aborted) {
         setDeploymentResult({ projectId: currentProjectId, deployments });
       }
@@ -66,7 +66,7 @@ export function RailwayExplorer({
     });
 
     return () => controller.abort();
-  }, [open, currentProjectId]);
+  }, [open, project, currentProjectId]);
 
   const handlePrevious = () => {
     if (hasPrevious) {

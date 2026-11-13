@@ -108,7 +108,7 @@ export function RailwayWidget({ rowSpan = 2, dragRef }) {
         const results = await Promise.all(
           filteredProjects.map(async (project) => {
             try {
-              const [latest] = await fetchDeployments(project.id, null, 1, controller.signal);
+              const [latest] = await fetchDeployments(project, { limit: 1, signal: controller.signal });
               return [project.id, { latest }];
             } catch (error) {
               return [project.id, { error: error.message }];

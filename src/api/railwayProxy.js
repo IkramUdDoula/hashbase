@@ -2,10 +2,14 @@ const RAILWAY_API_URL = 'https://backboard.railway.com/graphql/v2';
 
 export async function proxyRailwayGraphql(req, res) {
   const token = req.get('x-railway-token')?.trim();
-  if (!token) {
+  const projectToken = req.get('x-railway-project-token')?.trim();
+  if (!token && !projectToken) {
     return res.status(401).json({
-      message: 'Add a Railway account token in Settings → Secrets.',
+      message: 'Add a Railway API token in Settings → Secrets.',
     });
+  }
+  if (token && projectToken) {
+    return res.status(400).json({ message: 'Send one Railway token per request.' });
   }
 
   const { query, variables } = req.body ?? {};
@@ -18,7 +22,7 @@ export async function proxyRailwayGraphql(req, res) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        ...(projectToken ? { 'Project-Access-Token': projectToken } : { Authorization: `Bearer ${token}` }),
       },
       body: JSON.stringify({ query, variables }),
       signal: AbortSignal.timeout(15_000),
