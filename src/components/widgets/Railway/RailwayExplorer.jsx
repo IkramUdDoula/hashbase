@@ -3,8 +3,7 @@ import {
   Explorer, 
   ExplorerHeader, 
   ExplorerBody, 
-  ExplorerSection,
-  ExplorerField 
+  ExplorerSection
 } from '@/components/ui/explorer';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -21,18 +20,13 @@ import {
 } from 'lucide-react';
 import { formatRelativeDate } from '@/lib/dateUtils';
 import { 
-  fetchDeployments, 
+  fetchDeployments,
+  getDeploymentPublicUrl,
   getRailwayProjectUrl
 } from '@/services/railwayService';
 
 /**
- * RailwayExplorer - Detailed project viewer with tabs
- * 
- * Tabs:
- * - Deployments: Recent deployment statuses
- * - Cost: Project usage and estimated costs
- * - Logs: Error logs from deployments
- * - Metrics: CPU and Memory usage
+ * RailwayExplorer - Recent deployments and services for a Railway project
  */
 export function RailwayExplorer({ 
   open, 
@@ -50,48 +44,35 @@ export function RailwayExplorer({
   const [activeTab, setActiveTab] = useState('deployments');
   
   // Data states
-  const [deployments, setDeployments] = useState([]);
-  
-  // Loading states
-  const [loadingDeployments, setLoadingDeployments] = useState(false);
-  
-  // Error states
-  const [deploymentsError, setDeploymentsError] = useState(null);
-  
-  // Selected deployment for details
-  const [selectedDeploymentId, setSelectedDeploymentId] = useState(null);
+  const [deploymentResult, setDeploymentResult] = useState(null);
+  const currentProjectId = project?.id;
+  const currentResult = deploymentResult?.projectId === currentProjectId ? deploymentResult : null;
 
-  // Load deployments when project changes
   useEffect(() => {
-    if (!project) return;
-    
-    const loadDeployments = async () => {
-      setLoadingDeployments(true);
-      setDeploymentsError(null);
-      
-      try {
-        const data = await fetchDeployments(project.id, null, 15);
-        setDeployments(data);
-        if (data.length > 0 && !selectedDeploymentId) {
-          setSelectedDeploymentId(data[0].id);
-        }
-      } catch (err) {
-        console.error('Failed to load deployments:', err);
-        setDeploymentsError(err.message);
-      } finally {
-        setLoadingDeployments(false);
+    if (!open || !currentProjectId) {
+      setDeploymentResult(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    fetchDeployments(currentProjectId, null, 15, controller.signal).then(deployments => {
+      if (!controller.signal.aborted) {
+        setDeploymentResult({ projectId: currentProjectId, deployments });
       }
-    };
-    
-    loadDeployments();
-  }, [project?.id]);
+    }).catch(error => {
+      if (!controller.signal.aborted) {
+        setDeploymentResult({ projectId: currentProjectId, error: error.message });
+      }
+    });
+
+    return () => controller.abort();
+  }, [open, currentProjectId]);
 
   const handlePrevious = () => {
     if (hasPrevious) {
       const prevProject = projectList[currentIndex - 1];
       onProjectChange(prevProject.id);
       setActiveTab('deployments');
-      setSelectedDeploymentId(null);
     }
   };
 
@@ -100,13 +81,12 @@ export function RailwayExplorer({
       const nextProject = projectList[currentIndex + 1];
       onProjectChange(nextProject.id);
       setActiveTab('deployments');
-      setSelectedDeploymentId(null);
     }
   };
 
   const handleOpenInRailway = () => {
     if (project?.id) {
-      window.open(getRailwayProjectUrl(project.id), '_blank');
+      window.open(getRailwayProjectUrl(project.id), '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -237,67 +217,64 @@ export function RailwayExplorer({
             {/* Deployments Tab */}
             {activeTab === 'deployments' && (
               <ExplorerSection title="Recent Deployments">
-                {loadingDeployments ? (
+                {!currentResult ? (
                   <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading deployments...
                   </div>
-                ) : deploymentsError ? (
-                  <div className="text-sm text-red-600 dark:text-red-400">
-                    {deploymentsError}
+                ) : currentResult.error ? (
+                  <div role="alert" className="text-sm text-red-600 dark:text-red-400">
+                    {currentResult.error}
                   </div>
-                ) : deployments.length === 0 ? (
+                ) : currentResult.deployments.length === 0 ? (
                   <div className="text-sm text-gray-600 dark:text-gray-400">
                     No deployments found
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {deployments.map((deployment) => (
-                      <div
-                        key={deployment.id}
-                        onClick={() => setSelectedDeploymentId(deployment.id)}
-                        className={`p-3 rounded-lg border transition-all cursor-pointer ${
-                          selectedDeploymentId === deployment.id
-                            ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800'
-                            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <Server className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                              {deployment.service?.name || 'Unknown Service'}
-                            </span>
+                    {currentResult.deployments.map((deployment) => {
+                      const publicUrl = getDeploymentPublicUrl(deployment);
+                      return (
+                        <div
+                          key={deployment.id}
+                          className="p-3 rounded-lg border bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <Server className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                {deployment.service?.name || 'Unknown Service'}
+                              </span>
+                            </div>
+                            {getStatusBadge(deployment.status)}
                           </div>
-                          {getStatusBadge(deployment.status)}
-                        </div>
-                        
-                        <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400 ml-6">
-                          {deployment.environment?.name && (
-                            <span className="flex items-center gap-1">
-                              <Box className="h-3 w-3" />
-                              {deployment.environment.name}
-                            </span>
+
+                          <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400 ml-6">
+                            {deployment.environment?.name && (
+                              <span className="flex items-center gap-1">
+                                <Box className="h-3 w-3" />
+                                {deployment.environment.name}
+                              </span>
+                            )}
+                            <span>{formatRelativeDate(deployment.createdAt)}</span>
+                          </div>
+
+                          {publicUrl && (
+                            <div className="mt-2 ml-6">
+                              <a
+                                href={publicUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                Open public URL
+                              </a>
+                            </div>
                           )}
-                          <span>{formatRelativeDate(deployment.createdAt)}</span>
                         </div>
-                        
-                        {deployment.staticUrl && (
-                          <div className="mt-2 ml-6">
-                            <a
-                              href={deployment.staticUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              View Deployment
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </ExplorerSection>

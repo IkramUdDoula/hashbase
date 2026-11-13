@@ -3,44 +3,30 @@
 
 import { getSecret, SECRET_KEYS, hasSecret } from './secretsService';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 
-if (!API_BASE_URL) {
-  throw new Error('VITE_API_URL environment variable is not set');
-}
-
-/**
- * Get Railway API headers
- */
-function getRailwayHeaders() {
-  const token = getSecret(SECRET_KEYS.RAILWAY_TOKEN);
-  return {
-    'Content-Type': 'application/json',
-    'X-Railway-Token': token || '',
-  };
-}
-
-/**
- * Execute a GraphQL query against Railway API via proxy
- */
-async function executeQuery(query, variables = {}) {
+async function executeQuery(query, variables = {}, signal) {
+  const token = getSecret(SECRET_KEYS.RAILWAY_TOKEN)?.trim();
   const response = await fetch(`${API_BASE_URL}/api/railway/graphql`, {
     method: 'POST',
-    headers: getRailwayHeaders(),
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Railway-Token': token || '',
+    },
     body: JSON.stringify({ query, variables }),
+    signal,
   });
 
-  if (!response.ok) {
-    throw new Error(`Railway API error: ${response.statusText}`);
+  const result = await response.json().catch(() => null);
+  const message = result?.errors?.map(error => error.message).filter(Boolean).join(' ');
+  if (message) {
+    throw new Error(message);
+  }
+  if (!response.ok || !result?.data) {
+    throw new Error(result?.message || `Railway API request failed (HTTP ${response.status}).`);
   }
 
-  const data = await response.json();
-  
-  if (data.errors) {
-    throw new Error(data.errors[0]?.message || 'GraphQL error');
-  }
-
-  return data.data;
+  return result.data;
 }
 
 /**
@@ -51,193 +37,107 @@ export function isRailwayConfigured() {
 }
 
 /**
- * Fetch user info to verify token
+ * Fetch projects from the account's workspaces and projects shared with it.
  */
-async function fetchMe() {
+export async function fetchProjects(signal) {
   const query = `
-    query {
+    query RailwayProjects {
       me {
-        id
-        name
-        email
+        workspaces {
+          projects {
+            edges {
+              node { ...ProjectDetails }
+            }
+          }
+        }
+      }
+      externalWorkspaces {
+        projects { ...ProjectDetails }
+      }
+    }
+
+    fragment ProjectDetails on Project {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+      services {
+        edges {
+          node { id name icon }
+        }
+      }
+      environments {
+        edges {
+          node { id name }
+        }
       }
     }
   `;
-  
-  try {
-    const data = await executeQuery(query);
-    return data.me;
-  } catch (error) {
-    // If 'me' query fails, token might be a project/team token
-    console.warn('Railway: me query failed, might be using project/team token');
-    return null;
+
+  const { me, externalWorkspaces } = await executeQuery(query, {}, signal);
+  const workspaceProjects = me.workspaces.flatMap(workspace =>
+    workspace.projects.edges.map(({ node }) => node)
+  );
+  const sharedProjects = externalWorkspaces.flatMap(workspace => workspace.projects);
+  const projectsById = new Map();
+  for (const project of [...workspaceProjects, ...sharedProjects]) {
+    if (!projectsById.has(project.id)) {
+      projectsById.set(project.id, {
+        ...project,
+        services: project.services.edges.map(({ node }) => node),
+        environments: project.environments.edges.map(({ node }) => node),
+      });
+    }
   }
+
+  return [...projectsById.values()].sort(
+    (a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
+  );
 }
 
 /**
- * Fetch all projects for the authenticated user
- * Works with personal tokens
+ * Fetch recent deployments across the project or within a specific environment.
  */
-export async function fetchProjects() {
-  // First try to get user info
-  const me = await fetchMe();
-  
-  if (me) {
-    // Personal token - query via me
-    const query = `
-      query {
-        me {
-          projects {
-            edges {
-              node {
-                id
-                name
-                description
-                createdAt
-                updatedAt
-                services {
-                  edges {
-                    node {
-                      id
-                      name
-                      icon
-                    }
-                  }
-                }
-                environments {
-                  edges {
-                    node {
-                      id
-                      name
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    `;
-
-    const data = await executeQuery(query);
-    const projects = data.me?.projects?.edges?.map(edge => ({
-      id: edge.node.id,
-      name: edge.node.name,
-      description: edge.node.description,
-      createdAt: edge.node.createdAt,
-      updatedAt: edge.node.updatedAt,
-      services: edge.node.services?.edges?.map(s => ({
-        id: s.node.id,
-        name: s.node.name,
-        icon: s.node.icon,
-      })) || [],
-      environments: edge.node.environments?.edges?.map(e => ({
-        id: e.node.id,
-        name: e.node.name,
-      })) || [],
-    })) || [];
-
-    return projects;
-  } else {
-    // Project/Team token - query directly
-    const query = `
-      query {
-        projects {
-          edges {
-            node {
-              id
-              name
-              description
-              createdAt
-              updatedAt
-              services {
-                edges {
-                  node {
-                    id
-                    name
-                    icon
-                  }
-                }
-              }
-              environments {
-                edges {
-                  node {
-                    id
-                    name
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    `;
-
-    const data = await executeQuery(query);
-    const projects = data.projects?.edges?.map(edge => ({
-      id: edge.node.id,
-      name: edge.node.name,
-      description: edge.node.description,
-      createdAt: edge.node.createdAt,
-      updatedAt: edge.node.updatedAt,
-      services: edge.node.services?.edges?.map(s => ({
-        id: s.node.id,
-        name: s.node.name,
-        icon: s.node.icon,
-      })) || [],
-      environments: edge.node.environments?.edges?.map(e => ({
-        id: e.node.id,
-        name: e.node.name,
-      })) || [],
-    })) || [];
-
-    return projects;
-  }
-}
-
-/**
- * Fetch deployments for a project
- */
-export async function fetchDeployments(projectId, environmentId = null, limit = 10) {
+export async function fetchDeployments(projectId, environmentId = null, limit = 10, signal) {
   const query = `
-    query getDeployments($projectId: String!, $first: Int) {
-      deployments(
-        first: $first
-        input: {
-          projectId: $projectId
-        }
-      ) {
+    query RailwayDeployments($input: DeploymentListInput!, $first: Int) {
+      deployments(input: $input, first: $first) {
         edges {
           node {
             id
             status
             createdAt
+            url
             staticUrl
-            service {
-              id
-              name
-            }
-            environment {
-              id
-              name
-            }
+            service { id name }
+            environment { id name }
           }
         }
       }
     }
   `;
 
-  const variables = { projectId, first: limit };
+  const input = { projectId, environmentId };
+  const { deployments } = await executeQuery(query, { input, first: limit }, signal);
+  return deployments.edges.map(({ node }) => node);
+}
 
-  const data = await executeQuery(query, variables);
-  return data.deployments?.edges?.map(edge => ({
-    id: edge.node.id,
-    status: edge.node.status,
-    createdAt: edge.node.createdAt,
-    staticUrl: edge.node.staticUrl,
-    service: edge.node.service,
-    environment: edge.node.environment,
-  })) || [];
+/**
+ * Railway can return a bare hostname in staticUrl.
+ */
+export function getDeploymentPublicUrl(deployment) {
+  const address = deployment.staticUrl || deployment.url;
+  if (!address) return null;
+
+  try {
+    const url = new URL(address.includes('://') ? address : `https://${address}`);
+    return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -356,14 +256,14 @@ export async function restartDeployment(deploymentId) {
  * Get project URL in Railway dashboard
  */
 export function getRailwayProjectUrl(projectId) {
-  return `https://railway.app/project/${projectId}`;
+  return `https://railway.com/project/${projectId}`;
 }
 
 /**
  * Get deployment URL in Railway dashboard
  */
 export function getRailwayDeploymentUrl(projectId, deploymentId) {
-  return `https://railway.app/project/${projectId}/deployment/${deploymentId}`;
+  return `https://railway.com/project/${projectId}/deployment/${deploymentId}`;
 }
 
 /**

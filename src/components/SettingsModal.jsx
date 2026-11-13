@@ -294,8 +294,8 @@ export function SettingsModal({ isOpen, onClose, availableWidgets, initialTab = 
     {
       key: SECRET_KEYS.RAILWAY_TOKEN,
       label: 'Railway API Token',
-      description: 'Get from railway.app/account/tokens (use Personal Token, not Project Token)',
-      placeholder: 'railway_xxxxxxxxxxxxx'
+      description: 'Create an account token at railway.com/account/tokens and choose No workspace.',
+      placeholder: 'Railway account token'
     },
     {
       key: SECRET_KEYS.TMDB_API_KEY,

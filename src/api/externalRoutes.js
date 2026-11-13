@@ -3,6 +3,7 @@
  */
 
 import Parser from 'rss-parser';
+import { proxyRailwayGraphql } from './railwayProxy.js';
 
 // BD24 Live cache
 let bd24LiveCache = {
@@ -588,46 +589,5 @@ export function addExternalRoutes(router) {
     }
   });
 
-  // ===== Railway API Proxy =====
-  
-  router.post('/railway/graphql', async (req, res) => {
-    try {
-      const { query, variables } = req.body;
-      const token = req.headers['x-railway-token'];
-      
-      if (!token) {
-        return res.status(401).json({ 
-          error: 'Railway token not configured',
-          message: 'Please add your Railway API token in Settings > Secrets'
-        });
-      }
-
-      const response = await fetch('https://backboard.railway.com/graphql/v2', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ query, variables }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ errors: [{ message: 'Unknown error' }] }));
-        return res.status(response.status).json(error);
-      }
-
-      const data = await response.json();
-      
-      if (data.errors) {
-        return res.status(400).json(data);
-      }
-
-      res.json(data);
-    } catch (error) {
-      console.error('Error proxying Railway request:', error);
-      res.status(500).json({ 
-        errors: [{ message: error.message }]
-      });
-    }
-  });
+  router.post('/railway/graphql', proxyRailwayGraphql);
 }

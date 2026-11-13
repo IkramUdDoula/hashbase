@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BaseWidgetV2 } from '../../BaseWidgetV2';
 import { Badge } from '@/components/ui/badge';
 import { 
   Train,
-  AlertCircle,
   CheckCircle2, 
   XCircle, 
   Clock, 
@@ -35,13 +34,14 @@ import { RailwayExplorer } from './RailwayExplorer';
  */
 export function RailwayWidget({ rowSpan = 2, dragRef }) {
   const [projects, setProjects] = useState([]);
-  const [projectDeployments, setProjectDeployments] = useState({}); // Store latest deployment per project
+  const [deploymentResults, setDeploymentResults] = useState({});
   const [currentState, setCurrentState] = useState('loading');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [errorActionLoading, setErrorActionLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const activeRequest = useRef(null);
   
   // Settings state
   const [settings, setSettings] = useState({
@@ -71,17 +71,21 @@ export function RailwayWidget({ rowSpan = 2, dragRef }) {
   
   // Load projects
   const loadProjects = async () => {
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
+
     try {
       setErrorMessage('');
       
       if (!isRailwayConfigured()) {
         setErrorMessage('Railway token not configured. Add it in Settings → Secrets.');
         setCurrentState('error');
-        setRefreshing(false);
         return;
       }
 
-      const projectData = await fetchProjects();
+      const projectData = await fetchProjects(controller.signal);
+      if (controller.signal.aborted) return;
       
       // Filter by selected projects if not selectAll
       let filteredProjects = projectData;
@@ -96,34 +100,36 @@ export function RailwayWidget({ rowSpan = 2, dragRef }) {
       
       if (filteredProjects.length === 0) {
         setProjects([]);
-        setProjectDeployments({});
+        setDeploymentResults({});
         setCurrentState('empty');
       } else {
         setProjects(filteredProjects);
         
-        // Fetch latest deployment for each project
-        const deploymentsMap = {};
-        await Promise.all(
+        const results = await Promise.all(
           filteredProjects.map(async (project) => {
             try {
-              const deployments = await fetchDeployments(project.id, null, 1);
-              if (deployments.length > 0) {
-                deploymentsMap[project.id] = deployments[0];
-              }
-            } catch (err) {
-              console.error(`Failed to load deployment for project ${project.id}:`, err);
+              const [latest] = await fetchDeployments(project.id, null, 1, controller.signal);
+              return [project.id, { latest }];
+            } catch (error) {
+              return [project.id, { error: error.message }];
             }
           })
         );
-        setProjectDeployments(deploymentsMap);
-        
+        if (controller.signal.aborted) return;
+        setDeploymentResults(Object.fromEntries(results));
+
         setCurrentState('positive');
       }
     } catch (err) {
-      setErrorMessage(err.message || 'Failed to load projects. Please try again.');
-      setCurrentState('error');
+      if (!controller.signal.aborted) {
+        setErrorMessage(err.message || 'Failed to load projects. Please try again.');
+        setCurrentState('error');
+      }
     } finally {
-      setRefreshing(false);
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+        if (!controller.signal.aborted) setRefreshing(false);
+      }
     }
   };
   
@@ -132,6 +138,7 @@ export function RailwayWidget({ rowSpan = 2, dragRef }) {
     if (preferencesLoaded) {
       loadProjects();
     }
+    return () => activeRequest.current?.abort();
   }, [preferencesLoaded, settings.selectedProjects, settings.selectAll, settings.maxProjects]);
   
   // Auto-refresh
@@ -235,8 +242,8 @@ export function RailwayWidget({ rowSpan = 2, dragRef }) {
   };
   
   // Count failed deployments
-  const failedCount = Object.values(projectDeployments).filter(d => 
-    isDeploymentFailed(d.status)
+  const failedCount = Object.values(deploymentResults).filter(({ latest }) =>
+    isDeploymentFailed(latest?.status)
   ).length;
   
   // Badge showing failed deployment count
@@ -289,7 +296,7 @@ export function RailwayWidget({ rowSpan = 2, dragRef }) {
         ) : (
           <div className="space-y-2">
             {filteredProjects.map((project) => {
-              const latestDeployment = projectDeployments[project.id];
+              const { latest: latestDeployment, error: deploymentError } = deploymentResults[project.id] ?? {};
               const isError = latestDeployment && isDeploymentFailed(latestDeployment.status);
               
               return (
@@ -338,50 +345,28 @@ export function RailwayWidget({ rowSpan = 2, dragRef }) {
                     </p>
                   )}
                   
-                  {/* Latest Deployment Status */}
+                  {deploymentError && (
+                    <p className="mb-2 text-xs text-red-700 dark:text-red-300">
+                      Deployment unavailable. {deploymentError}
+                    </p>
+                  )}
+
                   {latestDeployment && (
-                    <div className="mb-2 space-y-1.5">
-                      {/* Service name with icon - truncate in middle */}
+                    <div className="mb-2 text-xs text-gray-700 dark:text-gray-300">
                       <div className="flex items-center gap-2">
                         {getDeploymentStatusIcon(latestDeployment.status)}
-                        <span className={`text-xs font-medium truncate ${
-                          isError
-                            ? 'text-red-800 dark:text-red-200'
-                            : 'text-gray-700 dark:text-gray-300'
-                        }`}>
+                        <span className="truncate font-medium">
                           {latestDeployment.service?.name || 'Unknown Service'}
                         </span>
+                        <span className="shrink-0">{latestDeployment.status}</span>
                       </div>
-                      
-                      {/* Status and Environment chips */}
-                      {/* <div className="flex items-center gap-2 flex-wrap"> */}
-                        {/* Status chip */}
-                        {/* <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          isError
-                            ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200'
-                            : latestDeployment.status?.toLowerCase() === 'active' || latestDeployment.status?.toLowerCase() === 'success'
-                            ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200'
-                            : latestDeployment.status?.toLowerCase() === 'building' || latestDeployment.status?.toLowerCase() === 'deploying'
-                            ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200'
-                            : 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200'
-                        }`}>
-                          {latestDeployment.status}
-                        </span> */}
-                        
-                        {/* Environment chip */}
-                        {/* {latestDeployment.environment?.name && (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            isError
-                              ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200'
-                              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-                          }`}>
-                            {latestDeployment.environment.name}
-                          </span>
-                        )}
-                      </div> */}
+                      <p className="ml-6 mt-1">
+                        {[latestDeployment.environment?.name, formatRelativeDate(latestDeployment.createdAt)]
+                          .filter(Boolean).join(' · ')}
+                      </p>
                     </div>
                   )}
-                  
+
                   {/* Metadata */}
                   <div className={`flex items-center gap-3 text-xs flex-wrap ${
                     isError
